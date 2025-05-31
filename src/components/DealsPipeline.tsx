@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import DealForm from './DealForm';
 
 interface Deal {
   id: string;
@@ -29,6 +29,7 @@ interface DealsPipelineProps {
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [showDealForm, setShowDealForm] = useState(false);
 
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
@@ -65,35 +66,12 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     enabled: !!user,
   });
 
-  const createSampleDeal = async () => {
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('deals')
-      .insert({
-        user_id: user.id,
-        title: 'New Enterprise Deal',
-        company: 'Sample Corp',
-        value: 50000,
-        probability: 60,
-        stage: 'Discovery',
-        contact_name: 'John Doe',
-        next_step: 'Schedule discovery call'
-      });
-
-    if (error) {
-      toast({
-        title: "Error creating deal",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Deal created!",
-        description: "New sample deal has been added.",
-      });
-      refetch();
-    }
+  const handleAICoach = (deal: Deal, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    onSelectDeal(deal);
+    // Switch to AI Coach tab - we'll need to communicate this to parent
+    const event = new CustomEvent('switchToAICoach', { detail: deal });
+    window.dispatchEvent(event);
   };
 
   const getStageColor = (stage: string) => {
@@ -139,7 +117,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 Track your deals and get AI-powered recommendations
               </CardDescription>
             </div>
-            <Button onClick={createSampleDeal} className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
               <Plus className="w-4 h-4 mr-2" />
               Add Deal
             </Button>
@@ -149,9 +127,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           {deals.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-slate-600 mb-4">No deals found. Create your first deal to get started!</p>
-              <Button onClick={createSampleDeal} className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Sample Deal
+                Create Your First Deal
               </Button>
             </div>
           ) : (
@@ -191,7 +169,12 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                             </span>
                             <Progress value={deal.probability} className="w-16" />
                           </div>
-                          <Button size="sm" variant="outline" className="hover:bg-blue-50">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="hover:bg-blue-50"
+                            onClick={(e) => handleAICoach(deal, e)}
+                          >
                             <MessageSquare className="w-4 h-4 mr-1" />
                             AI Coach
                           </Button>
@@ -210,6 +193,12 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           )}
         </CardContent>
       </Card>
+
+      <DealForm 
+        open={showDealForm} 
+        onOpenChange={setShowDealForm} 
+        onDealCreated={refetch}
+      />
     </div>
   );
 };

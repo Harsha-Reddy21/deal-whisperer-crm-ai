@@ -1,10 +1,10 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User } from 'lucide-react';
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
@@ -13,10 +13,26 @@ import ObjectionHandler from '@/components/ObjectionHandler';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const [activeTab, setActiveTab] = useState('pipeline');
+  const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [showAIAssistantDialog, setShowAIAssistantDialog] = useState(false);
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  // Listen for AI Coach tab switch events
+  useEffect(() => {
+    const handleSwitchToAICoach = (event: any) => {
+      setActiveTab('ai-coach');
+      setSelectedDeal(event.detail);
+    };
+
+    window.addEventListener('switchToAICoach', handleSwitchToAICoach);
+    return () => window.removeEventListener('switchToAICoach', handleSwitchToAICoach);
+  }, []);
 
   // Fetch real statistics from the database
   const { data: stats } = useQuery({
@@ -49,6 +65,14 @@ const Index = () => {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleTodaysTasks = () => {
+    setShowTasksDialog(true);
+  };
+
+  const handleAIAssistant = () => {
+    setShowAIAssistantDialog(true);
   };
 
   const displayStats = [
@@ -106,11 +130,11 @@ const Index = () => {
                 <User className="w-4 h-4 text-slate-600" />
                 <span className="text-sm text-slate-700">{user?.email}</span>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleTodaysTasks}>
                 <Calendar className="w-4 h-4 mr-2" />
                 Today's Tasks
               </Button>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleAIAssistant}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 AI Assistant
               </Button>
@@ -145,7 +169,7 @@ const Index = () => {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="pipeline" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 bg-white/60 backdrop-blur-sm">
             <TabsTrigger value="pipeline">Deal Pipeline</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
@@ -243,6 +267,58 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Today's Tasks Dialog */}
+      <Dialog open={showTasksDialog} onOpenChange={setShowTasksDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Today's Tasks</DialogTitle>
+            <DialogDescription>
+              Your scheduled tasks and follow-ups for today
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">Follow up with Acme Corp</h4>
+              <p className="text-sm text-slate-600">Discovery call scheduled for 2:00 PM</p>
+            </div>
+            <div className="p-4 bg-yellow-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">Send proposal to TechFlow</h4>
+              <p className="text-sm text-slate-600">Due today - $75K enterprise deal</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">Contract review meeting</h4>
+              <p className="text-sm text-slate-600">Final review with DataSync Inc at 4:30 PM</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Assistant Dialog */}
+      <Dialog open={showAIAssistantDialog} onOpenChange={setShowAIAssistantDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI Sales Assistant</DialogTitle>
+            <DialogDescription>
+              Get instant help with your sales process
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">💡 Quick Insights</h4>
+              <p className="text-sm text-slate-600">Your pipeline is 23% ahead of last month. Focus on closing 3 deals in negotiation stage.</p>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">📧 Suggested Actions</h4>
+              <p className="text-sm text-slate-600">Send follow-up emails to 2 prospects who haven't responded in 3+ days.</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h4 className="font-medium text-slate-900">🎯 Priority Recommendations</h4>
+              <p className="text-sm text-slate-600">Schedule demos with your top 3 qualified leads to accelerate the sales cycle.</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

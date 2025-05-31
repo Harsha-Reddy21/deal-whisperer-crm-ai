@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import ContactForm from './ContactForm';
 
 interface Contact {
   id: string;
@@ -29,6 +30,7 @@ const ContactsList = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [showContactForm, setShowContactForm] = useState(false);
 
   const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts', user?.id],
@@ -148,7 +150,7 @@ const ContactsList = () => {
                 Manage your contacts with AI-generated personas
               </CardDescription>
             </div>
-            <Button onClick={createSampleContact} className="bg-gradient-to-r from-blue-600 to-purple-600">
+            <Button onClick={() => setShowContactForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
               <Plus className="w-4 h-4 mr-2" />
               Add Contact
             </Button>
@@ -172,9 +174,9 @@ const ContactsList = () => {
                   {contacts.length === 0 ? "No contacts found. Create your first contact to get started!" : "No contacts match your search."}
                 </p>
                 {contacts.length === 0 && (
-                  <Button onClick={createSampleContact} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                  <Button onClick={() => setShowContactForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
                     <Plus className="w-4 h-4 mr-2" />
-                    Create Sample Contact
+                    Create Your First Contact
                   </Button>
                 )}
               </div>
@@ -244,6 +246,12 @@ const ContactsList = () => {
           </div>
         </CardContent>
       </Card>
+
+      <ContactForm 
+        open={showContactForm} 
+        onOpenChange={setShowContactForm} 
+        onContactCreated={refetch}
+      />
     </div>
   );
 };
