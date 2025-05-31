@@ -11,40 +11,71 @@ import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
 import ObjectionHandler from '@/components/ObjectionHandler';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
   const { user, signOut } = useAuth();
 
+  // Fetch real statistics from the database
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+
+      const [contactsResult, dealsResult] = await Promise.all([
+        supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id),
+        supabase.from('deals').select('id, value, stage', { count: 'exact' }).eq('user_id', user.id)
+      ]);
+
+      const totalContacts = contactsResult.count || 0;
+      const totalDeals = dealsResult.count || 0;
+      const deals = dealsResult.data || [];
+      
+      const totalRevenue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
+      const closedDeals = deals.filter(deal => deal.stage === 'Closing').length;
+      const closeRate = totalDeals > 0 ? ((closedDeals / totalDeals) * 100).toFixed(1) : '0';
+
+      return {
+        totalContacts,
+        totalDeals,
+        totalRevenue,
+        closeRate
+      };
+    },
+    enabled: !!user,
+  });
+
   const handleSignOut = async () => {
     await signOut();
   };
 
-  const stats = [
+  const displayStats = [
     {
       title: "Total Contacts",
-      value: "2,847",
+      value: stats?.totalContacts?.toString() || "0",
       change: "+12%",
       icon: Users,
       color: "text-blue-600"
     },
     {
       title: "Active Deals",
-      value: "127",
+      value: stats?.totalDeals?.toString() || "0",
       change: "+8%",
       icon: TrendingUp,
       color: "text-green-600"
     },
     {
       title: "Revenue Pipeline",
-      value: "$1.2M",
+      value: stats?.totalRevenue ? `$${(stats.totalRevenue / 1000).toFixed(0)}K` : "$0",
       change: "+23%",
       icon: DollarSign,
       color: "text-purple-600"
     },
     {
       title: "Close Rate",
-      value: "24.5%",
+      value: `${stats?.closeRate || 0}%`,
       change: "+3.2%",
       icon: Target,
       color: "text-orange-600"
@@ -95,7 +126,7 @@ const Index = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {displayStats.map((stat, index) => (
             <Card key={index} className="bg-white/60 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">

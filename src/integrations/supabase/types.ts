@@ -9,6 +9,113 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      contacts: {
+        Row: {
+          avatar: string | null
+          company: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          last_contact: string | null
+          name: string
+          persona: string | null
+          phone: string | null
+          score: number | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar?: string | null
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          name: string
+          persona?: string | null
+          phone?: string | null
+          score?: number | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar?: string | null
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          name?: string
+          persona?: string | null
+          phone?: string | null
+          score?: number | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          company: string | null
+          contact_id: string | null
+          contact_name: string | null
+          created_at: string | null
+          id: string
+          last_activity: string | null
+          next_step: string | null
+          probability: number | null
+          stage: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          value: number
+        }
+        Insert: {
+          company?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          next_step?: string | null
+          probability?: number | null
+          stage?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          value?: number
+        }
+        Update: {
+          company?: string | null
+          contact_id?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          next_step?: string | null
+          probability?: number | null
+          stage?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company: string | null

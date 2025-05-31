@@ -1,9 +1,14 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { DollarSign, Calendar, User, MessageSquare, TrendingUp } from 'lucide-react';
+import { DollarSign, Calendar, User, MessageSquare, TrendingUp, Plus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface Deal {
   id: string;
@@ -12,9 +17,9 @@ interface Deal {
   value: number;
   probability: number;
   stage: string;
-  contact: string;
-  lastActivity: string;
-  nextStep: string;
+  contact_name: string;
+  last_activity: string;
+  next_step: string;
 }
 
 interface DealsPipelineProps {
@@ -22,52 +27,74 @@ interface DealsPipelineProps {
 }
 
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
-  const deals: Deal[] = [
-    {
-      id: '1',
-      title: 'Enterprise Software License',
-      company: 'TechCorp Inc.',
-      value: 125000,
-      probability: 85,
-      stage: 'Negotiation',
-      contact: 'Sarah Johnson',
-      lastActivity: '2 hours ago',
-      nextStep: 'Send final proposal'
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const { data: deals = [], isLoading, refetch } = useQuery({
+    queryKey: ['deals', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error loading deals",
+          description: error.message,
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      return data.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        company: deal.company || '',
+        value: Number(deal.value),
+        probability: deal.probability || 0,
+        stage: deal.stage || 'Discovery',
+        contact_name: deal.contact_name || '',
+        last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
+        next_step: deal.next_step || 'Follow up required'
+      }));
     },
-    {
-      id: '2',
-      title: 'Cloud Migration Project',
-      company: 'DataFlow Systems',
-      value: 75000,
-      probability: 60,
-      stage: 'Proposal',
-      contact: 'Mike Chen',
-      lastActivity: '1 day ago',
-      nextStep: 'Schedule technical demo'
-    },
-    {
-      id: '3',
-      title: 'Security Audit Services',
-      company: 'SecureBank Ltd',
-      value: 45000,
-      probability: 90,
-      stage: 'Closing',
-      contact: 'Emma Davis',
-      lastActivity: '30 minutes ago',
-      nextStep: 'Contract signature'
-    },
-    {
-      id: '4',
-      title: 'AI Implementation',
-      company: 'InnovateLab',
-      value: 200000,
-      probability: 40,
-      stage: 'Discovery',
-      contact: 'Alex Rodriguez',
-      lastActivity: '3 days ago',
-      nextStep: 'Needs assessment call'
+    enabled: !!user,
+  });
+
+  const createSampleDeal = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('deals')
+      .insert({
+        user_id: user.id,
+        title: 'New Enterprise Deal',
+        company: 'Sample Corp',
+        value: 50000,
+        probability: 60,
+        stage: 'Discovery',
+        contact_name: 'John Doe',
+        next_step: 'Schedule discovery call'
+      });
+
+    if (error) {
+      toast({
+        title: "Error creating deal",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Deal created!",
+        description: "New sample deal has been added.",
+      });
+      refetch();
     }
-  ];
+  };
 
   const getStageColor = (stage: string) => {
     switch (stage) {
@@ -86,71 +113,101 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     return 'text-red-600';
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardContent className="p-8 text-center">
+            <div className="text-lg">Loading deals...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
-            Sales Pipeline
-          </CardTitle>
-          <CardDescription>
-            Track your deals and get AI-powered recommendations
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                Sales Pipeline
+              </CardTitle>
+              <CardDescription>
+                Track your deals and get AI-powered recommendations
+              </CardDescription>
+            </div>
+            <Button onClick={createSampleDeal} className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Deal
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            {deals.map((deal) => (
-              <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => onSelectDeal(deal)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-900">{deal.title}</h3>
-                        <Badge className={getStageColor(deal.stage)}>
-                          {deal.stage}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center space-x-4 text-sm text-slate-600">
-                        <div className="flex items-center">
-                          <User className="w-4 h-4 mr-1" />
-                          {deal.company}
+          {deals.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-600 mb-4">No deals found. Create your first deal to get started!</p>
+              <Button onClick={createSampleDeal} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Sample Deal
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {deals.map((deal) => (
+                <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => onSelectDeal(deal)}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-slate-900">{deal.title}</h3>
+                          <Badge className={getStageColor(deal.stage)}>
+                            {deal.stage}
+                          </Badge>
                         </div>
-                        <div className="flex items-center">
-                          <DollarSign className="w-4 h-4 mr-1" />
-                          ${deal.value.toLocaleString()}
+                        
+                        <div className="flex items-center space-x-4 text-sm text-slate-600">
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 mr-1" />
+                            {deal.company}
+                          </div>
+                          <div className="flex items-center">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            ${deal.value.toLocaleString()}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-1" />
+                            {deal.last_activity}
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {deal.lastActivity}
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-slate-600">Close Probability:</span>
-                          <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
-                            {deal.probability}%
-                          </span>
-                          <Progress value={deal.probability} className="w-16" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-slate-600">Close Probability:</span>
+                            <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
+                              {deal.probability}%
+                            </span>
+                            <Progress value={deal.probability} className="w-16" />
+                          </div>
+                          <Button size="sm" variant="outline" className="hover:bg-blue-50">
+                            <MessageSquare className="w-4 h-4 mr-1" />
+                            AI Coach
+                          </Button>
                         </div>
-                        <Button size="sm" variant="outline" className="hover:bg-blue-50">
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          AI Coach
-                        </Button>
-                      </div>
 
-                      <div className="text-sm">
-                        <span className="text-slate-600">Next step:</span>
-                        <span className="ml-1 text-slate-900 font-medium">{deal.nextStep}</span>
+                        <div className="text-sm">
+                          <span className="text-slate-600">Next step:</span>
+                          <span className="ml-1 text-slate-900 font-medium">{deal.next_step}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
