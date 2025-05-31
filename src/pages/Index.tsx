@@ -5,14 +5,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User } from 'lucide-react';
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
 import ObjectionHandler from '@/components/ObjectionHandler';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   const stats = [
     {
@@ -65,6 +71,10 @@ const Index = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                 Live Pipeline
               </Badge>
+              <div className="flex items-center space-x-2 px-3 py-2 bg-slate-100 rounded-lg">
+                <User className="w-4 h-4 text-slate-600" />
+                <span className="text-sm text-slate-700">{user?.email}</span>
+              </div>
               <Button variant="outline" size="sm">
                 <Calendar className="w-4 h-4 mr-2" />
                 Today's Tasks
@@ -72,6 +82,10 @@ const Index = () => {
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 AI Assistant
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
               </Button>
             </div>
           </div>
