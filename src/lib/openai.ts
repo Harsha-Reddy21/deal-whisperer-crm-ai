@@ -1,9 +1,19 @@
+
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
-});
+// Only initialize OpenAI if API key is available
+const getOpenAIClient = () => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your environment variables.');
+  }
+  
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
+  });
+};
 
 export interface ObjectionSuggestion {
   approach: string;
@@ -12,10 +22,13 @@ export interface ObjectionSuggestion {
   reasoning: string;
 }
 
-
 export async function generateObjectionSuggestions(objection: string): Promise<ObjectionSuggestion[]> {
   try {
-    console.log("objection",objection)
+    console.log("objection", objection);
+    
+    // Initialize OpenAI client only when needed
+    const openai = getOpenAIClient();
+    
     const prompt = `You are an expert sales coach specializing in objection handling. A customer has raised the following objection:
 
 "${objection}"
@@ -31,7 +44,7 @@ Format your response as a JSON array with objects containing: approach, text, ef
 Make the responses sound natural, empathetic, and professional. Focus on understanding the customer's concern while guiding them toward a positive outcome.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -70,4 +83,7 @@ Make the responses sound natural, empathetic, and professional. Focus on underst
   }
 }
 
-export default openai; 
+// Export a function to check if OpenAI is configured
+export const isOpenAIConfigured = () => {
+  return !!import.meta.env.VITE_OPENAI_API_KEY;
+};

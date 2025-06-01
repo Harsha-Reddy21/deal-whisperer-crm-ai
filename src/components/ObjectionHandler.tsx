@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Lightbulb, Copy, ThumbsUp, Check, AlertCircle } from 'lucide-react';
-import { generateObjectionSuggestions, ObjectionSuggestion } from '@/lib/openai';
+import { generateObjectionSuggestions, ObjectionSuggestion, isOpenAIConfigured } from '@/lib/openai';
 
 const ObjectionHandler = () => {
   const [objection, setObjection] = useState('');
@@ -54,6 +55,9 @@ const ObjectionHandler = () => {
     handleCopyResponse(suggestion.text, -1);
   };
 
+  // Check if OpenAI is configured
+  const openAIConfigured = isOpenAIConfigured();
+
   return (
     <div className="space-y-6">
       <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
@@ -67,6 +71,16 @@ const ObjectionHandler = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {!openAIConfigured && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+              <div>
+                <p className="text-yellow-800 text-sm font-medium">OpenAI API Key Required</p>
+                <p className="text-yellow-700 text-sm">To use AI objection handling, please add your OpenAI API key to the environment variables as VITE_OPENAI_API_KEY.</p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-2 block">
@@ -82,7 +96,7 @@ const ObjectionHandler = () => {
             
             <Button 
               onClick={handleAnalyzeObjection}
-              disabled={!objection.trim() || isAnalyzing}
+              disabled={!objection.trim() || isAnalyzing || !openAIConfigured}
               className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
             >
               {isAnalyzing ? (
