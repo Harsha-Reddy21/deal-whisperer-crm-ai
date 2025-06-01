@@ -100,4 +100,7 @@ export { summarizeEmails, summarizeSingleEmail } from './emailSummarizer';
 export { researchCompanyInfo, generateCompanies } from './companyResearcher';
 
 // CRM data analysis
-export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAnalyzer'; 
+export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAnalyzer';
+
+// Smart Lead Analyzer
+export * from './smartLeadAnalyzer'; 

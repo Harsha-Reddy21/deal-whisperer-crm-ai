@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, Brain, Zap, Star, Clock, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import LeadForm from './LeadForm';
+import { analyzeSmartLeads, type SmartLeadResponse, type SmartLeadAnalysis } from '@/lib/ai';
 
 interface Lead {
   id: string;
@@ -52,6 +53,11 @@ const LeadManagement = () => {
     source: 'manual'
   });
 
+  // Smart Lead Analysis state
+  const [showSmartLeadDialog, setShowSmartLeadDialog] = useState(false);
+  const [smartLeadAnalysis, setSmartLeadAnalysis] = useState<SmartLeadResponse | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads', user?.id],
     queryFn: async () => {
@@ -83,6 +89,48 @@ const LeadManagement = () => {
         score: lead.score || 0,
         created_at: lead.created_at
       }));
+    },
+    enabled: !!user,
+  });
+
+  // Fetch contacts for AI analysis
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name, email, company, status, score, created_at')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error loading contacts:', error);
+        return [];
+      }
+
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch deals for AI analysis
+  const { data: deals = [] } = useQuery({
+    queryKey: ['deals', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, title, value, stage, outcome, contact_id, created_at')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error loading deals:', error);
+        return [];
+      }
+
+      return data;
     },
     enabled: !!user,
   });
@@ -336,6 +384,72 @@ const LeadManagement = () => {
     }
   };
 
+  const handleSmartLeadAnalysis = async () => {
+    if (leads.length === 0) {
+      toast({
+        title: "No leads to analyze",
+        description: "Add some leads first to use Smart Lead analysis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setShowSmartLeadDialog(true);
+
+    try {
+      const analysis = await analyzeSmartLeads({
+        leads: leads.map(lead => ({
+          id: lead.id,
+          name: lead.name,
+          email: lead.email,
+          company: lead.company,
+          phone: lead.phone,
+          status: lead.status,
+          source: lead.source,
+          score: lead.score,
+          created_at: lead.created_at
+        })),
+        contacts: contacts.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          email: contact.email || '',
+          company: contact.company || '',
+          status: contact.status || '',
+          score: contact.score || 0,
+          created_at: contact.created_at
+        })),
+        deals: deals.map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          value: deal.value || 0,
+          stage: deal.stage,
+          status: deal.outcome === 'won' || deal.outcome === 'lost' ? deal.outcome : 'in_progress',
+          contact_id: deal.contact_id,
+          created_at: deal.created_at,
+          closed_at: deal.outcome === 'won' || deal.outcome === 'lost' ? deal.created_at : undefined
+        }))
+      });
+
+      setSmartLeadAnalysis(analysis);
+      
+      toast({
+        title: "Smart Lead Analysis Complete!",
+        description: `Analyzed ${analysis.analysisMetadata.totalLeadsAnalyzed} leads and identified top 3 prospects.`,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Analysis failed",
+        description: error.message || "Failed to analyze leads. Please try again.",
+        variant: "destructive",
+      });
+      setShowSmartLeadDialog(false);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'new': return 'bg-blue-100 text-blue-800';
@@ -442,10 +556,29 @@ const LeadManagement = () => {
                 Track and nurture your sales leads
               </CardDescription>
             </div>
-            <Button onClick={() => setShowLeadForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Lead
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button 
+                onClick={handleSmartLeadAnalysis}
+                disabled={isAnalyzing || leads.length === 0}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Brain className="w-4 h-4 mr-2 animate-pulse" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Smart Lead
+                  </>
+                )}
+              </Button>
+              <Button onClick={() => setShowLeadForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Lead
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -758,6 +891,238 @@ const LeadManagement = () => {
         onOpenChange={setShowLeadForm} 
         onLeadCreated={refetch}
       />
+
+      {/* Smart Lead Analysis Dialog */}
+      <Dialog open={showSmartLeadDialog} onOpenChange={setShowSmartLeadDialog}>
+        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Brain className="w-5 h-5 mr-2 text-purple-600" />
+              Smart Lead Analysis
+            </DialogTitle>
+            <DialogDescription>
+              AI-powered analysis of your top 3 most promising leads based on historical data and conversion patterns.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isAnalyzing ? (
+            <div className="space-y-6 py-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Brain className="w-8 h-8 text-white animate-pulse" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  Analyzing Your Leads...
+                </h3>
+                <p className="text-slate-600 mb-6">
+                  Our AI is analyzing {leads.length} leads using historical data, engagement patterns, and conversion factors.
+                </p>
+                <Progress value={66} className="w-64 mx-auto" />
+              </div>
+            </div>
+          ) : smartLeadAnalysis ? (
+            <div className="space-y-6">
+              {/* Analysis Metadata */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-slate-900">{smartLeadAnalysis.analysisMetadata.totalLeadsAnalyzed}</div>
+                  <div className="text-sm text-slate-600">Leads Analyzed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{smartLeadAnalysis.analysisMetadata.averageConversionProbability}%</div>
+                  <div className="text-sm text-slate-600">Avg Conversion Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{Math.round(smartLeadAnalysis.analysisMetadata.dataQualityScore)}%</div>
+                  <div className="text-sm text-slate-600">Data Quality Score</div>
+                </div>
+              </div>
+
+              {/* Top 3 Leads */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                  <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                  Top 3 Most Promising Leads
+                </h3>
+                
+                {smartLeadAnalysis.topLeads.map((lead, index) => {
+                  const urgencyColors = {
+                    critical: 'bg-red-100 text-red-800 border-red-200',
+                    high: 'bg-orange-100 text-orange-800 border-orange-200',
+                    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                    low: 'bg-green-100 text-green-800 border-green-200'
+                  };
+                  
+                  return (
+                    <Card key={lead.leadId} className="border-2 border-slate-200">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Lead Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold">
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-slate-900">{lead.leadName}</h4>
+                                <p className="text-sm text-slate-600">{lead.company}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={urgencyColors[lead.urgencyLevel]}>
+                                {lead.urgencyLevel.toUpperCase()}
+                              </Badge>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-green-600">{Math.round(lead.conversionProbability)}%</div>
+                                <div className="text-xs text-slate-500">Conversion Probability</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Reasoning */}
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-blue-900">{lead.reasoning}</p>
+                          </div>
+
+                          {/* Key Factors and Actions */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h5 className="font-medium text-slate-900 mb-2 flex items-center">
+                                <Target className="w-4 h-4 mr-1" />
+                                Key Factors
+                              </h5>
+                              <ul className="space-y-1">
+                                {lead.keyFactors.map((factor, idx) => (
+                                  <li key={idx} className="text-sm text-slate-600 flex items-start">
+                                    <span className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                    {factor}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <h5 className="font-medium text-slate-900 mb-2 flex items-center">
+                                <Zap className="w-4 h-4 mr-1" />
+                                Recommended Actions
+                              </h5>
+                              <ul className="space-y-1">
+                                {lead.recommendedActions.map((action, idx) => (
+                                  <li key={idx} className="text-sm text-slate-600 flex items-start">
+                                    <span className="w-1.5 h-1.5 bg-green-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                    {action}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+
+                          {/* Timeline and Similar Profiles */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
+                            <div className="flex items-center space-x-2">
+                              <Clock className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm text-slate-600">
+                                <span className="font-medium">Est. Conversion:</span> {lead.estimatedTimeToConversion}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <TrendingUp className="w-4 h-4 text-slate-500" />
+                              <span className="text-sm text-slate-600">
+                                <span className="font-medium">Confidence:</span> {Math.round(lead.confidenceScore)}%
+                              </span>
+                            </div>
+                          </div>
+
+                          {lead.similarSuccessfulProfiles.length > 0 && (
+                            <div className="pt-2 border-t border-slate-200">
+                              <h5 className="font-medium text-slate-900 mb-2 text-sm">Similar Successful Profiles:</h5>
+                              <div className="flex flex-wrap gap-2">
+                                {lead.similarSuccessfulProfiles.map((profile, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {profile}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Insights */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">AI Insights</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Top Conversion Factors</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {smartLeadAnalysis.insights.topConversionFactors.slice(0, 3).map((factor, idx) => (
+                          <li key={idx} className="text-sm text-slate-600 flex items-start">
+                            <TrendingUp className="w-3 h-3 mt-1 mr-2 text-green-600 flex-shrink-0" />
+                            {factor}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Industry Trends</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {smartLeadAnalysis.insights.industryTrends.slice(0, 2).map((trend, idx) => (
+                          <li key={idx} className="text-sm text-slate-600 flex items-start">
+                            <TrendingDown className="w-3 h-3 mt-1 mr-2 text-blue-600 flex-shrink-0" />
+                            {trend}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Focus Areas</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {smartLeadAnalysis.insights.recommendedFocusAreas.slice(0, 3).map((area, idx) => (
+                          <li key={idx} className="text-sm text-slate-600 flex items-start">
+                            <Target className="w-3 h-3 mt-1 mr-2 text-purple-600 flex-shrink-0" />
+                            {area}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                <Button variant="outline" onClick={() => setShowSmartLeadDialog(false)}>
+                  Close
+                </Button>
+                <Button 
+                  onClick={handleSmartLeadAnalysis}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  Re-analyze
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Brain, 
   MessageSquare, 
@@ -15,7 +18,12 @@ import {
   TrendingUp, 
   Target, 
   FileText,
-  Database
+  Database,
+  Briefcase,
+  UserCheck,
+  Construction,
+  BarChart3,
+  Send
 } from 'lucide-react';
 import { isOpenAIConfigured } from '@/lib/ai';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +36,13 @@ interface AITemplate {
   category: 'research' | 'email' | 'analysis' | 'strategy';
   icon: any;
   prompt: string;
+  fields?: {
+    id: string;
+    label: string;
+    type: 'text' | 'textarea';
+    placeholder: string;
+    required: boolean;
+  }[];
 }
 
 const AIAssistant = () => {
@@ -35,6 +50,9 @@ const AIAssistant = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<AITemplate | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showChatCRM, setShowChatCRM] = useState(false);
+  const [initialMessage, setInitialMessage] = useState<string>('');
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [templateFormData, setTemplateFormData] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const aiTemplates: AITemplate[] = [
@@ -44,7 +62,37 @@ const AIAssistant = () => {
       description: 'Research a company to determine if their needs align with your offering.',
       category: 'research',
       icon: Building,
-      prompt: 'Research the company [COMPANY_NAME] and analyze if they would be a good fit for our [PRODUCT/SERVICE]. Consider their industry, size, recent news, and potential pain points that our solution could address.'
+      prompt: `I need help researching and evaluating a company to determine if they would be a good fit for my product/service.
+
+Company Name: {companyName}
+My Product/Service: {productService}
+
+Please analyze this company and provide:
+1. Company overview (industry, size, business model)
+2. Recent news and developments
+3. Potential pain points our solution could address
+4. Decision makers and key contacts
+5. Competitive landscape
+6. Fit assessment and recommendations
+7. Suggested approach for outreach
+
+Use my actual CRM data to provide context about similar companies we've worked with and successful strategies.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the company name you want to research',
+          required: true
+        },
+        {
+          id: 'productService',
+          label: 'Your Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and its key benefits',
+          required: true
+        }
+      ]
     },
     {
       id: 'confirm-decision-maker',
@@ -52,7 +100,53 @@ const AIAssistant = () => {
       description: 'Determine if a contact is a valid decision-maker.',
       category: 'research',
       icon: Users,
-      prompt: 'Analyze the role and responsibilities of [CONTACT_NAME] at [COMPANY_NAME] to determine if they are a decision-maker for [PRODUCT/SERVICE] purchases. Consider their title, department, and typical decision-making authority.'
+      prompt: `Analyze the role and responsibilities of a contact to determine if they are a decision-maker.
+
+Contact Name: {contactName}
+Company: {companyName}
+Contact Title/Role: {contactTitle}
+Product/Service: {productService}
+
+Please analyze:
+1. Their title and typical decision-making authority
+2. Department and organizational influence
+3. Budget authority for this type of purchase
+4. Involvement in similar buying decisions
+5. Key stakeholders they influence or report to
+6. Recommended approach if they are/aren't the decision-maker
+7. Who else should be involved in the sales process
+
+Use my CRM data to reference similar contacts and successful decision-maker strategies.`,
+      fields: [
+        {
+          id: 'contactName',
+          label: 'Contact Name',
+          type: 'text',
+          placeholder: 'Enter the contact\'s full name',
+          required: true
+        },
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter their company name',
+          required: true
+        },
+        {
+          id: 'contactTitle',
+          label: 'Contact Title/Role',
+          type: 'text',
+          placeholder: 'Enter their job title or role',
+          required: true
+        },
+        {
+          id: 'productService',
+          label: 'Your Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling',
+          required: true
+        }
+      ]
     },
     {
       id: 'personalized-email',
@@ -60,7 +154,60 @@ const AIAssistant = () => {
       description: 'Generate an email with a personalized PS line tailored to a specific contact.',
       category: 'email',
       icon: Mail,
-      prompt: 'Create a personalized sales email for [CONTACT_NAME] at [COMPANY_NAME]. Include a compelling subject line, value proposition for [PRODUCT/SERVICE], and a personalized PS line that references something specific about their company or industry.'
+      prompt: `Help me create a personalized sales email for a specific contact.
+
+Contact Name: {contactName}
+Company: {companyName}
+Contact Title/Role: {contactTitle}
+My Product/Service: {productService}
+Context/Reason for reaching out: {context}
+
+Please create:
+1. Compelling subject line
+2. Personalized opening that references their company/role
+3. Clear value proposition relevant to their business
+4. Specific benefits for their situation
+5. Soft call-to-action
+6. Personalized PS line that shows research and genuine interest
+
+Use my CRM data to reference similar successful emails and personalization strategies that have worked.`,
+      fields: [
+        {
+          id: 'contactName',
+          label: 'Contact Name',
+          type: 'text',
+          placeholder: 'Enter the contact\'s full name',
+          required: true
+        },
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter their company name',
+          required: true
+        },
+        {
+          id: 'contactTitle',
+          label: 'Contact Title/Role',
+          type: 'text',
+          placeholder: 'Enter their job title or role',
+          required: true
+        },
+        {
+          id: 'productService',
+          label: 'Your Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling',
+          required: true
+        },
+        {
+          id: 'context',
+          label: 'Context/Reason for reaching out',
+          type: 'textarea',
+          placeholder: 'Why are you reaching out? Any specific context or trigger?',
+          required: false
+        }
+      ]
     },
     {
       id: 'summarize-news',
@@ -68,7 +215,29 @@ const AIAssistant = () => {
       description: 'Gather and summarize the most recent news about a company.',
       category: 'research',
       icon: FileText,
-      prompt: 'Find and summarize the most recent news and developments about [COMPANY_NAME] from the last 3 months. Focus on business developments, expansions, challenges, or opportunities that could be relevant for sales outreach.'
+      prompt: `Please help me research and summarize recent news about a specific company.
+
+Company Name: {companyName}
+
+Please provide:
+1. Recent news and developments (last 3-6 months)
+2. Business expansions or new initiatives
+3. Leadership changes or key announcements
+4. Financial performance updates
+5. Industry challenges or opportunities they're facing
+6. How these developments create sales opportunities
+7. Recommended talking points for outreach
+
+Focus on information that would be relevant for sales conversations and relationship building.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the company name',
+          required: true
+        }
+      ]
     },
     {
       id: 'job-openings',
@@ -76,7 +245,45 @@ const AIAssistant = () => {
       description: 'Determine if the target company has open jobs that align to your value proposition.',
       category: 'analysis',
       icon: Search,
-      prompt: 'Research current job openings at [COMPANY_NAME] that might indicate they need [PRODUCT/SERVICE]. Analyze how these openings suggest pain points or growth areas where our solution could provide value.'
+      prompt: `Research current job openings at a target company to identify sales opportunities.
+
+Company Name: {companyName}
+Product/Service: {productService}
+Specific Roles/Departments: {targetRoles}
+
+Please analyze:
+1. Current job openings that indicate growth or pain points
+2. How these openings suggest needs for our solution
+3. Departments that are hiring and their potential challenges
+4. Growth areas where our product/service could provide value
+5. Key hiring managers or department heads to target
+6. Timing considerations based on hiring patterns
+7. Recommended talking points for outreach
+
+Use my CRM data to reference similar hiring patterns and successful strategies.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the target company name',
+          required: true
+        },
+        {
+          id: 'productService',
+          label: 'Your Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and its key benefits',
+          required: true
+        },
+        {
+          id: 'targetRoles',
+          label: 'Specific Roles/Departments (Optional)',
+          type: 'text',
+          placeholder: 'e.g., Sales, Marketing, IT, Operations',
+          required: false
+        }
+      ]
     },
     {
       id: 'identify-competitors',
@@ -84,7 +291,313 @@ const AIAssistant = () => {
       description: 'Find competitors of your target account.',
       category: 'analysis',
       icon: Target,
-      prompt: 'Identify the main competitors of [COMPANY_NAME] in the [INDUSTRY] space. Analyze their competitive landscape and how our [PRODUCT/SERVICE] could help them gain an advantage over these competitors.'
+      prompt: `Help me identify and analyze the competitive landscape for a target company.
+
+Target Company: {companyName}
+Industry/Sector: {industry}
+Our Product/Service: {productService}
+
+Please provide:
+1. Main direct competitors
+2. Indirect competitors and alternative solutions
+3. Competitive positioning and market share
+4. Strengths and weaknesses of each competitor
+5. How our solution compares to their current options
+6. Competitive advantages we can highlight
+7. Potential objections based on competitor offerings
+8. Strategic approach to position against competition
+
+Use my CRM data to reference similar competitive situations we've encountered and successful strategies.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Target Company Name',
+          type: 'text',
+          placeholder: 'Enter the target company name',
+          required: true
+        },
+        {
+          id: 'industry',
+          label: 'Industry/Sector',
+          type: 'text',
+          placeholder: 'e.g., Technology, Healthcare, Manufacturing',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and its key benefits',
+          required: true
+        }
+      ]
+    },
+    {
+      id: 'product-industry-insights',
+      title: 'Summarize product and industry insights',
+      description: 'Uncover product names, pricing, and industry insights for key accounts. Template by Carol Olona at LeadMinders.',
+      category: 'analysis',
+      icon: BarChart3,
+      prompt: `Research and summarize product offerings, pricing models, and industry insights for a target company.
+
+Company Name: {companyName}
+Industry Focus: {industry}
+Specific Areas of Interest: {focusAreas}
+
+Please provide:
+1. Main products/services they offer
+2. Pricing strategies and models
+3. Market position and competitive landscape
+4. Industry trends affecting their business
+5. Recent product launches or updates
+6. Customer segments and target markets
+7. Revenue streams and business model
+8. Opportunities for our solution integration
+
+Focus on actionable insights that could help position our {productService} effectively.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the company name to research',
+          required: true
+        },
+        {
+          id: 'industry',
+          label: 'Industry Focus',
+          type: 'text',
+          placeholder: 'e.g., SaaS, E-commerce, Healthcare',
+          required: false
+        },
+        {
+          id: 'focusAreas',
+          label: 'Specific Areas of Interest',
+          type: 'textarea',
+          placeholder: 'e.g., pricing models, new products, market expansion',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'text',
+          placeholder: 'What are you selling?',
+          required: true
+        }
+      ]
+    },
+    {
+      id: 'target-market-analysis',
+      title: 'Identify who your target company sells to',
+      description: 'Determine the target market and ICP of your target customer.',
+      category: 'research',
+      icon: UserCheck,
+      prompt: `Analyze a target company to identify their target market and ideal customer profile (ICP).
+
+Company Name: {companyName}
+Industry: {industry}
+Our Product/Service: {productService}
+
+Please research and provide:
+1. Their primary target market and customer segments
+2. Ideal customer profile (company size, industry, role)
+3. Customer demographics and characteristics
+4. Market focus (geographic, vertical, horizontal)
+5. Customer acquisition strategies they use
+6. How understanding their customers helps position our solution
+7. Potential synergies between their customers and our offering
+8. Recommended approach for partnership or collaboration
+
+Use my CRM data to identify similar customer patterns and successful strategies.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Target Company Name',
+          type: 'text',
+          placeholder: 'Enter the company name to analyze',
+          required: true
+        },
+        {
+          id: 'industry',
+          label: 'Industry',
+          type: 'text',
+          placeholder: 'e.g., Technology, Healthcare, Financial Services',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and how it might relate to their customers',
+          required: true
+        }
+      ]
+    },
+    {
+      id: 'executive-changes',
+      title: 'Know if a company had executive changes',
+      description: 'Segment companies based on whether there have been recent changes on their executive team.',
+      category: 'research',
+      icon: Users,
+      prompt: `Research recent executive changes at a target company to identify sales opportunities.
+
+Company Name: {companyName}
+Time Period: {timePeriod}
+Our Product/Service: {productService}
+Specific Departments of Interest: {departments}
+
+Please analyze:
+1. Recent executive changes (last 6 months or specified period)
+2. New hires, departures, promotions, or organizational restructuring
+3. Impact of these changes on business priorities
+4. New initiatives or strategic shifts indicated by changes
+5. Opportunities these changes create for our solution
+6. Key contacts to target based on new leadership
+7. Timing considerations for outreach
+8. Recommended messaging based on transition dynamics
+
+Use my CRM data to reference similar executive change scenarios and successful strategies.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the company name to research',
+          required: true
+        },
+        {
+          id: 'timePeriod',
+          label: 'Time Period',
+          type: 'text',
+          placeholder: 'e.g., last 6 months, last year, since January 2024',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling',
+          required: true
+        },
+        {
+          id: 'departments',
+          label: 'Specific Departments of Interest',
+          type: 'text',
+          placeholder: 'e.g., Sales, Marketing, IT, Operations, C-Suite',
+          required: false
+        }
+      ]
+    },
+    {
+      id: 'account-summary',
+      title: 'General sales-focused account summary',
+      description: 'Generate a general, sales-focused summary of a company to support outreach.',
+      category: 'strategy',
+      icon: Briefcase,
+      prompt: `Create a comprehensive sales-focused summary of a target company.
+
+Company Name: {companyName}
+Industry: {industry}
+Our Product/Service: {productService}
+Specific Focus Areas: {focusAreas}
+
+Please provide a comprehensive analysis including:
+1. Business model and revenue streams
+2. Key challenges and pain points
+3. Growth initiatives and strategic priorities
+4. Recent developments and news
+5. Market position and competitive landscape
+6. Decision-making structure and key stakeholders
+7. Potential opportunities for our solution
+8. Recommended outreach strategy and messaging
+9. Timing considerations and next steps
+
+Focus on actionable insights that will support effective sales outreach and relationship building.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company Name',
+          type: 'text',
+          placeholder: 'Enter the target company name',
+          required: true
+        },
+        {
+          id: 'industry',
+          label: 'Industry',
+          type: 'text',
+          placeholder: 'e.g., Technology, Healthcare, Manufacturing',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and its key benefits',
+          required: true
+        },
+        {
+          id: 'focusAreas',
+          label: 'Specific Focus Areas',
+          type: 'textarea',
+          placeholder: 'e.g., digital transformation, cost reduction, growth initiatives',
+          required: false
+        }
+      ]
+    },
+    {
+      id: 'pre-construction-projects',
+      title: 'Identify pre-construction projects',
+      description: 'Discover real estate pre-construction projects by scanning recent news and product updates. Template by Dahra at Outer Realm.',
+      category: 'research',
+      icon: Construction,
+      prompt: `Research and identify pre-construction real estate projects for sales opportunities.
+
+Company/Developer Name: {companyName}
+Geographic Area: {location}
+Project Type: {projectType}
+Our Product/Service: {productService}
+
+Please research and identify:
+1. Pre-construction real estate projects in the specified area
+2. New developments and construction announcements
+3. Zoning approvals and building permits
+4. Developer information and key contacts
+5. Project timelines and phases
+6. Opportunities for our solution in these projects
+7. Key decision-makers and stakeholders
+8. Recommended approach and timing for outreach
+
+Focus on projects where our {productService} could provide value during the pre-construction or construction phases.`,
+      fields: [
+        {
+          id: 'companyName',
+          label: 'Company/Developer Name',
+          type: 'text',
+          placeholder: 'Enter the company or developer name (optional)',
+          required: false
+        },
+        {
+          id: 'location',
+          label: 'Geographic Area',
+          type: 'text',
+          placeholder: 'e.g., Downtown Seattle, Orange County, Manhattan',
+          required: true
+        },
+        {
+          id: 'projectType',
+          label: 'Project Type',
+          type: 'text',
+          placeholder: 'e.g., Commercial, Residential, Mixed-use, Industrial',
+          required: false
+        },
+        {
+          id: 'productService',
+          label: 'Our Product/Service',
+          type: 'textarea',
+          placeholder: 'Describe what you are selling and how it relates to construction projects',
+          required: true
+        }
+      ]
     }
   ];
 
@@ -95,17 +608,79 @@ const AIAssistant = () => {
 
   const handleTryTemplate = (template: AITemplate) => {
     setSelectedTemplate(template);
-    setActiveMode('chatcrm');
-    setShowChatCRM(true);
+    
+    if (template.fields && template.fields.length > 0) {
+      // Show form dialog for templates with fields
+      setTemplateFormData({});
+      setShowTemplateForm(true);
+    } else {
+      // Direct to ChatCRM for templates without fields
+      setActiveMode('chatcrm');
+      setShowChatCRM(true);
+      setInitialMessage(template.prompt);
+    }
     
     toast({
       title: "Template selected",
-      description: `${template.title} template loaded. You can now use it in ChatCRM.`,
+      description: `${template.title} template loaded.`,
     });
   };
 
   const handleOpenChatCRM = () => {
     setShowChatCRM(true);
+    if (!selectedTemplate) {
+      setInitialMessage('');
+    }
+  };
+
+  const handleCloseChatCRM = (open: boolean) => {
+    setShowChatCRM(open);
+    if (!open) {
+      setInitialMessage('');
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleTemplateFormSubmit = () => {
+    if (!selectedTemplate) return;
+
+    // Check required fields
+    const missingFields = selectedTemplate.fields?.filter(field => 
+      field.required && !templateFormData[field.id]?.trim()
+    ) || [];
+
+    if (missingFields.length > 0) {
+      toast({
+        title: "Missing required fields",
+        description: `Please fill in: ${missingFields.map(f => f.label).join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Replace placeholders in prompt with actual values
+    let finalPrompt = selectedTemplate.prompt;
+    Object.entries(templateFormData).forEach(([key, value]) => {
+      finalPrompt = finalPrompt.replace(new RegExp(`{${key}}`, 'g'), value);
+    });
+
+    // Close form and open ChatCRM
+    setShowTemplateForm(false);
+    setActiveMode('chatcrm');
+    setShowChatCRM(true);
+    setInitialMessage(finalPrompt);
+
+    toast({
+      title: "Template ready",
+      description: "Your customized template is ready in ChatCRM!",
+    });
+  };
+
+  const handleFormFieldChange = (fieldId: string, value: string) => {
+    setTemplateFormData(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
   };
 
   const getCategoryColor = (category: string) => {
@@ -165,47 +740,45 @@ const AIAssistant = () => {
                   <span className="font-medium">All templates</span> • {filteredTemplates.length} available
                 </div>
 
-                <div className="overflow-x-auto pb-4">
-                  <div className="flex space-x-4 min-w-max">
-                    {filteredTemplates.map((template) => {
-                      const Icon = template.icon;
-                      return (
-                        <Card key={template.id} className="border border-slate-200 hover:shadow-md transition-shadow flex-shrink-0 w-80">
-                          <CardContent className="p-6">
-                            <div className="space-y-4">
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                                    <Icon className="w-5 h-5 text-slate-600" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold text-slate-900 text-sm leading-tight">
-                                      {template.title}
-                                    </h3>
-                                    <Badge variant="outline" className={`mt-1 text-xs ${getCategoryColor(template.category)}`}>
-                                      {template.category}
-                                    </Badge>
-                                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTemplates.map((template) => {
+                    const Icon = template.icon;
+                    return (
+                      <Card key={template.id} className="border border-slate-200 hover:shadow-md transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                                  <Icon className="w-5 h-5 text-slate-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-slate-900 text-sm leading-tight">
+                                    {template.title}
+                                  </h3>
+                                  <Badge variant="outline" className={`mt-1 text-xs ${getCategoryColor(template.category)}`}>
+                                    {template.category}
+                                  </Badge>
                                 </div>
                               </div>
-                              
-                              <p className="text-sm text-slate-600 leading-relaxed">
-                                {template.description}
-                              </p>
-                              
-                              <Button 
-                                onClick={() => handleTryTemplate(template)}
-                                className="w-full bg-slate-900 hover:bg-slate-800 text-white"
-                                size="sm"
-                              >
-                                Try it
-                              </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                            
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              {template.description}
+                            </p>
+                            
+                            <Button 
+                              onClick={() => handleTryTemplate(template)}
+                              className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+                              size="sm"
+                            >
+                              Try it
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
 
                 {filteredTemplates.length === 0 && (
@@ -279,7 +852,63 @@ const AIAssistant = () => {
       </Card>
       
       {/* ChatCRM Dialog */}
-      <ChatCRM open={showChatCRM} onOpenChange={setShowChatCRM} />
+      <ChatCRM open={showChatCRM} onOpenChange={handleCloseChatCRM} initialMessage={initialMessage} />
+      
+      {/* Template Form Dialog */}
+      <Dialog open={showTemplateForm} onOpenChange={setShowTemplateForm}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-purple-600" />
+              {selectedTemplate?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details below to customize your template
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedTemplate?.fields?.map((field) => (
+              <div key={field.id} className="space-y-2">
+                <Label htmlFor={field.id} className="text-sm font-medium">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </Label>
+                {field.type === 'text' ? (
+                  <Input
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    value={templateFormData[field.id] || ''}
+                    onChange={(e) => handleFormFieldChange(field.id, e.target.value)}
+                    className="w-full"
+                  />
+                ) : (
+                  <Textarea
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    value={templateFormData[field.id] || ''}
+                    onChange={(e) => handleFormFieldChange(field.id, e.target.value)}
+                    className="w-full min-h-[80px] resize-none"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowTemplateForm(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleTemplateFormSubmit}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send to ChatCRM
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

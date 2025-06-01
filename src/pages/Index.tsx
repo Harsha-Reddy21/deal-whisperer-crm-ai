@@ -359,7 +359,7 @@ const Index = () => {
       </div>
 
       {/* ChatCRM Dialog */}
-      <ChatCRM open={showChatCRM} onOpenChange={setShowChatCRM} />
+      <ChatCRM open={showChatCRM} onOpenChange={setShowChatCRM} initialMessage="" />
     </div>
   );
 };

@@ -64,6 +64,11 @@ The AI Assistant provides pre-built templates for common sales tasks, seamlessly
 - **Summarize company news**: Gather recent company developments
 - **Identify relevant job openings**: Find openings that indicate need for your solution
 - **Identify competitors**: Research competitive landscape
+- **Summarize product and industry insights**: Uncover product names, pricing, and industry insights for key accounts
+- **Identify who your target company sells to**: Determine the target market and ICP of your target customer
+- **Know if a company had executive changes**: Segment companies based on recent executive team changes
+- **General sales-focused account summary**: Generate comprehensive company summaries to support outreach
+- **Identify pre-construction projects**: Discover real estate pre-construction projects and opportunities
 
 #### Integration with ChatCRM:
 - Select any template to automatically open ChatCRM

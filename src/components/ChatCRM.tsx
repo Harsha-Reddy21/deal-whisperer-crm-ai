@@ -54,9 +54,10 @@ interface ChatSession {
 interface ChatCRMProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialMessage?: string;
 }
 
-const ChatCRM = ({ open, onOpenChange }: ChatCRMProps) => {
+const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -134,6 +135,17 @@ const ChatCRM = ({ open, onOpenChange }: ChatCRMProps) => {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
+
+  // Handle initial message when provided
+  useEffect(() => {
+    if (open && initialMessage && initialMessage.trim()) {
+      setCurrentMessage(initialMessage);
+      // Create new session if none exists
+      if (!currentSession) {
+        createNewSession();
+      }
+    }
+  }, [open, initialMessage]);
 
   // Create new chat session
   const createNewSession = () => {
@@ -223,6 +235,14 @@ When answering questions:
 ` : `
 Note: CRM data is not currently available. Provide general CRM guidance and best practices.
 `}
+
+TEMPLATE HANDLING INSTRUCTIONS:
+- If the user's message contains placeholders like [Please enter...] or [Company Name], guide them to fill in the specific information
+- When they provide company names or specific details, use that information to provide targeted analysis
+- If they ask about a specific company, search your knowledge and combine it with their CRM data for comprehensive insights
+- Always provide actionable, specific recommendations rather than generic advice
+- Structure your responses clearly with numbered points when providing analysis
+- Include next steps and recommended actions in your responses
 
 You should provide practical, actionable advice. Be conversational, helpful, and focus on driving business results. Keep responses concise but comprehensive.
 
