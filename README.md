@@ -12,8 +12,7 @@ Live Delpoyed Link : https://ai-powered-crm.netlify.app/
 - **Hybrid Search Engine**: Combines vector similarity search with traditional SQL queries
 - **OpenAI Embeddings**: Uses text-embedding-3-small for 1536-dimension vectors
 - **Cross-Entity Search**: Find similar deals, contacts, activities, and companies
-- **No Threshold Filtering**: Always returns top relevant results regardless of similarity score
-- **Real-time Results**: Instant search with similarity scoring and ranking
+- **No Threshold Filtering**: Always returns top relevant results
 
 ### 2. **Intelligent Deal Analysis**
 - **LLM-Powered Similarity**: GPT-4 analyzes deals for intelligent recommendations
