@@ -1,1 +1,23 @@
- 
+# This is a placeholder MP4 file for the HealthTech product demo
+# Duration: 30 seconds
+# Content: Dr. Michael Chen reviewing healthcare CRM features
+# 
+# To replace with actual video:
+# 1. Record or generate 30 seconds of video content
+# 2. Use video generation tools like:
+#    - Synthesia (https://synthesia.io)
+#    - D-ID (https://d-id.com)
+#    - Loom for screen recordings
+#    - OBS Studio for recording
+# 
+# Sample script for this file:
+# "This is really impressive. As a physician, I can see how this would streamline 
+# our clinical workflows significantly. The patient management interface looks 
+# intuitive, and I appreciate the HIPAA compliance features you've built in. 
+# My main concern is integration with our existing EHR systems - we use Epic 
+# primarily. How seamless is that integration process? Also, can the AI features 
+# help with clinical decision support without overstepping regulatory boundaries? 
+# We need to be very careful about FDA compliance in our space."
+#
+# File size should be approximately 15MB (15360000 bytes)
+# Format: MP4, 1080p, 30fps, H.264 codec 

@@ -1,1 +1,23 @@
- 
+# This is a placeholder MP3 file for the sales call with TechCorp
+# Duration: 30 seconds
+# Content: John Smith discussing CRM integration requirements
+# 
+# To replace with actual audio:
+# 1. Record or generate 30 seconds of speech content
+# 2. Use text-to-speech tools like:
+#    - ElevenLabs (https://elevenlabs.io)
+#    - Azure Speech Services
+#    - Google Text-to-Speech
+#    - Amazon Polly
+# 
+# Sample script for this file:
+# "Hi everyone, thanks for taking the time to discuss our CRM requirements today. 
+# As I mentioned in my email, we're looking for a solution that can integrate 
+# seamlessly with our existing Salesforce and HubSpot systems. Our development 
+# team is particularly excited about the AI-powered features you've described. 
+# Can you walk us through how the predictive analytics work in practice? 
+# We're dealing with a lot of enterprise clients and need something that can 
+# scale with our growth."
+#
+# File size should be approximately 1MB (1024000 bytes)
+# Format: MP3, 128kbps, 44.1kHz 
