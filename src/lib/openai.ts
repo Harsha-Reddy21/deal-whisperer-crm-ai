@@ -1,9 +1,5 @@
-import OpenAI from 'openai';
-const VITE_OPENAI_API_KEY='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'
-const openai = new OpenAI({
-  apiKey: VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
-});
+
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ObjectionSuggestion {
   approach: string;
@@ -12,62 +8,32 @@ export interface ObjectionSuggestion {
   reasoning: string;
 }
 
-
 export async function generateObjectionSuggestions(objection: string): Promise<ObjectionSuggestion[]> {
   try {
-    console.log("objection",objection)
-    const prompt = `You are an expert sales coach specializing in objection handling. A customer has raised the following objection:
+    console.log("objection", objection);
 
-"${objection}"
-
-Please provide 3 different response strategies. For each strategy, provide:
-1. A clear approach name (e.g., "Empathy + Value Reframe", "Question + Social Proof", etc.)
-2. The exact response text (as if speaking directly to the customer)
-3. An effectiveness score (70-95)
-4. A brief explanation of why this approach works
-
-Format your response as a JSON array with objects containing: approach, text, effectiveness, reasoning
-
-Make the responses sound natural, empathetic, and professional. Focus on understanding the customer's concern while guiding them toward a positive outcome.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert sales coach. Provide practical, empathetic objection handling strategies in valid JSON format."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1500
+    const { data, error } = await supabase.functions.invoke('generate-objection-suggestions', {
+      body: { objection }
     });
 
-    const responseText = completion.choices[0]?.message?.content;
-    console.log("response text", responseText);
-    
-    if (!responseText) {
-      throw new Error('No response from OpenAI');
+    if (error) {
+      console.error('Supabase function error:', error);
+      throw new Error(`Failed to generate suggestions: ${error.message}`);
     }
 
-    // Parse the JSON response
-    const suggestions: ObjectionSuggestion[] = JSON.parse(responseText);
-    
-    // Validate the response structure
-    if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      throw new Error('Invalid response format from OpenAI');
+    if (!data || !data.suggestions) {
+      throw new Error('Invalid response from AI service');
     }
 
-    return suggestions;
+    return data.suggestions;
   } catch (error) {
     console.error('Error generating objection suggestions:', error);
-    
-    // Re-throw the error so the component can handle it appropriately
-    throw new Error('Failed to generate AI suggestions. Please check your OpenAI API key and try again.');
+    throw new Error('Failed to generate AI suggestions. Please check your connection and try again.');
   }
 }
 
-export default openai; 
+export function isOpenAIConfigured(): boolean {
+  // Since we're using Supabase edge functions, we'll assume it's configured
+  // The edge function will handle the actual API key validation
+  return true;
+}

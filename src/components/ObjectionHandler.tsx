@@ -25,7 +25,7 @@ const ObjectionHandler = () => {
       setSuggestions(aiSuggestions);
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
-      setError('Failed to generate AI suggestions. Please try again or check your internet connection.');
+      setError('Failed to generate AI suggestions. Please check that your OpenAI API key is configured in Supabase secrets.');
       setSuggestions([]);
     } finally {
       setIsAnalyzing(false);
@@ -71,16 +71,6 @@ const ObjectionHandler = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {!openAIConfigured && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-              <div>
-                <p className="text-yellow-800 text-sm font-medium">OpenAI API Key Required</p>
-                <p className="text-yellow-700 text-sm">To use AI objection handling, please add your OpenAI API key to the environment variables as VITE_OPENAI_API_KEY.</p>
-              </div>
-            </div>
-          )}
-
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-2 block">
@@ -96,7 +86,7 @@ const ObjectionHandler = () => {
             
             <Button 
               onClick={handleAnalyzeObjection}
-              disabled={!objection.trim() || isAnalyzing || !openAIConfigured}
+              disabled={!objection.trim() || isAnalyzing}
               className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
             >
               {isAnalyzing ? (
