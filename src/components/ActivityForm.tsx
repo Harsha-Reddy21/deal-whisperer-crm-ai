@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,23 +21,38 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    type: '',
+    type: 'call',
     subject: '',
     description: '',
     priority: 'medium',
     status: 'pending',
     due_date: '',
     contact_id: '',
+    lead_id: '',
     deal_id: ''
   });
 
-  // Fetch contacts and deals for dropdowns
+  // Fetch contacts, leads, and deals for dropdowns
   const { data: contacts = [] } = useQuery({
     queryKey: ['contacts-for-activity', user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from('contacts')
+        .select('id, name, company')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && open,
+  });
+
+  const { data: leads = [] } = useQuery({
+    queryKey: ['leads-for-activity', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('leads')
         .select('id, name, company')
         .eq('user_id', user.id);
       if (error) throw error;
@@ -65,6 +79,25 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
     e.preventDefault();
     if (!user) return;
 
+    // Validation
+    if (!formData.type) {
+      toast({
+        title: "Error",
+        description: "Please select an activity type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.subject.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a subject",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { error } = await supabase
@@ -78,6 +111,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
           status: formData.status,
           due_date: formData.due_date || null,
           contact_id: formData.contact_id || null,
+          lead_id: formData.lead_id || null,
           deal_id: formData.deal_id || null
         });
 
@@ -89,13 +123,14 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
       });
 
       setFormData({
-        type: '',
+        type: 'call',
         subject: '',
         description: '',
         priority: 'medium',
         status: 'pending',
         due_date: '',
         contact_id: '',
+        lead_id: '',
         deal_id: ''
       });
       
@@ -124,7 +159,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">Type *</Label>
               <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
@@ -178,7 +213,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contact">Contact (Optional)</Label>
-              <Select value={formData.contact_id} onValueChange={(value) => setFormData(prev => ({ ...prev, contact_id: value }))}>
+              <Select value={formData.contact_id} onValueChange={(value) => setFormData(prev => ({ ...prev, contact_id: value, lead_id: '' }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select contact" />
                 </SelectTrigger>
@@ -192,20 +227,36 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated }: ActivityFormPro
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="deal">Deal (Optional)</Label>
-              <Select value={formData.deal_id} onValueChange={(value) => setFormData(prev => ({ ...prev, deal_id: value }))}>
+              <Label htmlFor="lead">Lead (Optional)</Label>
+              <Select value={formData.lead_id} onValueChange={(value) => setFormData(prev => ({ ...prev, lead_id: value, contact_id: '' }))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select deal" />
+                  <SelectValue placeholder="Select lead" />
                 </SelectTrigger>
                 <SelectContent>
-                  {deals.map((deal) => (
-                    <SelectItem key={deal.id} value={deal.id}>
-                      {deal.title} {deal.company && `(${deal.company})`}
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      {lead.name} {lead.company && `(${lead.company})`}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="deal">Deal (Optional)</Label>
+            <Select value={formData.deal_id} onValueChange={(value) => setFormData(prev => ({ ...prev, deal_id: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select deal" />
+              </SelectTrigger>
+              <SelectContent>
+                {deals.map((deal) => (
+                  <SelectItem key={deal.id} value={deal.id}>
+                    {deal.title} {deal.company && `(${deal.company})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

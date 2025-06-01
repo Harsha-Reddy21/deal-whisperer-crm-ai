@@ -1,0 +1,21 @@
+name,email,company,phone,status,persona,title,score
+John Doe,john.doe@acmecorp.com,Acme Corp,+1 (555) 123-4567,Qualified,decision_maker,VP of Technology,85
+Sarah Chen,sarah.chen@techflow.com,TechFlow Solutions,+1 (555) 234-5678,Qualified,innovation_leader,VP of Engineering,92
+Michael Rodriguez,m.rodriguez@datasync.com,DataSync Corp,+1 (555) 345-6789,Hot Lead,technical_expert,CTO,78
+Amanda Foster,amanda@growthhack.media,GrowthHack Media,+1 (555) 890-1234,Customer,growth_marketer,Marketing Director,88
+Emily Johnson,emily.j@cloudvision.com,CloudVision Inc,+1 (555) 456-7890,Qualified,product_strategist,Head of Product,82
+David Kim,david@startuplab.io,StartupLab,+1 (555) 567-8901,Cold Lead,entrepreneur,Founder & CEO,45
+Lisa Thompson,lisa.thompson@enterprise-sol.com,Enterprise Solutions Ltd,+1 (555) 678-9012,Hot Lead,infrastructure_specialist,IT Director,78
+Robert Martinez,robert.m@fintech-innov.com,FinTech Innovations,+1 (555) 789-0123,Qualified,security_leader,Chief Technology Officer,68
+James Wilson,j.wilson@aidynamics.com,AI Dynamics,+1 (555) 901-2345,Cold Lead,research_analyst,Research Lead,52
+Maria Garcia,maria.garcia@securenet.com,SecureNet Systems,+1 (555) 012-3456,Customer,operations_leader,VP of Operations,92
+Alex Thompson,alex.t@digitaldynamics.com,Digital Dynamics,+1 (555) 111-2222,Cold Lead,technical_implementer,Software Engineer,38
+Rachel Kim,rachel.kim@innovatetech.com,InnovateTech,+1 (555) 222-3333,Hot Lead,product_innovator,Product Manager,79
+Mark Johnson,mark.j@cloudfirst.com,CloudFirst Solutions,+1 (555) 333-4444,Qualified,cloud_expert,DevOps Manager,71
+Jennifer Lee,jennifer.lee@dataflow.com,DataFlow Corp,+1 (555) 444-5555,Cold Lead,analytics_specialist,Business Analyst,42
+Tom Wilson,tom.wilson@nextgen.com,NextGen Systems,+1 (555) 555-6666,Customer,revenue_leader,Sales Director,89
+Jessica Brown,jessica.brown@techstartup.com,TechStartup Inc,+1 (555) 666-7777,Qualified,startup_founder,CEO,75
+Kevin Davis,kevin.davis@enterprise.com,Enterprise Corp,+1 (555) 777-8888,Hot Lead,enterprise_buyer,VP of Procurement,83
+Linda White,linda.white@consulting.com,Consulting Group,+1 (555) 888-9999,Qualified,consultant,Senior Consultant,67
+Ryan Miller,ryan.miller@saascompany.com,SaaS Company,+1 (555) 999-0000,Qualified,saas_expert,VP of Product,91
+Nicole Taylor,nicole.taylor@retailtech.com,RetailTech Solutions,+1 (555) 000-1111,Cold Lead,retail_specialist,Operations Manager,54 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,7 @@ const ObjectionHandler = () => {
       setSuggestions(aiSuggestions);
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
-      setError('Failed to generate AI suggestions. Please check that your OpenAI API key is configured in Supabase secrets.');
+      setError(error instanceof Error ? error.message : 'Failed to generate AI suggestions. Please check that your OpenAI API key is configured in your .env file.');
       setSuggestions([]);
     } finally {
       setIsAnalyzing(false);
@@ -82,11 +81,34 @@ const ObjectionHandler = () => {
                 onChange={(e) => setObjection(e.target.value)}
                 className="min-h-[100px] resize-none"
               />
+              
+              {/* Sample Objections */}
+              <div className="mt-3">
+                <p className="text-sm text-slate-600 mb-2">Try these sample objections:</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setObjection("Your solution is too expensive for our budget. We're looking for something more cost-effective.")}
+                    className="text-xs"
+                  >
+                    💰 Price Objection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setObjection("We're happy with our current solution and don't see the need to switch right now.")}
+                    className="text-xs"
+                  >
+                    🔄 Status Quo Objection
+                  </Button>
+                </div>
+              </div>
             </div>
             
             <Button 
               onClick={handleAnalyzeObjection}
-              disabled={!objection.trim() || isAnalyzing}
+              disabled={!objection.trim() || isAnalyzing || !openAIConfigured}
               className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
             >
               {isAnalyzing ? (
@@ -107,6 +129,15 @@ const ObjectionHandler = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {!openAIConfigured && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+              <p className="text-yellow-700 text-sm">
+                OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file to enable AI suggestions.
+              </p>
             </div>
           )}
 

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
@@ -17,26 +16,31 @@ const ReportsDashboard = () => {
     queryFn: async () => {
       if (!user) return null;
 
-      const [dealsResult, activitiesResult, leadsResult] = await Promise.all([
+      const [dealsResult, activitiesResult, leadsResult, contactsResult] = await Promise.all([
         supabase.from('deals').select('*').eq('user_id', user.id),
         supabase.from('activities').select('*').eq('user_id', user.id),
-        supabase.from('leads').select('*').eq('user_id', user.id)
+        supabase.from('leads').select('*').eq('user_id', user.id),
+        supabase.from('contacts').select('*').eq('user_id', user.id)
       ]);
 
       const deals = dealsResult.data || [];
       const activities = activitiesResult.data || [];
       const leads = leadsResult.data || [];
+      const contacts = contactsResult.data || [];
 
       return {
         deals,
         activities,
         leads,
+        contacts,
         totalRevenue: deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0),
         avgDealSize: deals.length > 0 ? deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0) / deals.length : 0,
         conversionRate: leads.length > 0 ? (deals.length / leads.length * 100) : 0
       };
     },
     enabled: !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Sample data for charts

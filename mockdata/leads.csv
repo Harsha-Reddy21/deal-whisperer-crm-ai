@@ -1,0 +1,21 @@
+name,email,company,phone,status,source,score
+Michael Chen,michael.chen@techcorp.com,TechCorp Solutions,+1 (555) 100-2001,new,manual,65
+Jennifer Adams,j.adams@innovate.com,Innovate Systems,+1 (555) 100-2002,qualified,form,78
+Robert Kim,robert.k@startup.io,Startup Ventures,+1 (555) 100-2003,contacted,integration,45
+Sarah Wilson,s.wilson@globaltech.com,Global Tech Inc,+1 (555) 100-2004,new,import,82
+David Martinez,d.martinez@financeplus.com,Finance Plus,+1 (555) 100-2005,qualified,manual,71
+Lisa Thompson,lisa.t@healthsys.com,Health Systems,+1 (555) 100-2006,contacted,form,59
+James Rodriguez,j.rodriguez@retailmax.com,Retail Max,+1 (555) 100-2007,unqualified,integration,33
+Amanda Foster,a.foster@edutech.com,EduTech Solutions,+1 (555) 100-2008,new,manual,67
+Kevin Park,k.park@logistics.com,Logistics Pro,+1 (555) 100-2009,qualified,import,85
+Michelle Lee,m.lee@consulting.com,Consulting Group,+1 (555) 100-2010,contacted,form,72
+Brian Taylor,b.taylor@manufacturing.com,Manufacturing Corp,+1 (555) 100-2011,new,integration,54
+Rachel Green,r.green@realestate.com,Real Estate Plus,+1 (555) 100-2012,qualified,manual,79
+Steven Clark,s.clark@automotive.com,Automotive Solutions,+1 (555) 100-2013,contacted,form,61
+Nicole White,n.white@hospitality.com,Hospitality Group,+1 (555) 100-2014,unqualified,integration,38
+Christopher Hall,c.hall@energy.com,Energy Systems,+1 (555) 100-2015,new,import,73
+Jessica Brown,j.brown@media.com,Media Networks,+1 (555) 100-2016,qualified,manual,81
+Andrew Davis,a.davis@construction.com,Construction Co,+1 (555) 100-2017,contacted,form,56
+Stephanie Miller,s.miller@pharma.com,Pharma Research,+1 (555) 100-2018,new,integration,69
+Daniel Wilson,d.wilson@aerospace.com,Aerospace Tech,+1 (555) 100-2019,qualified,import,77
+Lauren Johnson,l.johnson@telecom.com,Telecom Solutions,+1 (555) 100-2020,contacted,manual,63 

@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User, Brain } from 'lucide-react';
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
 import ObjectionHandler from '@/components/ObjectionHandler';
+import CustomerPersonaBuilder from '@/components/CustomerPersonaBuilder';
+import WinLossExplainer from '@/components/WinLossExplainer';
 import ActivitiesManager from '@/components/ActivitiesManager';
 import LeadManagement from '@/components/LeadManagement';
 import ReportsDashboard from '@/components/ReportsDashboard';
@@ -34,14 +36,26 @@ const Index = () => {
   // Listen for AI Coach tab switch events
   useEffect(() => {
     const handleSwitchToAICoach = (event: any) => {
-      console.log('Switching to AI Coach with deal:', event.detail);
-      setActiveTab('ai-coach');
+      console.log('🎯 Index: Received switchToAICoach event');
+      console.log('🎯 Index: Event detail (deal):', event.detail);
+      console.log('🎯 Index: Switching to AI Coach with deal:', event.detail?.title);
+      console.log('🎯 Index: Current activeTab before switch:', activeTab);
+      
+      // Set the selected deal first, then switch to AI Coach tab
       setSelectedDeal(event.detail);
+      setActiveTab('ai-coach');
+      
+      console.log('🎯 Index: Tab switched to ai-coach');
+      console.log('🎯 Index: Selected deal set to:', event.detail?.title);
     };
 
+    console.log('🎯 Index: Adding switchToAICoach event listener');
     window.addEventListener('switchToAICoach', handleSwitchToAICoach);
-    return () => window.removeEventListener('switchToAICoach', handleSwitchToAICoach);
-  }, []);
+    return () => {
+      console.log('🎯 Index: Removing switchToAICoach event listener');
+      window.removeEventListener('switchToAICoach', handleSwitchToAICoach);
+    };
+  }, []); // Remove activeTab from dependency array to prevent re-registration
 
   // Fetch real statistics from the database
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
@@ -109,6 +123,29 @@ const Index = () => {
   const handleAIAssistant = () => {
     console.log('Opening AI assistant dialog');
     setShowAIAssistantDialog(true);
+  };
+
+  // Test function to debug the event system
+  const testAICoachEvent = () => {
+    console.log('🧪 Testing AI Coach event system');
+    const testDeal = {
+      id: 'test-123',
+      title: 'Test Deal',
+      company: 'Test Company',
+      value: 50000,
+      stage: 'Discovery',
+      probability: 75,
+      contact_name: 'Test Contact',
+      last_activity: 'Today',
+      next_step: 'Follow up',
+      created_at: new Date().toISOString()
+    };
+    
+    const event = new CustomEvent('switchToAICoach', { 
+      detail: testDeal 
+    });
+    console.log('🧪 Dispatching test event:', event);
+    window.dispatchEvent(event);
   };
 
   // Show loading state if user is not loaded yet
@@ -186,6 +223,9 @@ const Index = () => {
                 <MessageSquare className="w-4 h-4 mr-2" />
                 AI Assistant
               </Button>
+              <Button variant="outline" size="sm" onClick={testAICoachEvent} className="bg-yellow-50 border-yellow-300">
+                🧪 Test AI Coach
+              </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
@@ -218,7 +258,7 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11 bg-white/60 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-12 bg-white/60 backdrop-blur-sm">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
@@ -226,7 +266,8 @@ const Index = () => {
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
             <TabsTrigger value="objection-handler">Objections</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="persona-builder">Personas</TabsTrigger>
+            <TabsTrigger value="win-loss">Win-Loss</TabsTrigger>
             <TabsTrigger value="email-templates">Email</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
@@ -253,83 +294,19 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="ai-coach" className="space-y-6">
-            <AICoach selectedDeal={selectedDeal} />
+            <AICoach selectedDeal={selectedDeal} onSelectDeal={setSelectedDeal} />
           </TabsContent>
 
           <TabsContent value="objection-handler" className="space-y-6">
             <ObjectionHandler />
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="w-5 h-5 mr-2 text-purple-600" />
-                  Win-Loss Analytics
-                </CardTitle>
-                <CardDescription>
-                  AI-powered insights into why deals succeed or fail
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900">Top Win Factors</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Quick Response Time</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={85} className="w-20" />
-                            <span className="text-sm font-medium">85%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Demo Scheduling</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={72} className="w-20" />
-                            <span className="text-sm font-medium">72%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Pricing Transparency</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={68} className="w-20" />
-                            <span className="text-sm font-medium">68%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-slate-900">Top Loss Factors</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Price Sensitivity</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={45} className="w-20" />
-                            <span className="text-sm font-medium">45%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Competitor Choice</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={38} className="w-20" />
-                            <span className="text-sm font-medium">38%</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-slate-600">Poor Follow-up</span>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={32} className="w-20" />
-                            <span className="text-sm font-medium">32%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="persona-builder" className="space-y-6">
+            <CustomerPersonaBuilder />
+          </TabsContent>
+
+          <TabsContent value="win-loss" className="space-y-6">
+            <WinLossExplainer />
           </TabsContent>
 
           <TabsContent value="email-templates" className="space-y-6">

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,8 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
     stage: 'Discovery',
     contact_name: '',
     next_step: '',
-    probability: '50'
+    probability: '50',
+    outcome: 'in_progress'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +46,8 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
           stage: formData.stage,
           contact_name: formData.contact_name,
           next_step: formData.next_step,
-          probability: parseInt(formData.probability) || 50
+          probability: parseInt(formData.probability) || 50,
+          outcome: formData.outcome
         });
 
       if (error) throw error;
@@ -64,7 +65,8 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
         stage: 'Discovery',
         contact_name: '',
         next_step: '',
-        probability: '50'
+        probability: '50',
+        outcome: 'in_progress'
       });
 
       onDealCreated();
@@ -140,19 +142,35 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="stage">Stage</Label>
-            <Select value={formData.stage} onValueChange={(value) => handleChange('stage', value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Discovery">Discovery</SelectItem>
-                <SelectItem value="Proposal">Proposal</SelectItem>
-                <SelectItem value="Negotiation">Negotiation</SelectItem>
-                <SelectItem value="Closing">Closing</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="stage">Stage</Label>
+              <Select value={formData.stage} onValueChange={(value) => handleChange('stage', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Discovery">Discovery</SelectItem>
+                  <SelectItem value="Proposal">Proposal</SelectItem>
+                  <SelectItem value="Negotiation">Negotiation</SelectItem>
+                  <SelectItem value="Closing">Closing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="outcome">Outcome</Label>
+              <Select value={formData.outcome} onValueChange={(value) => handleChange('outcome', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="won">Won</SelectItem>
+                  <SelectItem value="lost">Lost</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -1,0 +1,26 @@
+subject,type,description,priority,status,due_date
+Follow up call with John Doe,call,Discuss enterprise software requirements and next steps,high,pending,2024-02-15
+Send proposal to Sarah Chen,email,Email technical proposal for cloud migration project,medium,pending,2024-02-12
+Contract review meeting,meeting,Review contract terms with legal team for DataSync deal,high,pending,2024-02-14
+Demo preparation,task,Prepare marketing automation demo for Amanda Foster,medium,completed,2024-02-10
+Integration planning session,meeting,Plan CRM integration requirements with Emily Johnson,high,pending,2024-02-13
+Security assessment call,call,Conduct initial security assessment with David Kim,medium,pending,2024-02-16
+Mobile app prototype demo,meeting,Present mobile app prototypes to Lisa Thompson,high,pending,2024-02-11
+AI capabilities presentation,meeting,Present AI implementation capabilities to Robert Martinez,medium,pending,2024-02-17
+Infrastructure assessment,task,Complete infrastructure upgrade assessment report,low,pending,2024-02-18
+Executive sign-off meeting,meeting,Schedule final executive approval meeting with Maria Garcia,high,pending,2024-02-09
+Requirements gathering,meeting,Gather e-commerce platform requirements from Alex Thompson,medium,pending,2024-02-20
+Analytics dashboard demo,meeting,Demo product analytics dashboard to Rachel Kim,high,pending,2024-02-14
+Pricing negotiation,call,Finalize cloud infrastructure pricing with Mark Johnson,high,pending,2024-02-12
+BI assessment meeting,meeting,Conduct business intelligence assessment with Jennifer Lee,medium,pending,2024-02-19
+Contract finalization,task,Finalize sales automation platform contract,high,pending,2024-02-08
+CRM demo for startup,meeting,Demo CRM features for TechStartup Inc,medium,pending,2024-02-21
+Security compliance review,meeting,Review enterprise security compliance requirements,high,pending,2024-02-13
+Project scope definition,meeting,Define consulting services project scope with Linda White,medium,pending,2024-02-22
+Technical integration demo,meeting,Demo SaaS integration platform technical capabilities,high,pending,2024-02-15
+Retail analytics presentation,meeting,Present retail analytics solution to Nicole Taylor,medium,pending,2024-02-23
+Lead qualification call,call,Qualify new lead from TechCorp Solutions,medium,pending,2024-02-16
+Webinar follow-up,email,Follow up with webinar attendees about AI solutions,low,completed,2024-02-05
+Trade show preparation,task,Prepare materials for upcoming trade show,medium,pending,2024-02-25
+Content creation,task,Create case study content for healthcare vertical,low,pending,2024-02-28
+Partnership meeting,meeting,Discuss partnership opportunities with consulting firm,medium,pending,2024-02-26 
