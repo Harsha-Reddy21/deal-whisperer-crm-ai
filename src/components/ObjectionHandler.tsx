@@ -1,88 +1,57 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Lightbulb, Copy, ThumbsUp } from 'lucide-react';
+import { MessageSquare, Lightbulb, Copy, ThumbsUp, Check, AlertCircle } from 'lucide-react';
+import { generateObjectionSuggestions, ObjectionSuggestion } from '@/lib/openai';
 
 const ObjectionHandler = () => {
   const [objection, setObjection] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<ObjectionSuggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const commonObjections = [
-    {
-      objection: "Your solution is too expensive compared to competitors",
-      category: "Price",
-      responses: [
-        {
-          approach: "Value-Based Response",
-          text: "I understand price is important. Let's look at the total cost of ownership. Our solution typically pays for itself within 6 months through efficiency gains. Would you like to see a detailed ROI analysis based on your specific use case?",
-          effectiveness: 85
-        },
-        {
-          approach: "Social Proof",
-          text: "I hear this concern often. TechCorp had the same concern initially, but after implementation, they saw a 300% ROI in the first year. They actually called us to expand to three more divisions. Can I share their case study with you?",
-          effectiveness: 78
-        }
-      ]
-    },
-    {
-      objection: "We need to think about it more",
-      category: "Stalling",
-      responses: [
-        {
-          approach: "Uncover Concerns",
-          text: "Of course, this is an important decision. To help you think through this effectively, what specific aspects would you like to evaluate further? Is it the implementation timeline, budget approval, or technical fit?",
-          effectiveness: 82
-        },
-        {
-          approach: "Create Urgency",
-          text: "I completely understand wanting to be thorough. Given that you mentioned the pain points are costing you $50K monthly, what would need to happen for you to feel confident moving forward this quarter?",
-          effectiveness: 75
-        }
-      ]
-    }
-  ];
-
-  const handleAnalyzeObjection = () => {
+  const handleAnalyzeObjection = async () => {
     if (!objection.trim()) return;
     
     setIsAnalyzing(true);
+    setError(null);
     
-    // Simulate AI analysis
-    setTimeout(() => {
-      const mockSuggestions = [
-        {
-          approach: "Empathy + Value Reframe",
-          text: `I completely understand your concern about ${objection.toLowerCase()}. Many of our best customers had similar hesitations initially. What they found was that the real question isn't whether to invest, but whether they can afford not to address this challenge. Can we explore what staying with the status quo might cost you over the next 12 months?`,
-          effectiveness: 88,
-          reasoning: "Acknowledges concern while reframing the conversation around cost of inaction"
-        },
-        {
-          approach: "Question + Social Proof",
-          text: `That's a valid point. Can you help me understand what specific aspect concerns you most? I ask because we had a similar conversation with DataCorp last month, and they discovered that the real issue was different than they initially thought. Would you be open to hearing how they approached this decision?`,
-          effectiveness: 82,
-          reasoning: "Uses questions to uncover deeper concerns while providing social validation"
-        },
-        {
-          approach: "Agreement + Alternative",
-          text: `You're absolutely right to bring that up. It's exactly the kind of thorough thinking that makes you a great partner. Given this concern, what if we explored a pilot program that addresses your specific worry while proving value? That way, you can see results before making a full commitment.`,
-          effectiveness: 79,
-          reasoning: "Validates their concern while offering a lower-risk path forward"
-        }
-      ];
-      
-      setSuggestions(mockSuggestions);
+    try {
+      const aiSuggestions = await generateObjectionSuggestions(objection);
+      setSuggestions(aiSuggestions);
+    } catch (error) {
+      console.error('Error getting AI suggestions:', error);
+      setError('Failed to generate AI suggestions. Please try again or check your internet connection.');
+      setSuggestions([]);
+    } finally {
       setIsAnalyzing(false);
-    }, 2000);
+    }
   };
 
   const getEffectivenessColor = (score: number) => {
     if (score >= 85) return 'text-green-600 bg-green-50';
     if (score >= 75) return 'text-yellow-600 bg-yellow-50';
     return 'text-orange-600 bg-orange-50';
+  };
+
+  const handleCopyResponse = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+    }
+  };
+
+  const handleUseResponse = (suggestion: ObjectionSuggestion) => {
+    // You can implement this to integrate with your CRM or other systems
+    console.log('Using suggestion:', suggestion);
+    // For now, we'll just copy it to clipboard
+    handleCopyResponse(suggestion.text, -1);
   };
 
   return (
@@ -130,6 +99,13 @@ const ObjectionHandler = () => {
             </Button>
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           {suggestions.length > 0 && (
             <div className="space-y-4">
               <h4 className="font-semibold text-slate-900 flex items-center">
@@ -157,11 +133,30 @@ const ObjectionHandler = () => {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <Button size="sm" variant="outline" className="text-xs">
-                          <Copy className="w-3 h-3 mr-1" />
-                          Copy Response
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-xs"
+                          onClick={() => handleCopyResponse(suggestion.text, index)}
+                        >
+                          {copiedIndex === index ? (
+                            <>
+                              <Check className="w-3 h-3 mr-1" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 mr-1" />
+                              Copy Response
+                            </>
+                          )}
                         </Button>
-                        <Button size="sm" variant="outline" className="text-xs">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-xs"
+                          onClick={() => handleUseResponse(suggestion)}
+                        >
                           <ThumbsUp className="w-3 h-3 mr-1" />
                           Use This
                         </Button>
@@ -172,37 +167,6 @@ const ObjectionHandler = () => {
               ))}
             </div>
           )}
-
-          <div className="space-y-4">
-            <h4 className="font-semibold text-slate-900">Common Objections & Responses</h4>
-            
-            {commonObjections.map((item, index) => (
-              <Card key={index} className="border border-slate-200">
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h5 className="font-medium text-slate-900">"{item.objection}"</h5>
-                      <Badge variant="outline">{item.category}</Badge>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {item.responses.map((response, responseIndex) => (
-                        <div key={responseIndex} className="bg-slate-50 p-3 rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-slate-700">{response.approach}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {response.effectiveness}% effective
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-slate-600">"{response.text}"</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>

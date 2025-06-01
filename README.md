@@ -4,6 +4,33 @@
 
 **URL**: https://lovable.dev/projects/2732b526-c2f2-43bf-b2fd-9646d027ef17
 
+## OpenAI Integration
+
+This project includes an AI-powered objection handler that uses OpenAI's GPT-4 model to generate intelligent sales objection responses.
+
+### Setup
+
+1. Create a `.env` file in the root directory
+2. Add your OpenAI API key:
+   ```
+   VITE_OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+### Features
+
+- **AI Objection Handler**: Paste any customer objection and get 3 AI-generated response strategies
+- **Smart Responses**: Each response includes approach type, effectiveness score, and reasoning
+- **Copy to Clipboard**: Easily copy responses for use in your sales conversations
+- **Fallback Handling**: Graceful fallback responses if the API is unavailable
+
+### Usage
+
+Navigate to the Objection Handler component and:
+1. Enter a customer objection in the text area
+2. Click "Get AI Suggestions"
+3. Review the generated response strategies
+4. Copy or use the responses in your sales conversations
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
