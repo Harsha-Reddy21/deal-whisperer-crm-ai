@@ -1,0 +1,163 @@
+[
+  {
+    "id": "comp-001",
+    "name": "TechCorp Solutions",
+    "industry": "Technology",
+    "size": "medium",
+    "website": "https://techcorp.com",
+    "description": "Leading provider of enterprise software solutions specializing in cloud infrastructure and data analytics. Serves Fortune 500 companies with scalable technology platforms.",
+    "notes": "Key decision makers are very technical. Focus on ROI and scalability. Previous vendor relationships with AWS and Microsoft.",
+    "location": "San Francisco, CA",
+    "founded_year": 2015,
+    "revenue_range": "$50M - $100M",
+    "employee_count": 250,
+    "logo_url": "https://example.com/logos/techcorp.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/techcorp-solutions",
+      "twitter": "https://twitter.com/techcorp",
+      "facebook": "https://facebook.com/techcorp"
+    },
+    "tags": ["enterprise", "saas", "cloud", "high-value"],
+    "status": "active"
+  },
+  {
+    "id": "comp-002",
+    "name": "FinanceFirst Bank",
+    "industry": "Financial Services",
+    "size": "large",
+    "website": "https://financefirst.com",
+    "description": "Regional bank with 150+ branches serving small to medium businesses. Strong focus on digital transformation and customer experience improvement.",
+    "notes": "Highly regulated industry. Security and compliance are top priorities. Long sales cycles but high contract values.",
+    "location": "New York, NY",
+    "founded_year": 1987,
+    "revenue_range": "$500M - $1B",
+    "employee_count": 2500,
+    "logo_url": "https://example.com/logos/financefirst.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/financefirst-bank",
+      "website": "https://financefirst.com/about"
+    },
+    "tags": ["banking", "fintech", "enterprise", "regulated"],
+    "status": "active"
+  },
+  {
+    "id": "comp-003",
+    "name": "HealthTech Innovations",
+    "industry": "Healthcare",
+    "size": "startup",
+    "website": "https://healthtech-innovations.com",
+    "description": "Innovative healthcare technology startup developing AI-powered diagnostic tools and patient management systems for hospitals and clinics.",
+    "notes": "Fast-growing startup with recent Series B funding. Very interested in cutting-edge technology. Quick decision making process.",
+    "location": "Boston, MA",
+    "founded_year": 2020,
+    "revenue_range": "$5M - $10M",
+    "employee_count": 45,
+    "logo_url": "https://example.com/logos/healthtech.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/healthtech-innovations",
+      "twitter": "https://twitter.com/healthtechinno"
+    },
+    "tags": ["healthcare", "ai", "startup", "fast-growth"],
+    "status": "prospect"
+  },
+  {
+    "id": "comp-004",
+    "name": "RetailMax Corporation",
+    "industry": "Retail",
+    "size": "enterprise",
+    "website": "https://retailmax.com",
+    "description": "Large retail chain with 500+ stores nationwide. Focus on omnichannel customer experience and inventory optimization.",
+    "notes": "Complex procurement process with multiple stakeholders. Strong emphasis on cost reduction and operational efficiency.",
+    "location": "Chicago, IL",
+    "founded_year": 1965,
+    "revenue_range": "$2B+",
+    "employee_count": 15000,
+    "logo_url": "https://example.com/logos/retailmax.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/retailmax-corp",
+      "facebook": "https://facebook.com/retailmax"
+    },
+    "tags": ["retail", "enterprise", "omnichannel", "cost-focused"],
+    "status": "active"
+  },
+  {
+    "id": "comp-005",
+    "name": "EduLearn Platform",
+    "industry": "Education",
+    "size": "small",
+    "website": "https://edulearn.com",
+    "description": "Online education platform providing courses and certifications for professional development. Serves both B2B and B2C markets.",
+    "notes": "Growing rapidly in the remote learning space. Budget-conscious but willing to invest in proven solutions.",
+    "location": "Austin, TX",
+    "founded_year": 2018,
+    "revenue_range": "$10M - $25M",
+    "employee_count": 85,
+    "logo_url": "https://example.com/logos/edulearn.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/edulearn-platform",
+      "twitter": "https://twitter.com/edulearn",
+      "youtube": "https://youtube.com/edulearn"
+    },
+    "tags": ["education", "e-learning", "b2b", "growth"],
+    "status": "active"
+  },
+  {
+    "id": "comp-006",
+    "name": "ManufacturePro Industries",
+    "industry": "Manufacturing",
+    "size": "large",
+    "website": "https://manufacturepro.com",
+    "description": "Industrial manufacturing company specializing in automotive parts and aerospace components. Strong focus on quality and precision.",
+    "notes": "Traditional industry with conservative approach to new technology. Long evaluation periods but loyal once committed.",
+    "location": "Detroit, MI",
+    "founded_year": 1952,
+    "revenue_range": "$200M - $500M",
+    "employee_count": 1200,
+    "logo_url": "https://example.com/logos/manufacturepro.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/manufacturepro-industries"
+    },
+    "tags": ["manufacturing", "automotive", "aerospace", "traditional"],
+    "status": "prospect"
+  },
+  {
+    "id": "comp-007",
+    "name": "GreenEnergy Solutions",
+    "industry": "Energy",
+    "size": "medium",
+    "website": "https://greenenergy-solutions.com",
+    "description": "Renewable energy company focused on solar and wind power installations for commercial and residential clients.",
+    "notes": "Environmentally conscious company with strong values alignment. Interested in sustainable business practices.",
+    "location": "Denver, CO",
+    "founded_year": 2016,
+    "revenue_range": "$25M - $50M",
+    "employee_count": 180,
+    "logo_url": "https://example.com/logos/greenenergy.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/greenenergy-solutions",
+      "twitter": "https://twitter.com/greenenergysol",
+      "instagram": "https://instagram.com/greenenergysolutions"
+    },
+    "tags": ["renewable-energy", "sustainability", "commercial", "values-driven"],
+    "status": "active"
+  },
+  {
+    "id": "comp-008",
+    "name": "LogisticsPro Network",
+    "industry": "Logistics",
+    "size": "medium",
+    "website": "https://logisticspro.com",
+    "description": "Third-party logistics provider offering warehousing, transportation, and supply chain management services across North America.",
+    "notes": "Highly operational focus with emphasis on efficiency and cost optimization. Technology adoption driven by ROI.",
+    "location": "Atlanta, GA",
+    "founded_year": 2010,
+    "revenue_range": "$75M - $100M",
+    "employee_count": 320,
+    "logo_url": "https://example.com/logos/logisticspro.png",
+    "social_links": {
+      "linkedin": "https://linkedin.com/company/logisticspro-network"
+    },
+    "tags": ["logistics", "supply-chain", "operational", "efficiency"],
+    "status": "active"
+  }
+] 

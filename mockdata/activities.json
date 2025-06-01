@@ -1,0 +1,303 @@
+[
+  {
+    "id": "activity-001",
+    "contact_id": "contact-001",
+    "deal_id": "deal-001",
+    "company_id": "comp-001",
+    "type": "call",
+    "title": "Technical Requirements Discussion",
+    "description": "Detailed discussion about integration requirements with Salesforce and HubSpot. John provided technical specifications and timeline expectations. Positive response to our AI features.",
+    "date": "2024-01-15T10:30:00Z",
+    "duration": 45,
+    "outcome": "positive",
+    "next_steps": "Send technical documentation and schedule demo with development team",
+    "participants": ["John Smith", "Sales Rep", "Solutions Engineer"],
+    "tags": ["technical", "integration", "requirements"],
+    "custom_fields": {
+      "call_quality": "excellent",
+      "interest_level": "high",
+      "technical_complexity": "medium",
+      "follow_up_required": true
+    }
+  },
+  {
+    "id": "activity-002",
+    "contact_id": "contact-002",
+    "deal_id": "deal-002",
+    "company_id": "comp-002",
+    "type": "meeting",
+    "title": "Digital Transformation Strategy Meeting",
+    "description": "In-person meeting at FinanceFirst Bank headquarters. Discussed digital transformation goals, compliance requirements, and implementation timeline. Sarah is very engaged and has budget authority.",
+    "date": "2024-01-18T14:00:00Z",
+    "duration": 90,
+    "outcome": "very_positive",
+    "next_steps": "Prepare compliance documentation and contract terms for review",
+    "participants": ["Sarah Johnson", "Kevin Brown", "Sales Director", "Compliance Specialist"],
+    "location": "FinanceFirst Bank HQ, New York",
+    "tags": ["banking", "compliance", "budget-authority", "in-person"],
+    "custom_fields": {
+      "meeting_type": "in-person",
+      "decision_maker_present": true,
+      "budget_discussed": true,
+      "compliance_focus": "high"
+    }
+  },
+  {
+    "id": "activity-003",
+    "contact_id": "contact-003",
+    "deal_id": "deal-003",
+    "company_id": "comp-003",
+    "type": "email",
+    "title": "Healthcare AI Capabilities Follow-up",
+    "description": "Sent detailed information about our AI-powered patient management features and HIPAA compliance capabilities. Dr. Chen responded with specific questions about clinical workflow integration.",
+    "date": "2024-01-12T16:20:00Z",
+    "outcome": "neutral",
+    "next_steps": "Schedule clinical workflow analysis session",
+    "participants": ["Dr. Michael Chen", "Healthcare Solutions Specialist"],
+    "tags": ["healthcare", "ai", "hipaa", "clinical"],
+    "custom_fields": {
+      "email_type": "follow-up",
+      "response_time": "2 hours",
+      "engagement_level": "medium",
+      "clinical_focus": true
+    }
+  },
+  {
+    "id": "activity-004",
+    "contact_id": "contact-004",
+    "deal_id": "deal-004",
+    "company_id": "comp-004",
+    "type": "call",
+    "title": "ROI Discussion - Retail Operations",
+    "description": "Phone call to discuss operational efficiency improvements and ROI projections. Lisa is very cost-conscious and needs clear business case. Requested case studies from similar retail clients.",
+    "date": "2024-01-08T11:00:00Z",
+    "duration": 30,
+    "outcome": "neutral",
+    "next_steps": "Prepare retail industry case studies and ROI analysis",
+    "participants": ["Lisa Rodriguez", "Sales Rep"],
+    "tags": ["retail", "roi", "cost-conscious", "case-studies"],
+    "custom_fields": {
+      "cost_focus": "very high",
+      "roi_requirements": "detailed analysis needed",
+      "decision_timeline": "Q2 2024",
+      "skepticism_level": "medium"
+    }
+  },
+  {
+    "id": "activity-005",
+    "contact_id": "contact-005",
+    "deal_id": "deal-005",
+    "company_id": "comp-005",
+    "type": "meeting",
+    "title": "Expansion Planning Session",
+    "description": "Virtual meeting to discuss expansion of current CRM implementation. David is very satisfied with existing service and wants to add advanced analytics and API access for new product lines.",
+    "date": "2024-01-19T10:00:00Z",
+    "duration": 60,
+    "outcome": "very_positive",
+    "next_steps": "Prepare expansion proposal and contract amendment",
+    "participants": ["David Park", "Customer Success Manager", "Product Manager"],
+    "tags": ["expansion", "existing-customer", "analytics", "api"],
+    "custom_fields": {
+      "customer_satisfaction": 9.2,
+      "expansion_type": "feature_upgrade",
+      "urgency": "medium",
+      "budget_approved": true
+    }
+  },
+  {
+    "id": "activity-006",
+    "contact_id": "contact-006",
+    "deal_id": "deal-006",
+    "company_id": "comp-006",
+    "type": "call",
+    "title": "Final Decision Call - Manufacturing",
+    "description": "Robert informed us that they decided to go with their existing vendor due to cost considerations and existing relationships. Disappointed but understanding. Discussed future opportunities.",
+    "date": "2024-01-15T09:00:00Z",
+    "duration": 20,
+    "outcome": "negative",
+    "next_steps": "Maintain relationship for future opportunities",
+    "participants": ["Robert Thompson", "Sales Rep"],
+    "tags": ["manufacturing", "lost", "incumbent-vendor", "relationship"],
+    "custom_fields": {
+      "loss_reason": "cost and existing relationships",
+      "competitor": "Legacy Manufacturing Systems",
+      "future_opportunity": "contract renewal in 2 years",
+      "relationship_status": "maintain"
+    }
+  },
+  {
+    "id": "activity-007",
+    "contact_id": "contact-007",
+    "deal_id": "deal-007",
+    "company_id": "comp-007",
+    "type": "email",
+    "title": "Sustainability Features Presentation",
+    "description": "Sent comprehensive presentation about our sustainability tracking features and carbon footprint reduction capabilities. Emily was very interested in environmental impact reporting.",
+    "date": "2024-01-17T09:30:00Z",
+    "outcome": "positive",
+    "next_steps": "Schedule demo of sustainability dashboard",
+    "participants": ["Emily Green", "Sustainability Solutions Specialist"],
+    "tags": ["sustainability", "environmental", "carbon-tracking", "values"],
+    "custom_fields": {
+      "sustainability_focus": "very high",
+      "values_alignment": "excellent",
+      "environmental_impact": "key decision factor",
+      "demo_requested": true
+    }
+  },
+  {
+    "id": "activity-008",
+    "contact_id": "contact-008",
+    "deal_id": "deal-008",
+    "company_id": "comp-008",
+    "type": "meeting",
+    "title": "IoT Integration Technical Review",
+    "description": "Technical meeting to review IoT sensor integration capabilities and real-time tracking features. James was impressed with our logistics-specific functionality.",
+    "date": "2024-01-14T15:00:00Z",
+    "duration": 75,
+    "outcome": "positive",
+    "next_steps": "Finalize integration requirements and pricing",
+    "participants": ["James Wilson", "Technical Team", "Solutions Engineer"],
+    "tags": ["logistics", "iot", "technical", "integration"],
+    "custom_fields": {
+      "technical_complexity": "high",
+      "integration_feasibility": "confirmed",
+      "iot_requirements": "real-time tracking",
+      "pricing_discussion": "pending"
+    }
+  },
+  {
+    "id": "activity-009",
+    "contact_id": "contact-009",
+    "deal_id": "deal-009",
+    "company_id": "comp-001",
+    "type": "call",
+    "title": "Contract Finalization - Sales Automation",
+    "description": "Final contract review and signature for TechCorp sales automation project. Maria confirmed all terms and is excited to start implementation. Deal closed successfully!",
+    "date": "2024-01-18T14:30:00Z",
+    "duration": 25,
+    "outcome": "very_positive",
+    "next_steps": "Implementation kickoff meeting scheduled",
+    "participants": ["Maria Garcia", "Sales Director", "Legal"],
+    "tags": ["sales", "automation", "contract", "won"],
+    "custom_fields": {
+      "deal_status": "won",
+      "contract_value": "$65,000",
+      "implementation_start": "2024-02-01",
+      "customer_excitement": "high"
+    }
+  },
+  {
+    "id": "activity-010",
+    "contact_id": "contact-010",
+    "deal_id": "deal-010",
+    "company_id": "comp-002",
+    "type": "email",
+    "title": "Security Audit Documentation",
+    "description": "Sent comprehensive security documentation including SOC 2 compliance, encryption standards, and audit trail capabilities. Kevin requested additional information about data residency.",
+    "date": "2024-01-10T11:15:00Z",
+    "outcome": "neutral",
+    "next_steps": "Provide data residency documentation and schedule security review",
+    "participants": ["Kevin Brown", "Security Specialist"],
+    "tags": ["security", "compliance", "audit", "documentation"],
+    "custom_fields": {
+      "security_focus": "very high",
+      "compliance_requirements": ["SOC 2", "ISO 27001"],
+      "audit_timeline": "3 months",
+      "additional_docs_needed": true
+    }
+  },
+  {
+    "id": "activity-011",
+    "type": "task",
+    "title": "Prepare Healthcare Demo Materials",
+    "description": "Create customized demo materials for HealthTech Innovations focusing on clinical workflows, patient management, and HIPAA compliance features.",
+    "date": "2024-01-20T09:00:00Z",
+    "due_date": "2024-01-25T17:00:00Z",
+    "status": "in_progress",
+    "assigned_to": "Healthcare Solutions Specialist",
+    "priority": "high",
+    "tags": ["healthcare", "demo", "clinical", "hipaa"],
+    "custom_fields": {
+      "task_type": "demo_preparation",
+      "complexity": "medium",
+      "estimated_hours": 8,
+      "completion_percentage": 60
+    }
+  },
+  {
+    "id": "activity-012",
+    "type": "task",
+    "title": "Retail ROI Analysis Report",
+    "description": "Compile comprehensive ROI analysis and case studies for RetailMax Corporation showing operational efficiency improvements and cost savings.",
+    "date": "2024-01-18T10:00:00Z",
+    "due_date": "2024-01-30T17:00:00Z",
+    "status": "pending",
+    "assigned_to": "Business Analyst",
+    "priority": "medium",
+    "tags": ["retail", "roi", "analysis", "case-studies"],
+    "custom_fields": {
+      "task_type": "analysis",
+      "complexity": "high",
+      "estimated_hours": 16,
+      "completion_percentage": 0
+    }
+  },
+  {
+    "id": "activity-013",
+    "contact_id": "contact-001",
+    "company_id": "comp-001",
+    "type": "meeting",
+    "title": "Technical Demo - AI Features",
+    "description": "Scheduled technical demonstration of AI-powered features including predictive analytics, automated lead scoring, and intelligent recommendations for TechCorp team.",
+    "date": "2024-01-22T14:00:00Z",
+    "duration": 120,
+    "status": "scheduled",
+    "participants": ["John Smith", "Development Team", "Solutions Engineer", "AI Specialist"],
+    "tags": ["technical", "ai", "demo", "predictive"],
+    "custom_fields": {
+      "demo_type": "technical",
+      "ai_focus": "predictive analytics",
+      "audience": "technical team",
+      "preparation_required": true
+    }
+  },
+  {
+    "id": "activity-014",
+    "contact_id": "contact-007",
+    "company_id": "comp-007",
+    "type": "call",
+    "title": "Sustainability Dashboard Demo",
+    "description": "Phone-based demonstration of sustainability tracking dashboard and environmental impact reporting features. Emily was very impressed with carbon footprint calculations.",
+    "date": "2024-01-23T11:00:00Z",
+    "duration": 45,
+    "outcome": "very_positive",
+    "next_steps": "Prepare detailed proposal with sustainability features",
+    "participants": ["Emily Green", "Sustainability Specialist"],
+    "tags": ["sustainability", "demo", "carbon-tracking", "impressed"],
+    "custom_fields": {
+      "demo_quality": "excellent",
+      "feature_interest": "carbon footprint tracking",
+      "decision_influence": "high",
+      "proposal_requested": true
+    }
+  },
+  {
+    "id": "activity-015",
+    "type": "task",
+    "title": "Compliance Documentation Review",
+    "description": "Review and update all compliance documentation for banking sector including SOX, PCI-DSS, and GDPR requirements for FinanceFirst Bank proposal.",
+    "date": "2024-01-19T08:00:00Z",
+    "due_date": "2024-01-26T17:00:00Z",
+    "status": "in_progress",
+    "assigned_to": "Compliance Specialist",
+    "priority": "high",
+    "tags": ["compliance", "banking", "documentation", "review"],
+    "custom_fields": {
+      "compliance_types": ["SOX", "PCI-DSS", "GDPR"],
+      "review_complexity": "high",
+      "estimated_hours": 12,
+      "completion_percentage": 75
+    }
+  }
+] 

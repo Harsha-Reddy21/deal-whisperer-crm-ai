@@ -2,7 +2,7 @@
 
 A comprehensive Customer Relationship Management (CRM) system powered by advanced AI features including semantic search, deal similarity analysis, email summarization, and intelligent recommendations.
 
-Live Delpoyed Linked : 
+Live Delpoyed Link : {https://ai-powered-crm.netlify.app/}
 
 
 

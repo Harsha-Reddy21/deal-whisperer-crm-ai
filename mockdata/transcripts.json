@@ -1,0 +1,263 @@
+[
+  {
+    "id": "transcript-001",
+    "filename": "sales_call_techcorp_20240115.mp3",
+    "file_type": "audio",
+    "duration": 30,
+    "file_size": 1024000,
+    "upload_date": "2024-01-15T14:30:00Z",
+    "contact_id": "contact-001",
+    "deal_id": "deal-001",
+    "company_id": "comp-001",
+    "transcript": "John Smith: Hi everyone, thanks for taking the time to discuss our CRM requirements today. As I mentioned in my email, we're looking for a solution that can integrate seamlessly with our existing Salesforce and HubSpot systems. Our development team is particularly excited about the AI-powered features you've described. Can you walk us through how the predictive analytics work in practice? We're dealing with a lot of enterprise clients and need something that can scale with our growth.",
+    "summary": "Sales call with TechCorp CTO discussing CRM integration requirements, particularly interested in AI features and scalability for enterprise clients.",
+    "key_points": [
+      "Integration with Salesforce and HubSpot required",
+      "Strong interest in AI-powered predictive analytics",
+      "Enterprise client focus with scalability needs",
+      "Development team involvement in evaluation"
+    ],
+    "action_items": [
+      "Provide detailed AI features documentation",
+      "Schedule technical demo with development team",
+      "Prepare integration specifications"
+    ],
+    "sentiment": "positive",
+    "participants": ["John Smith - CTO TechCorp", "Sales Representative", "Solutions Engineer"],
+    "tags": ["sales-call", "technical", "ai-features", "integration"],
+    "custom_fields": {
+      "call_quality": "excellent",
+      "technical_depth": "high",
+      "decision_maker": "John Smith",
+      "next_step": "technical demo"
+    }
+  },
+  {
+    "id": "transcript-002",
+    "filename": "product_demo_healthtech_20240112.mp4",
+    "file_type": "video",
+    "duration": 30,
+    "file_size": 15360000,
+    "upload_date": "2024-01-12T16:45:00Z",
+    "contact_id": "contact-003",
+    "deal_id": "deal-003",
+    "company_id": "comp-003",
+    "transcript": "Dr. Michael Chen: This is really impressive. As a physician, I can see how this would streamline our clinical workflows significantly. The patient management interface looks intuitive, and I appreciate the HIPAA compliance features you've built in. My main concern is integration with our existing EHR systems - we use Epic primarily. How seamless is that integration process? Also, can the AI features help with clinical decision support without overstepping regulatory boundaries? We need to be very careful about FDA compliance in our space.",
+    "summary": "Product demo with HealthTech CMO focusing on clinical workflows, EHR integration, and regulatory compliance concerns.",
+    "key_points": [
+      "Positive feedback on patient management interface",
+      "HIPAA compliance features appreciated",
+      "Epic EHR integration is critical requirement",
+      "FDA compliance concerns for AI clinical features"
+    ],
+    "action_items": [
+      "Provide Epic integration documentation",
+      "Review FDA compliance for AI features",
+      "Schedule clinical workflow analysis session"
+    ],
+    "sentiment": "positive",
+    "participants": ["Dr. Michael Chen - CMO HealthTech", "Healthcare Solutions Specialist", "Product Manager"],
+    "tags": ["product-demo", "healthcare", "clinical", "compliance"],
+    "custom_fields": {
+      "demo_quality": "impressive",
+      "clinical_focus": "workflow streamlining",
+      "compliance_priority": "very high",
+      "integration_concern": "Epic EHR"
+    }
+  },
+  {
+    "id": "transcript-003",
+    "filename": "team_meeting_pipeline_review_20240122.mp3",
+    "file_type": "audio",
+    "duration": 30,
+    "file_size": 960000,
+    "upload_date": "2024-01-22T10:15:00Z",
+    "type": "internal",
+    "transcript": "Sales Manager: Alright team, let's review our Q1 pipeline. We're looking strong with the FinanceFirst Bank deal at 85% probability for $250K. Sarah Johnson is very engaged and we have budget approval. The TechCorp deal is progressing well - John Smith loves our AI features. We need to focus on the RetailMax opportunity though. Lisa Rodriguez is very cost-conscious and we need stronger ROI data. Can someone prepare detailed case studies from similar retail implementations? Also, the GreenEnergy deal is interesting - they're very values-driven so let's emphasize our sustainability features.",
+    "summary": "Internal sales team meeting reviewing Q1 pipeline status, deal probabilities, and action items for key opportunities.",
+    "key_points": [
+      "FinanceFirst Bank deal at 85% probability ($250K)",
+      "TechCorp showing strong interest in AI features",
+      "RetailMax needs stronger ROI case studies",
+      "GreenEnergy values sustainability features"
+    ],
+    "action_items": [
+      "Prepare retail ROI case studies for RetailMax",
+      "Emphasize sustainability features for GreenEnergy",
+      "Continue AI feature discussions with TechCorp"
+    ],
+    "sentiment": "optimistic",
+    "participants": ["Sales Manager", "Account Executives", "Sales Team"],
+    "tags": ["internal-meeting", "pipeline-review", "q1-planning", "strategy"],
+    "custom_fields": {
+      "meeting_type": "pipeline review",
+      "quarter_focus": "Q1",
+      "total_pipeline_value": "$1.2M",
+      "hot_deals_count": 4
+    }
+  },
+  {
+    "id": "transcript-004",
+    "filename": "customer_success_edulearn_20240119.mp4",
+    "file_type": "video",
+    "duration": 30,
+    "file_size": 12800000,
+    "upload_date": "2024-01-19T11:45:00Z",
+    "contact_id": "contact-005",
+    "deal_id": "deal-005",
+    "company_id": "comp-005",
+    "transcript": "David Park: We've been absolutely thrilled with the CRM implementation over the past two years. Student engagement has increased by 40% and our course completion rates are up significantly. The analytics dashboard has been a game-changer for our product team. Now we're looking to expand into advanced analytics and API access for our new product lines. The budget is already approved for Q1, so we're ready to move forward. Can we discuss the pricing for the additional features and timeline for implementation?",
+    "summary": "Customer success meeting with EduLearn discussing expansion plans, positive results from current implementation, and budget approval for additional features.",
+    "key_points": [
+      "40% increase in student engagement achieved",
+      "Significant improvement in course completion rates",
+      "Analytics dashboard highly valued by product team",
+      "Budget approved for Q1 expansion"
+    ],
+    "action_items": [
+      "Prepare expansion proposal with pricing",
+      "Schedule implementation planning session",
+      "Review API access requirements"
+    ],
+    "sentiment": "very_positive",
+    "participants": ["David Park - Head of Product EduLearn", "Customer Success Manager", "Product Manager"],
+    "tags": ["customer-success", "expansion", "existing-customer", "analytics"],
+    "custom_fields": {
+      "customer_satisfaction": "thrilled",
+      "engagement_improvement": "40%",
+      "budget_status": "approved",
+      "expansion_timeline": "Q1"
+    }
+  },
+  {
+    "id": "transcript-005",
+    "filename": "security_review_financefirst_20240111.mp3",
+    "file_type": "audio",
+    "duration": 30,
+    "file_size": 1152000,
+    "upload_date": "2024-01-11T15:45:00Z",
+    "contact_id": "contact-010",
+    "deal_id": "deal-010",
+    "company_id": "comp-002",
+    "transcript": "Kevin Brown: I've reviewed the initial security documentation and I have several concerns that need to be addressed before we can move forward. As a bank, we have very strict requirements around data residency, encryption standards, and audit trails. I need to see your latest penetration testing reports and incident response procedures. The SOC 2 compliance is good, but we also need ISO 27001 certification. Can you provide documentation on your business continuity and disaster recovery plans? This is a thorough process, but it's necessary given the sensitive nature of our customer data.",
+    "summary": "Security review meeting with FinanceFirst IT Security Manager outlining strict banking compliance requirements and additional documentation needs.",
+    "key_points": [
+      "Strict banking security requirements must be met",
+      "Data residency and encryption standards critical",
+      "Penetration testing reports and incident response needed",
+      "ISO 27001 certification required in addition to SOC 2"
+    ],
+    "action_items": [
+      "Provide additional security documentation",
+      "Submit latest penetration testing reports",
+      "Schedule follow-up security review meeting"
+    ],
+    "sentiment": "cautious",
+    "participants": ["Kevin Brown - IT Security Manager", "Security Specialist", "Compliance Team"],
+    "tags": ["security-review", "banking", "compliance", "documentation"],
+    "custom_fields": {
+      "security_level": "very high",
+      "compliance_requirements": ["SOC 2", "ISO 27001", "banking regulations"],
+      "review_thoroughness": "extensive",
+      "data_sensitivity": "customer banking data"
+    }
+  },
+  {
+    "id": "transcript-006",
+    "filename": "sustainability_demo_greenenergy_20240123.mp4",
+    "file_type": "video",
+    "duration": 30,
+    "file_size": 14720000,
+    "upload_date": "2024-01-23T12:30:00Z",
+    "contact_id": "contact-007",
+    "deal_id": "deal-007",
+    "company_id": "comp-007",
+    "transcript": "Emily Green: This sustainability dashboard is exactly what we've been looking for! The carbon footprint tracking capabilities are impressive, and I love how you can generate environmental impact reports automatically. As a renewable energy company, these features align perfectly with our values and mission. The ability to track and report on our green business practices will be invaluable for our stakeholders and investors. How granular can the carbon tracking get? Can we track by individual projects or customer segments? This could be a real differentiator for us in the market.",
+    "summary": "Sustainability-focused demo with GreenEnergy Director showing strong enthusiasm for environmental tracking features and values alignment.",
+    "key_points": [
+      "Strong enthusiasm for sustainability dashboard",
+      "Carbon footprint tracking highly valued",
+      "Environmental impact reporting needed for stakeholders",
+      "Interest in granular tracking by projects/segments"
+    ],
+    "action_items": [
+      "Provide detailed carbon tracking specifications",
+      "Prepare proposal emphasizing sustainability features",
+      "Schedule follow-up to discuss implementation"
+    ],
+    "sentiment": "very_positive",
+    "participants": ["Emily Green - Sustainability Director", "Sustainability Solutions Specialist", "Product Manager"],
+    "tags": ["sustainability-demo", "environmental", "values-alignment", "carbon-tracking"],
+    "custom_fields": {
+      "enthusiasm_level": "very high",
+      "values_alignment": "perfect match",
+      "feature_interest": "carbon footprint tracking",
+      "market_differentiator": "green business practices"
+    }
+  },
+  {
+    "id": "transcript-007",
+    "filename": "technical_deep_dive_ai_features_20240121.mp3",
+    "file_type": "audio",
+    "duration": 30,
+    "file_size": 1088000,
+    "upload_date": "2024-01-21T14:00:00Z",
+    "contact_id": "contact-008",
+    "company_id": "comp-008",
+    "transcript": "Robert Chen: As a technical founder, I'm really impressed with the sophistication of your machine learning algorithms. The predictive analytics for lead scoring and customer churn prediction could be game-changing for our startup. We're growing rapidly and need tools that can scale with us. The automated insights and revenue forecasting features would help us make better data-driven decisions. How does the system handle training data and model updates? We're particularly interested in the real-time aspects since we need to respond quickly to market changes. Can the AI adapt to our specific business model and customer patterns?",
+    "summary": "Technical deep dive with startup founder focusing on AI capabilities, scalability, and real-time adaptability for rapid growth environment.",
+    "key_points": [
+      "Strong technical appreciation for ML algorithms",
+      "Predictive analytics seen as game-changing",
+      "Scalability critical for rapid startup growth",
+      "Interest in real-time AI adaptation capabilities"
+    ],
+    "action_items": [
+      "Provide technical AI architecture documentation",
+      "Demonstrate real-time model adaptation",
+      "Prepare scalability case studies"
+    ],
+    "sentiment": "very_positive",
+    "participants": ["Robert Chen - Founder & CEO TechStartup.io", "AI Specialist", "Technical Solutions Engineer"],
+    "tags": ["technical-demo", "ai-features", "startup", "scalability"],
+    "custom_fields": {
+      "technical_depth": "very high",
+      "founder_background": "technical",
+      "growth_stage": "rapid",
+      "ai_sophistication": "impressed"
+    }
+  },
+  {
+    "id": "transcript-008",
+    "filename": "roi_discussion_retailmax_20240108.mp3",
+    "file_type": "audio",
+    "duration": 30,
+    "file_size": 896000,
+    "upload_date": "2024-01-08T13:45:00Z",
+    "contact_id": "contact-004",
+    "deal_id": "deal-004",
+    "company_id": "comp-004",
+    "transcript": "Lisa Rodriguez: I appreciate you taking the time to discuss our retail operations needs. With 500+ locations, we operate on very tight margins and need to see clear ROI before making any technology investments. The operational efficiency improvements you've described sound promising, but I need concrete numbers and case studies from similar retail chains. What kind of cost savings have other retailers seen? How long is the typical payback period? We're particularly interested in inventory management and customer service improvements. Can you provide detailed analysis showing projected savings versus implementation costs?",
+    "summary": "ROI-focused discussion with RetailMax operations director emphasizing cost efficiency requirements and need for concrete financial justification.",
+    "key_points": [
+      "500+ locations operating on tight margins",
+      "Clear ROI demonstration required",
+      "Interest in inventory management improvements",
+      "Need concrete case studies from similar retailers"
+    ],
+    "action_items": [
+      "Prepare detailed ROI analysis with projections",
+      "Compile retail industry case studies",
+      "Calculate payback period scenarios"
+    ],
+    "sentiment": "cautious",
+    "participants": ["Lisa Rodriguez - Director of Operations", "Sales Representative", "Business Analyst"],
+    "tags": ["roi-discussion", "retail", "cost-analysis", "operational-efficiency"],
+    "custom_fields": {
+      "cost_sensitivity": "very high",
+      "margin_pressure": "tight",
+      "location_scale": "500+",
+      "roi_requirement": "concrete numbers needed"
+    }
+  }
+] 
