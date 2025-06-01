@@ -3,15 +3,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Building2, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Globe, Edit, Trash2, MapPin, Users, DollarSign, Calendar, ExternalLink } from 'lucide-react';
+import { Building2, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Globe, Edit, Trash2, MapPin, Users, DollarSign, Calendar, ExternalLink, Brain, Sparkles, Zap, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import CompanyForm from './CompanyForm';
+import { 
+  researchCompanyInfo, 
+  generateCompanies, 
+  isOpenAIConfigured,
+  isTavilyConfigured,
+  type CompanyInfo,
+  type CompanyResearchRequest,
+  type CompanyGenerationRequest,
+  type CompanyResearchResponse,
+  type CompanyGenerationResponse
+} from '@/lib/ai';
 
 interface Company {
   id: string;
@@ -47,6 +59,8 @@ type SortDirection = 'asc' | 'desc';
 const CompaniesManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -56,6 +70,18 @@ const CompaniesManager = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [sizeFilter, setSizeFilter] = useState<string>('all');
+
+  // AI Features State
+  const [showCompanyResearchDialog, setShowCompanyResearchDialog] = useState(false);
+  const [showCompanyGenerationDialog, setShowCompanyGenerationDialog] = useState(false);
+  const [researchCompanyName, setResearchCompanyName] = useState('');
+  const [researchContext, setResearchContext] = useState('');
+  const [generationQuery, setGenerationQuery] = useState('');
+  const [generationCount, setGenerationCount] = useState(10);
+  const [researchResult, setResearchResult] = useState<CompanyResearchResponse | null>(null);
+  const [generationResult, setGenerationResult] = useState<CompanyGenerationResponse | null>(null);
+  const [isResearching, setIsResearching] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: companies = [], isLoading, refetch } = useQuery({
     queryKey: ['companies', user?.id],
@@ -107,6 +133,179 @@ const CompaniesManager = () => {
     },
     enabled: !!user,
   });
+
+  // Mutation to add a company from AI research
+  const addCompanyMutation = useMutation({
+    mutationFn: async (companyInfo: CompanyInfo) => {
+      const { data, error } = await supabase
+        .from('companies')
+        .insert({
+          user_id: user?.id,
+          name: companyInfo.name,
+          website: companyInfo.website,
+          industry: companyInfo.industry,
+          size: companyInfo.size,
+          phone: companyInfo.phone,
+          email: companyInfo.email,
+          address: companyInfo.headquarters,
+          city: companyInfo.city,
+          state: companyInfo.state,
+          country: companyInfo.country,
+          description: companyInfo.description,
+          status: companyInfo.status,
+          revenue: companyInfo.revenue,
+          employees: companyInfo.employees,
+          founded_year: companyInfo.founded_year,
+          linkedin_url: companyInfo.linkedin_url,
+          twitter_url: companyInfo.twitter_url,
+          score: companyInfo.score
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      refetch();
+      toast({
+        title: "Company added",
+        description: "Company has been successfully added to your database.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error adding company",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Research company information
+  const handleResearchCompany = async () => {
+    if (!researchCompanyName.trim()) {
+      toast({
+        title: "Company name required",
+        description: "Please enter a company name to research.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isOpenAIConfigured()) {
+      toast({
+        title: "AI not configured",
+        description: "OpenAI API key not configured. Please check your settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResearching(true);
+    try {
+      const request: CompanyResearchRequest = {
+        companyName: researchCompanyName,
+        additionalContext: researchContext
+      };
+
+      const result = await researchCompanyInfo(request);
+      setResearchResult(result);
+
+      if (result.success) {
+        toast({
+          title: "Research completed",
+          description: `Found detailed information about ${result.companyInfo.name}`,
+        });
+      } else {
+        toast({
+          title: "Research completed with limited data",
+          description: "Some information may be incomplete. Please review and edit as needed.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error researching company:', error);
+      toast({
+        title: "Research failed",
+        description: error instanceof Error ? error.message : 'Failed to research company information',
+        variant: "destructive",
+      });
+    } finally {
+      setIsResearching(false);
+    }
+  };
+
+  // Generate companies based on query
+  const handleGenerateCompanies = async () => {
+    if (!generationQuery.trim()) {
+      toast({
+        title: "Query required",
+        description: "Please enter a search query to generate companies.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isOpenAIConfigured()) {
+      toast({
+        title: "AI not configured",
+        description: "OpenAI API key not configured. Please check your settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const request: CompanyGenerationRequest = {
+        query: generationQuery,
+        count: generationCount
+      };
+
+      const result = await generateCompanies(request);
+      setGenerationResult(result);
+
+      if (result.success) {
+        toast({
+          title: "Companies generated",
+          description: `Found ${result.totalFound} companies matching your criteria`,
+        });
+      } else {
+        toast({
+          title: "Generation completed with sample data",
+          description: "Using fallback data. Please review the results.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating companies:', error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : 'Failed to generate companies',
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Add company from research result
+  const handleAddResearchedCompany = () => {
+    if (researchResult?.companyInfo) {
+      addCompanyMutation.mutate(researchResult.companyInfo);
+      setShowCompanyResearchDialog(false);
+      setResearchResult(null);
+      setResearchCompanyName('');
+      setResearchContext('');
+    }
+  };
+
+  // Add company from generation result
+  const handleAddGeneratedCompany = (companyInfo: CompanyInfo) => {
+    addCompanyMutation.mutate(companyInfo);
+  };
 
   // Advanced search and filter algorithm
   const filteredAndSortedCompanies = useMemo(() => {
@@ -314,12 +513,44 @@ const CompaniesManager = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Companies</h2>
-          <p className="text-slate-600">Manage your company database and relationships</p>
+          <p className="text-slate-600">
+            Manage your company database and relationships
+            {isTavilyConfigured() && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+                Tavily Search Active
+              </span>
+            )}
+          </p>
         </div>
-        <Button onClick={() => setShowCompanyForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Company
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            onClick={() => setShowCompanyResearchDialog(true)} 
+            variant="outline"
+            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700"
+            disabled={!isOpenAIConfigured()}
+            title={!isOpenAIConfigured() ? "OpenAI API key required" : isTavilyConfigured() ? "AI research with real-time web search" : "AI research with simulated data"}
+          >
+            <Brain className="w-4 h-4 mr-2" />
+            Get Company Info AI
+            {isTavilyConfigured() && <span className="ml-1 text-xs">🌐</span>}
+          </Button>
+          <Button 
+            onClick={() => setShowCompanyGenerationDialog(true)} 
+            variant="outline"
+            className="bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-700 hover:to-blue-700"
+            disabled={!isOpenAIConfigured()}
+            title={!isOpenAIConfigured() ? "OpenAI API key required" : isTavilyConfigured() ? "AI generation with real-time web search" : "AI generation with simulated data"}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Get Companies
+            {isTavilyConfigured() && <span className="ml-1 text-xs">🌐</span>}
+          </Button>
+          <Button onClick={() => setShowCompanyForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Company
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -612,6 +843,330 @@ const CompaniesManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Company Research Dialog */}
+      <Dialog open={showCompanyResearchDialog} onOpenChange={setShowCompanyResearchDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Brain className="w-5 h-5 mr-2 text-purple-600" />
+              Get Company Info AI
+            </DialogTitle>
+            <DialogDescription>
+              Research detailed information about any company using AI-powered {isTavilyConfigured() ? 'Tavily web search' : 'analysis'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Company Name *</label>
+              <Input
+                placeholder="e.g., Apple Inc, Microsoft Corporation"
+                value={researchCompanyName}
+                onChange={(e) => setResearchCompanyName(e.target.value)}
+                disabled={isResearching}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Additional Context (Optional)</label>
+              <Textarea
+                placeholder="Any specific information you're looking for about this company..."
+                value={researchContext}
+                onChange={(e) => setResearchContext(e.target.value)}
+                disabled={isResearching}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCompanyResearchDialog(false)}
+                disabled={isResearching}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleResearchCompany}
+                disabled={isResearching || !researchCompanyName.trim()}
+                className="bg-gradient-to-r from-purple-600 to-pink-600"
+              >
+                {isResearching ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Researching...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Research Company
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Research Results */}
+            {researchResult && (
+              <div className="mt-6 p-4 border rounded-lg bg-slate-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Research Results</h3>
+                  <div className="flex items-center space-x-2">
+                    {researchResult.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    )}
+                    <span className="text-sm text-slate-600">
+                      Confidence: {researchResult.confidence}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Company:</span> {researchResult.companyInfo.name}
+                    </div>
+                    <div>
+                      <span className="font-medium">Industry:</span> {researchResult.companyInfo.industry}
+                    </div>
+                    <div>
+                      <span className="font-medium">Size:</span> {researchResult.companyInfo.size}
+                    </div>
+                    <div>
+                      <span className="font-medium">Employees:</span> {researchResult.companyInfo.employees.toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">Revenue:</span> ${(researchResult.companyInfo.revenue / 1000000).toFixed(1)}M
+                    </div>
+                    <div>
+                      <span className="font-medium">Founded:</span> {researchResult.companyInfo.founded_year}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="font-medium">Description:</span>
+                    <p className="text-sm text-slate-600 mt-1">{researchResult.companyInfo.description}</p>
+                  </div>
+
+                  <div>
+                    <span className="font-medium">Location:</span>
+                    <p className="text-sm text-slate-600">{researchResult.companyInfo.city}, {researchResult.companyInfo.state}, {researchResult.companyInfo.country}</p>
+                  </div>
+
+                  {researchResult.sources.length > 0 && (
+                    <div>
+                      <span className="font-medium">Sources:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {researchResult.sources.map((source, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {source}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <Button 
+                      onClick={handleAddResearchedCompany}
+                      disabled={addCompanyMutation.isPending}
+                      className="bg-gradient-to-r from-green-600 to-blue-600"
+                    >
+                      {addCompanyMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add to Database
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Company Generation Dialog */}
+      <Dialog open={showCompanyGenerationDialog} onOpenChange={setShowCompanyGenerationDialog}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-green-600" />
+              Get Companies
+            </DialogTitle>
+            <DialogDescription>
+              Generate a list of companies based on your search criteria using AI {isTavilyConfigured() ? 'with real-time Tavily web search' : 'analysis'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search Query *</label>
+              <Input
+                placeholder="e.g., top 10 AI companies in Silicon Valley, fintech startups in New York"
+                value={generationQuery}
+                onChange={(e) => setGenerationQuery(e.target.value)}
+                disabled={isGenerating}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Number of Companies</label>
+              <Select value={generationCount.toString()} onValueChange={(value) => setGenerationCount(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 companies</SelectItem>
+                  <SelectItem value="10">10 companies</SelectItem>
+                  <SelectItem value="15">15 companies</SelectItem>
+                  <SelectItem value="20">20 companies</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCompanyGenerationDialog(false)}
+                disabled={isGenerating}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleGenerateCompanies}
+                disabled={isGenerating || !generationQuery.trim()}
+                className="bg-gradient-to-r from-green-600 to-blue-600"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Companies
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Generation Results */}
+            {generationResult && (
+              <div className="mt-6 p-4 border rounded-lg bg-slate-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Generated Companies ({generationResult.totalFound})</h3>
+                  <div className="flex items-center space-x-2">
+                    {generationResult.success ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    )}
+                    <span className="text-sm text-slate-600">
+                      Query: "{generationResult.query}"
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {generationResult.companies.map((company, index) => (
+                    <div key={index} className="p-4 border rounded-lg bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-lg font-semibold">{company.name}</h4>
+                            <Badge className="bg-blue-100 text-blue-800">
+                              {company.industry}
+                            </Badge>
+                            <Badge variant="outline">
+                              {company.size}
+                            </Badge>
+                            <span className="text-sm font-medium text-green-600">
+                              Score: {company.score}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 text-sm text-slate-600 mb-2">
+                            <div className="flex items-center gap-1">
+                              <Users className="w-4 h-4" />
+                              {company.employees.toLocaleString()} employees
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <DollarSign className="w-4 h-4" />
+                              ${(company.revenue / 1000000).toFixed(1)}M revenue
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {company.city}, {company.country}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              Founded {company.founded_year}
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-slate-600 mb-3">{company.description}</p>
+
+                          <div className="flex items-center gap-4">
+                            {company.website && (
+                              <a
+                                href={company.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                              >
+                                <Globe className="w-4 h-4" />
+                                Website
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                            {company.linkedin_url && (
+                              <a
+                                href={company.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                              >
+                                LinkedIn
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button 
+                          size="sm"
+                          onClick={() => handleAddGeneratedCompany(company)}
+                          disabled={addCompanyMutation.isPending}
+                          className="ml-4 bg-gradient-to-r from-green-600 to-blue-600"
+                        >
+                          {addCompanyMutation.isPending ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          ) : (
+                            <>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

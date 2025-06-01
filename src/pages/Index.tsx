@@ -17,7 +17,7 @@ import ActivitiesManager from '@/components/ActivitiesManager';
 import LeadManagement from '@/components/LeadManagement';
 import CompaniesManager from '@/components/CompaniesManager';
 import ReportsDashboard from '@/components/ReportsDashboard';
-import EmailTemplates from '@/components/EmailTemplates';
+import EmailManager from '@/components/EmailManager';
 import CalendarScheduling from '@/components/CalendarScheduling';
 import FileManagement from '@/components/FileManagement';
 import { useAuth } from '@/contexts/AuthContext';
@@ -286,7 +286,7 @@ const Index = () => {
               <TabsTrigger value="objection-handler" className="whitespace-nowrap">Objections</TabsTrigger>
               <TabsTrigger value="persona-builder" className="whitespace-nowrap">Personas</TabsTrigger>
               <TabsTrigger value="win-loss" className="whitespace-nowrap">Win-Loss</TabsTrigger>
-              <TabsTrigger value="email-templates" className="whitespace-nowrap">Email</TabsTrigger>
+              <TabsTrigger value="compose-email" className="whitespace-nowrap">Emails</TabsTrigger>
               <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
               <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
               <TabsTrigger value="companies" className="whitespace-nowrap">Companies</TabsTrigger>
@@ -333,8 +333,8 @@ const Index = () => {
             <WinLossExplainer />
           </TabsContent>
 
-          <TabsContent value="email-templates" className="space-y-6">
-            <EmailTemplates />
+          <TabsContent value="compose-email" className="space-y-6">
+            <EmailManager />
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
