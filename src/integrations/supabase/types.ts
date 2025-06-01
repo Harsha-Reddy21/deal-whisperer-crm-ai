@@ -12,6 +12,7 @@ export type Database = {
       activities: {
         Row: {
           completed_at: string | null
+          company_id: string | null
           contact_id: string | null
           created_at: string
           deal_id: string | null
@@ -28,6 +29,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          company_id?: string | null
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
@@ -44,6 +46,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          company_id?: string | null
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
@@ -59,6 +62,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "activities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "activities_contact_id_fkey"
             columns: ["contact_id"]
@@ -130,10 +140,107 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          employees: number | null
+          facebook_url: string | null
+          founded_year: number | null
+          id: string
+          industry: string | null
+          last_contact: string | null
+          linkedin_url: string | null
+          logo_url: string | null
+          name: string
+          next_follow_up: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          revenue: number | null
+          score: number | null
+          size: string | null
+          state: string | null
+          status: string | null
+          twitter_url: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          employees?: number | null
+          facebook_url?: string | null
+          founded_year?: number | null
+          id?: string
+          industry?: string | null
+          last_contact?: string | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          name: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          revenue?: number | null
+          score?: number | null
+          size?: string | null
+          state?: string | null
+          status?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          employees?: number | null
+          facebook_url?: string | null
+          founded_year?: number | null
+          id?: string
+          industry?: string | null
+          last_contact?: string | null
+          linkedin_url?: string | null
+          logo_url?: string | null
+          name?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          revenue?: number | null
+          score?: number | null
+          size?: string | null
+          state?: string | null
+          status?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           avatar: string | null
           company: string | null
+          company_id: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -150,6 +257,7 @@ export type Database = {
         Insert: {
           avatar?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -166,6 +274,7 @@ export type Database = {
         Update: {
           avatar?: string | null
           company?: string | null
+          company_id?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -179,11 +288,20 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deals: {
         Row: {
           company: string | null
+          company_id: string | null
           contact_id: string | null
           contact_name: string | null
           created_at: string | null
@@ -200,6 +318,7 @@ export type Database = {
         }
         Insert: {
           company?: string | null
+          company_id?: string | null
           contact_id?: string | null
           contact_name?: string | null
           created_at?: string | null
@@ -216,6 +335,7 @@ export type Database = {
         }
         Update: {
           company?: string | null
+          company_id?: string | null
           contact_id?: string | null
           contact_name?: string | null
           created_at?: string | null
@@ -231,6 +351,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deals_contact_id_fkey"
             columns: ["contact_id"]
@@ -418,6 +545,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company: string | null
+          company_id: string | null
           converted_contact_id: string | null
           created_at: string
           email: string | null
@@ -433,6 +561,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company?: string | null
+          company_id?: string | null
           converted_contact_id?: string | null
           created_at?: string
           email?: string | null
@@ -448,6 +577,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company?: string | null
+          company_id?: string | null
           converted_contact_id?: string | null
           created_at?: string
           email?: string | null
@@ -461,6 +591,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_converted_contact_id_fkey"
             columns: ["converted_contact_id"]

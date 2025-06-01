@@ -1,21 +1,26 @@
-title,company,value,stage,probability,contact_name,next_step
-Enterprise Software Deal,Acme Corp,50000,Discovery,25,John Doe,Schedule discovery call
-Cloud Migration Project,TechFlow Solutions,125000,Proposal,65,Sarah Chen,Present technical proposal
-Data Analytics Platform,DataSync Corp,85000,Negotiation,75,Michael Rodriguez,Review contract terms
-Marketing Automation Suite,GrowthHack Media,65000,Closing,90,Amanda Foster,Finalize implementation timeline
-CRM Integration Package,CloudVision Inc,200000,Negotiation,80,Emily Johnson,Address integration requirements
-Security Audit Services,StartupLab,45000,Discovery,25,David Kim,Conduct security assessment
-Mobile App Development,Enterprise Solutions Ltd,175000,Proposal,60,Lisa Thompson,Demo mobile prototypes
-AI Implementation Project,FinTech Innovations,95000,Discovery,40,Robert Martinez,Present AI capabilities
-Infrastructure Upgrade,AI Dynamics,35000,Proposal,60,James Wilson,Provide infrastructure assessment
-Digital Transformation,SecureNet Systems,150000,Closing,85,Maria Garcia,Schedule executive sign-off
-E-commerce Platform,Digital Dynamics,75000,Discovery,30,Alex Thompson,Requirements gathering session
-Product Analytics Tool,InnovateTech,90000,Proposal,70,Rachel Kim,Present analytics dashboard
-Cloud Infrastructure,CloudFirst Solutions,120000,Negotiation,65,Mark Johnson,Finalize pricing structure
-Business Intelligence Suite,DataFlow Corp,110000,Discovery,35,Jennifer Lee,Conduct BI assessment
-Sales Automation Platform,NextGen Systems,80000,Closing,80,Tom Wilson,Contract finalization
-Startup CRM Solution,TechStartup Inc,25000,Proposal,55,Jessica Brown,Demo CRM features
-Enterprise Security Package,Enterprise Corp,180000,Negotiation,70,Kevin Davis,Security compliance review
-Consulting Services,Consulting Group,60000,Discovery,45,Linda White,Project scope definition
-SaaS Integration Platform,SaaS Company,140000,Proposal,75,Ryan Miller,Technical integration demo
-Retail Analytics Solution,RetailTech Solutions,95000,Discovery,40,Nicole Taylor,Retail analytics presentation 
+title,company_name,value,stage,probability,contact_name,next_step
+Enterprise Software Implementation,TechFlow Solutions,125000,Proposal,65,Sarah Chen,Present technical proposal and timeline
+Manufacturing ERP System,Global Manufacturing Corp,450000,Negotiation,80,Michael Rodriguez,Review contract terms and pricing
+Healthcare AI Platform,HealthCare Innovations,275000,Discovery,45,Amanda Foster,Conduct AI capabilities demonstration
+Fintech Mobile App,StartupVenture Inc,85000,Proposal,60,Emily Johnson,Demo mobile app prototypes
+Risk Management System,Financial Services Group,320000,Closing,90,David Kim,Finalize implementation schedule
+Educational Platform Upgrade,EduTech Academy,150000,Negotiation,75,Lisa Thompson,Address integration requirements
+Retail POS Enhancement,Retail Chain Solutions,180000,Closing,85,Robert Martinez,Schedule executive sign-off
+Digital Transformation Consulting,Consulting Partners LLC,95000,Discovery,40,James Wilson,Project scope definition meeting
+Property Management Software,Real Estate Dynamics,110000,Proposal,55,Maria Garcia,Present property management features
+Content Management System,Media & Entertainment Co,200000,Negotiation,70,Alex Thompson,Technical integration review
+Smart Farming IoT Platform,AgriTech Innovations,65000,Discovery,35,Rachel Kim,IoT platform demonstration
+Logistics Optimization Suite,Logistics Express,225000,Closing,80,Mark Johnson,Contract finalization
+Laboratory Management System,BioTech Research Labs,140000,Proposal,60,Jennifer Lee,Lab workflow demonstration
+Renewable Energy Analytics,Energy Solutions Corp,350000,Negotiation,75,Tom Wilson,Analytics platform review
+E-commerce Platform Redesign,Fashion Forward Brands,95000,Discovery,40,Jessica Brown,E-commerce requirements gathering
+Insurance Claims Processing,Insurance Specialists,190000,Proposal,65,Kevin Davis,Claims automation demo
+Cloud Infrastructure Migration,Cloud Computing Corp,280000,Closing,85,Linda White,Migration timeline finalization
+Supply Chain Management,Food & Beverage Co,160000,Discovery,45,Ryan Miller,Supply chain analysis
+Transportation Management System,Transportation Systems,240000,Negotiation,70,Nicole Taylor,System integration planning
+Pharmaceutical Research Platform,Pharmaceutical Research,420000,Proposal,55,Dr. Patricia Adams,Research platform demonstration
+CRM Integration Enhancement,TechFlow Solutions,75000,Discovery,30,Carlos Rodriguez,CRM requirements assessment
+Manufacturing Quality Control,Global Manufacturing Corp,185000,Proposal,60,Susan Mitchell,Quality control system demo
+Medical Device Integration,HealthCare Innovations,165000,Negotiation,65,Dr. Andrew Chen,Device integration review
+Startup Analytics Dashboard,StartupVenture Inc,45000,Closing,80,Maya Patel,Dashboard implementation planning
+Compliance Management System,Financial Services Group,210000,Discovery,40,Jonathan Smith,Compliance requirements analysis 

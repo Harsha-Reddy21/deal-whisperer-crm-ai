@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User, Brain } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User, Brain, Building2 } from 'lucide-react';
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
@@ -15,6 +15,7 @@ import CustomerPersonaBuilder from '@/components/CustomerPersonaBuilder';
 import WinLossExplainer from '@/components/WinLossExplainer';
 import ActivitiesManager from '@/components/ActivitiesManager';
 import LeadManagement from '@/components/LeadManagement';
+import CompaniesManager from '@/components/CompaniesManager';
 import ReportsDashboard from '@/components/ReportsDashboard';
 import EmailTemplates from '@/components/EmailTemplates';
 import CalendarScheduling from '@/components/CalendarScheduling';
@@ -69,13 +70,15 @@ const Index = () => {
       console.log('Fetching stats for user:', user.id);
 
       try {
-        const [contactsResult, dealsResult] = await Promise.all([
+        const [contactsResult, dealsResult, companiesResult] = await Promise.all([
           supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id),
-          supabase.from('deals').select('id, value, stage', { count: 'exact' }).eq('user_id', user.id)
+          supabase.from('deals').select('id, value, stage', { count: 'exact' }).eq('user_id', user.id),
+          supabase.from('companies').select('id', { count: 'exact' }).eq('user_id', user.id)
         ]);
 
         console.log('Contacts result:', contactsResult);
         console.log('Deals result:', dealsResult);
+        console.log('Companies result:', companiesResult);
 
         if (contactsResult.error) {
           console.error('Error fetching contacts:', contactsResult.error);
@@ -85,8 +88,13 @@ const Index = () => {
           console.error('Error fetching deals:', dealsResult.error);
         }
 
+        if (companiesResult.error) {
+          console.error('Error fetching companies:', companiesResult.error);
+        }
+
         const totalContacts = contactsResult.count || 0;
         const totalDeals = dealsResult.count || 0;
+        const totalCompanies = companiesResult.count || 0;
         const deals = dealsResult.data || [];
         
         const totalRevenue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
@@ -96,6 +104,7 @@ const Index = () => {
         const statsData = {
           totalContacts,
           totalDeals,
+          totalCompanies,
           totalRevenue,
           closeRate
         };
@@ -165,6 +174,13 @@ const Index = () => {
       change: "+12%",
       icon: Users,
       color: "text-blue-600"
+    },
+    {
+      title: "Total Companies",
+      value: statsLoading ? "..." : (stats?.totalCompanies?.toString() || "0"),
+      change: "+15%",
+      icon: Building2,
+      color: "text-indigo-600"
     },
     {
       title: "Active Deals",
@@ -237,7 +253,7 @@ const Index = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {displayStats.map((stat, index) => (
             <Card key={index} className="bg-white/60 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -258,21 +274,24 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-13 bg-white/60 backdrop-blur-sm">
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="contacts">Contacts</TabsTrigger>
-            <TabsTrigger value="leads">Leads</TabsTrigger>
-            <TabsTrigger value="activities">Activities</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
-            <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
-            <TabsTrigger value="objection-handler">Objections</TabsTrigger>
-            <TabsTrigger value="persona-builder">Personas</TabsTrigger>
-            <TabsTrigger value="win-loss">Win-Loss</TabsTrigger>
-            <TabsTrigger value="email-templates">Email</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="flex w-max bg-white/60 backdrop-blur-sm p-1 rounded-lg">
+              <TabsTrigger value="pipeline" className="whitespace-nowrap">Pipeline</TabsTrigger>
+              <TabsTrigger value="contacts" className="whitespace-nowrap">Contacts</TabsTrigger>
+              <TabsTrigger value="leads" className="whitespace-nowrap">Leads</TabsTrigger>
+              <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
+              <TabsTrigger value="reports" className="whitespace-nowrap">Reports</TabsTrigger>
+              <TabsTrigger value="ai-assistant" className="whitespace-nowrap">AI Assistant</TabsTrigger>
+              <TabsTrigger value="ai-coach" className="whitespace-nowrap">AI Coach</TabsTrigger>
+              <TabsTrigger value="objection-handler" className="whitespace-nowrap">Objections</TabsTrigger>
+              <TabsTrigger value="persona-builder" className="whitespace-nowrap">Personas</TabsTrigger>
+              <TabsTrigger value="win-loss" className="whitespace-nowrap">Win-Loss</TabsTrigger>
+              <TabsTrigger value="email-templates" className="whitespace-nowrap">Email</TabsTrigger>
+              <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
+              <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
+              <TabsTrigger value="companies" className="whitespace-nowrap">Companies</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="pipeline" className="space-y-6">
             <DealsPipeline onSelectDeal={setSelectedDeal} />
@@ -324,6 +343,10 @@ const Index = () => {
 
           <TabsContent value="files" className="space-y-6">
             <FileManagement />
+          </TabsContent>
+
+          <TabsContent value="companies" className="space-y-6">
+            <CompaniesManager />
           </TabsContent>
         </Tabs>
       </div>

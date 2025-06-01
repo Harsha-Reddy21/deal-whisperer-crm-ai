@@ -1,26 +1,26 @@
-subject,type,description,priority,status,due_date
-Follow up call with John Doe,call,Discuss enterprise software requirements and next steps,high,pending,2024-02-15
-Send proposal to Sarah Chen,email,Email technical proposal for cloud migration project,medium,pending,2024-02-12
-Contract review meeting,meeting,Review contract terms with legal team for DataSync deal,high,pending,2024-02-14
-Demo preparation,task,Prepare marketing automation demo for Amanda Foster,medium,completed,2024-02-10
-Integration planning session,meeting,Plan CRM integration requirements with Emily Johnson,high,pending,2024-02-13
-Security assessment call,call,Conduct initial security assessment with David Kim,medium,pending,2024-02-16
-Mobile app prototype demo,meeting,Present mobile app prototypes to Lisa Thompson,high,pending,2024-02-11
-AI capabilities presentation,meeting,Present AI implementation capabilities to Robert Martinez,medium,pending,2024-02-17
-Infrastructure assessment,task,Complete infrastructure upgrade assessment report,low,pending,2024-02-18
-Executive sign-off meeting,meeting,Schedule final executive approval meeting with Maria Garcia,high,pending,2024-02-09
-Requirements gathering,meeting,Gather e-commerce platform requirements from Alex Thompson,medium,pending,2024-02-20
-Analytics dashboard demo,meeting,Demo product analytics dashboard to Rachel Kim,high,pending,2024-02-14
-Pricing negotiation,call,Finalize cloud infrastructure pricing with Mark Johnson,high,pending,2024-02-12
-BI assessment meeting,meeting,Conduct business intelligence assessment with Jennifer Lee,medium,pending,2024-02-19
-Contract finalization,task,Finalize sales automation platform contract,high,pending,2024-02-08
-CRM demo for startup,meeting,Demo CRM features for TechStartup Inc,medium,pending,2024-02-21
-Security compliance review,meeting,Review enterprise security compliance requirements,high,pending,2024-02-13
-Project scope definition,meeting,Define consulting services project scope with Linda White,medium,pending,2024-02-22
-Technical integration demo,meeting,Demo SaaS integration platform technical capabilities,high,pending,2024-02-15
-Retail analytics presentation,meeting,Present retail analytics solution to Nicole Taylor,medium,pending,2024-02-23
-Lead qualification call,call,Qualify new lead from TechCorp Solutions,medium,pending,2024-02-16
-Webinar follow-up,email,Follow up with webinar attendees about AI solutions,low,completed,2024-02-05
-Trade show preparation,task,Prepare materials for upcoming trade show,medium,pending,2024-02-25
-Content creation,task,Create case study content for healthcare vertical,low,pending,2024-02-28
-Partnership meeting,meeting,Discuss partnership opportunities with consulting firm,medium,pending,2024-02-26 
+subject,type,description,priority,status,due_date,company_name,contact_name
+Technical proposal presentation,meeting,Present enterprise software implementation proposal,high,pending,2024-02-15,TechFlow Solutions,Sarah Chen
+Manufacturing ERP demo,meeting,Demonstrate ERP system capabilities for manufacturing,high,pending,2024-02-12,Global Manufacturing Corp,Michael Rodriguez
+Healthcare AI consultation,call,Discuss AI platform requirements and use cases,medium,pending,2024-02-14,HealthCare Innovations,Amanda Foster
+Fintech app prototype review,meeting,Review mobile app prototypes and user experience,high,pending,2024-02-10,StartupVenture Inc,Emily Johnson
+Risk management system demo,meeting,Demonstrate risk management platform features,high,pending,2024-02-13,Financial Services Group,David Kim
+Educational platform assessment,call,Assess current platform and upgrade requirements,medium,pending,2024-02-16,EduTech Academy,Lisa Thompson
+Retail POS implementation planning,meeting,Plan POS system enhancement implementation,high,pending,2024-02-11,Retail Chain Solutions,Robert Martinez
+Digital transformation workshop,meeting,Conduct digital transformation strategy workshop,medium,pending,2024-02-17,Consulting Partners LLC,James Wilson
+Property management software demo,meeting,Demo property management system features,medium,pending,2024-02-18,Real Estate Dynamics,Maria Garcia
+Content management system review,meeting,Review CMS requirements and technical specifications,high,pending,2024-02-09,Media & Entertainment Co,Alex Thompson
+Smart farming IoT presentation,meeting,Present IoT platform for precision agriculture,medium,pending,2024-02-20,AgriTech Innovations,Rachel Kim
+Logistics optimization analysis,task,Analyze current logistics processes and optimization opportunities,high,pending,2024-02-14,Logistics Express,Mark Johnson
+Laboratory workflow assessment,meeting,Assess laboratory management system requirements,medium,pending,2024-02-12,BioTech Research Labs,Jennifer Lee
+Energy analytics platform demo,meeting,Demonstrate renewable energy analytics capabilities,high,pending,2024-02-19,Energy Solutions Corp,Tom Wilson
+E-commerce platform consultation,call,Discuss e-commerce platform redesign requirements,medium,pending,2024-02-08,Fashion Forward Brands,Jessica Brown
+Insurance claims automation demo,meeting,Demo automated claims processing system,high,pending,2024-02-21,Insurance Specialists,Kevin Davis
+Cloud migration planning session,meeting,Plan cloud infrastructure migration strategy,high,pending,2024-02-13,Cloud Computing Corp,Linda White
+Supply chain optimization review,meeting,Review supply chain management requirements,medium,pending,2024-02-22,Food & Beverage Co,Ryan Miller
+Transportation system integration,meeting,Discuss transportation management system integration,high,pending,2024-02-15,Transportation Systems,Nicole Taylor
+Pharmaceutical research platform demo,meeting,Demonstrate research platform capabilities,medium,pending,2024-02-23,Pharmaceutical Research,Dr. Patricia Adams
+CRM integration follow-up,call,Follow up on CRM integration requirements,medium,pending,2024-02-16,TechFlow Solutions,Carlos Rodriguez
+Quality control system presentation,meeting,Present manufacturing quality control solution,high,pending,2024-02-24,Global Manufacturing Corp,Susan Mitchell
+Medical device integration planning,meeting,Plan medical device integration strategy,medium,pending,2024-02-25,HealthCare Innovations,Dr. Andrew Chen
+Startup analytics dashboard setup,task,Set up analytics dashboard for startup client,low,pending,2024-02-26,StartupVenture Inc,Maya Patel
+Compliance system requirements gathering,meeting,Gather compliance management system requirements,high,pending,2024-02-27,Financial Services Group,Jonathan Smith 

@@ -1,21 +1,26 @@
-name,email,company,phone,status,source,score
-Michael Chen,michael.chen@techcorp.com,TechCorp Solutions,+1 (555) 100-2001,new,manual,65
-Jennifer Adams,j.adams@innovate.com,Innovate Systems,+1 (555) 100-2002,qualified,form,78
-Robert Kim,robert.k@startup.io,Startup Ventures,+1 (555) 100-2003,contacted,integration,45
-Sarah Wilson,s.wilson@globaltech.com,Global Tech Inc,+1 (555) 100-2004,new,import,82
-David Martinez,d.martinez@financeplus.com,Finance Plus,+1 (555) 100-2005,qualified,manual,71
-Lisa Thompson,lisa.t@healthsys.com,Health Systems,+1 (555) 100-2006,contacted,form,59
-James Rodriguez,j.rodriguez@retailmax.com,Retail Max,+1 (555) 100-2007,unqualified,integration,33
-Amanda Foster,a.foster@edutech.com,EduTech Solutions,+1 (555) 100-2008,new,manual,67
-Kevin Park,k.park@logistics.com,Logistics Pro,+1 (555) 100-2009,qualified,import,85
-Michelle Lee,m.lee@consulting.com,Consulting Group,+1 (555) 100-2010,contacted,form,72
-Brian Taylor,b.taylor@manufacturing.com,Manufacturing Corp,+1 (555) 100-2011,new,integration,54
-Rachel Green,r.green@realestate.com,Real Estate Plus,+1 (555) 100-2012,qualified,manual,79
-Steven Clark,s.clark@automotive.com,Automotive Solutions,+1 (555) 100-2013,contacted,form,61
-Nicole White,n.white@hospitality.com,Hospitality Group,+1 (555) 100-2014,unqualified,integration,38
-Christopher Hall,c.hall@energy.com,Energy Systems,+1 (555) 100-2015,new,import,73
-Jessica Brown,j.brown@media.com,Media Networks,+1 (555) 100-2016,qualified,manual,81
-Andrew Davis,a.davis@construction.com,Construction Co,+1 (555) 100-2017,contacted,form,56
-Stephanie Miller,s.miller@pharma.com,Pharma Research,+1 (555) 100-2018,new,integration,69
-Daniel Wilson,d.wilson@aerospace.com,Aerospace Tech,+1 (555) 100-2019,qualified,import,77
-Lauren Johnson,l.johnson@telecom.com,Telecom Solutions,+1 (555) 100-2020,contacted,manual,63 
+name,email,company_name,phone,status,source,score
+Michael Chen,michael.chen@techflow.com,TechFlow Solutions,+1-555-0301,qualified,form,85
+Jennifer Adams,j.adams@healthcareinnovations.com,HealthCare Innovations,+1-555-0302,new,manual,78
+Robert Kim,robert.k@startupventure.io,StartupVenture Inc,+1-555-0303,contacted,integration,65
+Sarah Wilson,s.wilson@realestatedynamics.com,Real Estate Dynamics,+1-555-0304,qualified,import,68
+David Martinez,d.martinez@mediaentertainment.com,Media & Entertainment Co,+1-555-0305,new,form,75
+Lisa Thompson,lisa.t@agritech-innovations.com,AgriTech Innovations,+1-555-0306,contacted,manual,70
+James Rodriguez,j.rodriguez@fashionforward.com,Fashion Forward Brands,+1-555-0307,qualified,integration,69
+Amanda Foster,a.foster@foodbeverage.com,Food & Beverage Co,+1-555-0308,new,import,71
+Kevin Park,k.park@biotechresearch.com,BioTech Research Labs,+1-555-0309,contacted,form,73
+Michelle Lee,m.lee@pharmaresearch.com,Pharmaceutical Research,+1-555-0310,qualified,manual,82
+Brian Taylor,b.taylor@globalmanufacturing.com,Global Manufacturing Corp,+1-555-0311,new,integration,88
+Rachel Green,r.green@edutech-academy.com,EduTech Academy,+1-555-0312,contacted,import,72
+Steven Clark,s.clark@logisticsexpress.com,Logistics Express,+1-555-0313,qualified,form,87
+Nicole White,n.white@energysolutions.com,Energy Solutions Corp,+1-555-0314,new,manual,93
+Christopher Hall,c.hall@transportsystems.com,Transportation Systems,+1-555-0315,contacted,integration,86
+Jessica Brown,j.brown@insurancespecialists.com,Insurance Specialists,+1-555-0316,qualified,import,89
+Andrew Davis,a.davis@cloudcomputing.com,Cloud Computing Corp,+1-555-0317,new,form,94
+Stephanie Miller,s.miller@retailchainsolutions.com,Retail Chain Solutions,+1-555-0318,contacted,manual,90
+Daniel Wilson,d.wilson@financialservicesgroup.com,Financial Services Group,+1-555-0319,qualified,integration,88
+Lauren Johnson,l.johnson@consultingpartners.com,Consulting Partners LLC,+1-555-0320,new,import,95
+Mark Thompson,m.thompson@techflow.com,TechFlow Solutions,+1-555-0321,contacted,form,80
+Elena Rodriguez,e.rodriguez@healthcareinnovations.com,HealthCare Innovations,+1-555-0322,qualified,manual,76
+Alex Kim,alex.kim@startupventure.io,StartupVenture Inc,+1-555-0323,new,integration,62
+Samantha Davis,s.davis@realestatedynamics.com,Real Estate Dynamics,+1-555-0324,contacted,import,66
+Carlos Martinez,c.martinez@mediaentertainment.com,Media & Entertainment Co,+1-555-0325,qualified,form,74 

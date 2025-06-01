@@ -249,45 +249,47 @@ const AIAssistant = () => {
                   <span className="font-medium">All templates</span> • {filteredTemplates.length} available
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredTemplates.map((template) => {
-                    const Icon = template.icon;
-                    return (
-                      <Card key={template.id} className="border border-slate-200 hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="space-y-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                                  <Icon className="w-5 h-5 text-slate-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="font-semibold text-slate-900 text-sm leading-tight">
-                                    {template.title}
-                                  </h3>
-                                  <Badge variant="outline" className={`mt-1 text-xs ${getCategoryColor(template.category)}`}>
-                                    {template.category}
-                                  </Badge>
+                <div className="overflow-x-auto pb-4">
+                  <div className="flex space-x-4 min-w-max">
+                    {filteredTemplates.map((template) => {
+                      const Icon = template.icon;
+                      return (
+                        <Card key={template.id} className="border border-slate-200 hover:shadow-md transition-shadow flex-shrink-0 w-80">
+                          <CardContent className="p-6">
+                            <div className="space-y-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                                    <Icon className="w-5 h-5 text-slate-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-slate-900 text-sm leading-tight">
+                                      {template.title}
+                                    </h3>
+                                    <Badge variant="outline" className={`mt-1 text-xs ${getCategoryColor(template.category)}`}>
+                                      {template.category}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
+                              
+                              <p className="text-sm text-slate-600 leading-relaxed">
+                                {template.description}
+                              </p>
+                              
+                              <Button 
+                                onClick={() => handleTryTemplate(template)}
+                                className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+                                size="sm"
+                              >
+                                Try it
+                              </Button>
                             </div>
-                            
-                            <p className="text-sm text-slate-600 leading-relaxed">
-                              {template.description}
-                            </p>
-                            
-                            <Button 
-                              onClick={() => handleTryTemplate(template)}
-                              className="w-full bg-slate-900 hover:bg-slate-800 text-white"
-                              size="sm"
-                            >
-                              Try it
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {filteredTemplates.length === 0 && (
