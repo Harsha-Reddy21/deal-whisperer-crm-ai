@@ -61,7 +61,7 @@ Live Delpoyed Link : https://ai-powered-crm.netlify.app/
 - **Deal Recommendations**: Intelligent suggestions based on historical deal outcomes
 
 ### 🔍 **Search & Discovery Features**
-- **"AI Search" Button**: Semantic search across all CRM data (deals, contacts, activities, companies)
+- **"AI Search" Button**: Semantic search across all CRM data (deals, contacts, activities, companies,etc)
 - **Vector Similarity Search**: No threshold filtering - always returns top relevant results
 - **Cross-Entity Search**: Find related content across different data types
 - **Real-time Search Results**: Instant results with similarity scoring and ranking
