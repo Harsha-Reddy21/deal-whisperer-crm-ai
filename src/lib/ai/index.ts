@@ -53,6 +53,14 @@ export type {
   SummarizationResponse
 } from './transcriptionService';
 
+// Export deal similarity analyzer types
+export type {
+  DealSimilarityRequest,
+  DealSimilarityResponse,
+  SimilarDeal,
+  DealRecommendation
+} from './dealSimilarityAnalyzer';
+
 // Export CRM data analysis types
 export type {
   CRMDataContext 
@@ -84,6 +92,12 @@ export {
   getEstimatedTranscriptionTime
 } from './transcriptionService';
 
+// Export deal similarity analyzer
+export {
+  analyzeDealSimilarity,
+  getQuickSimilarDeals
+} from './dealSimilarityAnalyzer';
+
 // Export AI services
 export { generateObjectionSuggestions } from './objectionHandler';
 export { generateDealCoachRecommendations } from './dealCoach';
@@ -106,4 +120,17 @@ export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAn
 export * from './smartLeadAnalyzer';
 
 // LinkedIn Contact Enricher
-export * from './linkedinEnricher'; 
+export * from './linkedinEnricher';
+
+// AI Services and Utilities
+export * from './config';
+export * from './types';
+export * from './emailSummarizer';
+export * from './companyResearcher';
+export * from './tavilySearch';
+export * from './transcriptionService';
+export * from './dealSimilarityAnalyzer';
+
+// Vector Embeddings and Semantic Search
+export * from './embeddingService';
+export * from './dealEmbeddingManager'; 

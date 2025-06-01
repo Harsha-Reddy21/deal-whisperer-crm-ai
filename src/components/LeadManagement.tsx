@@ -271,10 +271,49 @@ const LeadManagement = () => {
   const handleSaveEdit = async () => {
     if (!editingLead || !user) return;
 
+    // Validation for mandatory fields
     if (!editForm.name.trim()) {
       toast({
-        title: "Error",
-        description: "Name is required",
+        title: "Name is required",
+        description: "Please enter the lead's name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editForm.company.trim()) {
+      toast({
+        title: "Company is required",
+        description: "Please enter the company name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editForm.email.trim()) {
+      toast({
+        title: "Email is required",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editForm.phone.trim()) {
+      toast({
+        title: "Phone is required",
+        description: "Please enter a phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editForm.email)) {
+      toast({
+        title: "Invalid email format",
+        description: "Please enter a valid email address.",
         variant: "destructive",
       });
       return;
@@ -791,7 +830,7 @@ const LeadManagement = () => {
           <DialogHeader>
             <DialogTitle>Edit Lead</DialogTitle>
             <DialogDescription>
-              Update lead information. Name is required.
+              Update lead information. Name, company, email, and phone are required.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -804,28 +843,31 @@ const LeadManagement = () => {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium">Email *</label>
               <Input
                 value={editForm.email}
                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                 placeholder="Email address"
                 type="email"
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Company</label>
+              <label className="text-sm font-medium">Company *</label>
               <Input
                 value={editForm.company}
                 onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
                 placeholder="Company name"
+                required
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Phone</label>
+              <label className="text-sm font-medium">Phone *</label>
               <Input
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                 placeholder="Phone number"
+                required
               />
             </div>
             <div>

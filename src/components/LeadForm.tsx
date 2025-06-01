@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,16 +32,64 @@ const LeadForm = ({ open, onOpenChange, onLeadCreated }: LeadFormProps) => {
     e.preventDefault();
     if (!user) return;
 
+    // Validation for mandatory fields
+    if (!formData.name.trim()) {
+      toast({
+        title: "Name is required",
+        description: "Please enter the lead's name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.company.trim()) {
+      toast({
+        title: "Company is required",
+        description: "Please enter the company name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast({
+        title: "Email is required",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      toast({
+        title: "Phone is required",
+        description: "Please enter a phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Invalid email format",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { error } = await supabase
         .from('leads')
         .insert({
           user_id: user.id,
-          name: formData.name,
-          company: formData.company || null,
-          email: formData.email || null,
-          phone: formData.phone || null,
+          name: formData.name.trim(),
+          company: formData.company.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           source: formData.source,
           score: formData.score,
           status: formData.status
@@ -100,33 +147,36 @@ const LeadForm = ({ open, onOpenChange, onLeadCreated }: LeadFormProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="company">Company</Label>
+            <Label htmlFor="company">Company *</Label>
             <Input
               id="company"
               value={formData.company}
               onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
               placeholder="Company name"
+              required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="email@example.com"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">Phone *</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="+1 (555) 123-4567"
+                required
               />
             </div>
           </div>

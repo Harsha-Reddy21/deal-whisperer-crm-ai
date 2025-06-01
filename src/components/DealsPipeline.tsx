@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2 } from 'lucide-react';
+import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, Zap, Brain, Sparkles, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import DealForm from './DealForm';
+import SemanticSearchDialog from './SemanticSearchDialog';
+import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilarityResponse } from '@/lib/ai';
 
 interface Deal {
   id: string;
@@ -57,6 +59,14 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     probability: '',
     outcome: 'in_progress'
   });
+
+  // AI Embedding state
+  const [showSemanticSearch, setShowSemanticSearch] = useState(false);
+  const [isProcessingEmbeddings, setIsProcessingEmbeddings] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [selectedDealForRecommendations, setSelectedDealForRecommendations] = useState<Deal | null>(null);
+  const [dealSimilarityAnalysis, setDealSimilarityAnalysis] = useState<DealSimilarityResponse | null>(null);
+  const [isAnalyzingSimilarity, setIsAnalyzingSimilarity] = useState(false);
 
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
@@ -391,6 +401,82 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     }
   };
 
+  // AI Embedding Functions
+  const handleBatchProcessEmbeddings = async () => {
+    if (!user) return;
+
+    setIsProcessingEmbeddings(true);
+    try {
+      const result = await batchProcessDealsForEmbeddings(user.id);
+      
+      toast({
+        title: "Embeddings Generated!",
+        description: `Processed ${result.processed} deals with ${result.errors} errors. AI search is now available.`,
+      });
+
+      // Show details in console for debugging
+      console.log('Batch embedding results:', result);
+
+    } catch (error: any) {
+      console.error('Error processing embeddings:', error);
+      toast({
+        title: "Embedding generation failed",
+        description: error.message || "Failed to generate embeddings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingEmbeddings(false);
+    }
+  };
+
+  const handleGetDealRecommendations = async (deal: Deal) => {
+    if (!user) return;
+
+    setSelectedDealForRecommendations(deal);
+    setShowRecommendations(true);
+    setIsAnalyzingSimilarity(true);
+    setDealSimilarityAnalysis(null);
+
+    try {
+      const analysis = await analyzeDealSimilarity({
+        dealId: deal.id,
+        userId: user.id,
+        maxSimilarDeals: 5,
+        includeRecommendations: true
+      });
+      
+      setDealSimilarityAnalysis(analysis);
+
+      toast({
+        title: "AI Analysis Complete!",
+        description: `Found ${analysis.similar_deals.length} similar deals and generated ${analysis.recommendations.length} recommendations.`,
+      });
+
+    } catch (error: any) {
+      console.error('Error getting deal similarity analysis:', error);
+      toast({
+        title: "Analysis failed",
+        description: error.message || "Failed to analyze deal similarity. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzingSimilarity(false);
+    }
+  };
+
+  const handleSemanticSearchResult = (result: any) => {
+    // Find the deal in our current list and select it
+    const deal = deals.find(d => d.id === result.id);
+    if (deal && onSelectDeal) {
+      onSelectDeal(deal);
+    }
+    
+    toast({
+      title: "Deal Selected",
+      description: `Selected "${result.title || result.name}" with ${(result.similarity * 100).toFixed(1)}% similarity.`,
+    });
+  };
+
   // Calculate pipeline metrics
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
   const weightedValue = deals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
@@ -472,13 +558,41 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 Sales Pipeline
               </CardTitle>
               <CardDescription>
-                Track and manage your sales opportunities
+                Track and manage your sales opportunities with AI-powered insights
               </CardDescription>
             </div>
-            <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Deal
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button 
+                onClick={() => setShowSemanticSearch(true)}
+                variant="outline"
+                className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+              >
+                <Zap className="w-4 h-4 mr-2 text-purple-600" />
+                AI Search
+              </Button>
+              <Button 
+                onClick={handleBatchProcessEmbeddings}
+                disabled={isProcessingEmbeddings}
+                variant="outline"
+                className="bg-gradient-to-r from-blue-50 to-green-50 hover:from-blue-100 hover:to-green-100 border-blue-200"
+              >
+                {isProcessingEmbeddings ? (
+                  <>
+                    <Brain className="w-4 h-4 mr-2 animate-pulse text-blue-600" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2 text-blue-600" />
+                    Generate AI
+                  </>
+                )}
+              </Button>
+              <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Deal
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -652,6 +766,15 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 >
                                   <MessageSquare className="w-4 h-4 mr-1" />
                                   {aiReadiness >= 60 ? "Get AI Insights" : "AI Coach"}
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => handleGetDealRecommendations(deal)}
+                                  className="hover:bg-orange-50 text-orange-600 border-orange-200"
+                                >
+                                  <Sparkles className="w-4 h-4 mr-1" />
+                                  Similar
                                 </Button>
                                 <Button 
                                   size="sm" 
@@ -832,6 +955,266 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         onOpenChange={setShowDealForm} 
         onDealCreated={refetch}
       />
+
+      {/* Semantic Search Dialog */}
+      <SemanticSearchDialog
+        open={showSemanticSearch}
+        onOpenChange={setShowSemanticSearch}
+        onSelectResult={handleSemanticSearchResult}
+      />
+
+      {/* Deal Recommendations Dialog */}
+      <Dialog open={showRecommendations} onOpenChange={setShowRecommendations}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-orange-600" />
+              AI Deal Similarity Analysis
+            </DialogTitle>
+            <DialogDescription>
+              LLM-powered insights based on similar deals and historical patterns
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDealForRecommendations && (
+            <div className="space-y-6">
+              {/* Current Deal Info */}
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <h3 className="font-semibold text-slate-900 mb-2">Current Deal</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{selectedDealForRecommendations.title}</p>
+                    <p className="text-sm text-slate-600">{selectedDealForRecommendations.company} • {selectedDealForRecommendations.stage}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-lg">${selectedDealForRecommendations.value.toLocaleString()}</p>
+                    <p className="text-sm text-slate-600">{selectedDealForRecommendations.probability}% probability</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading State */}
+              {isAnalyzingSimilarity && (
+                <div className="text-center py-8">
+                  <Brain className="w-12 h-12 mx-auto mb-4 text-blue-600 animate-pulse" />
+                  <p className="text-slate-600">AI is analyzing deal patterns and generating insights...</p>
+                </div>
+              )}
+
+              {/* Analysis Results */}
+              {dealSimilarityAnalysis && !isAnalyzingSimilarity && (
+                <>
+                  {/* Analysis Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{dealSimilarityAnalysis.similar_deals.length}</div>
+                      <div className="text-sm text-slate-600">Similar Deals</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{dealSimilarityAnalysis.analysis_summary.average_similarity.toFixed(1)}%</div>
+                      <div className="text-sm text-slate-600">Avg Similarity</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{dealSimilarityAnalysis.recommendations.length}</div>
+                      <div className="text-sm text-slate-600">Recommendations</div>
+                    </div>
+                  </div>
+
+                  {/* AI Recommendations */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-slate-900 flex items-center">
+                      <Brain className="w-5 h-5 mr-2 text-blue-600" />
+                      AI Recommendations
+                    </h3>
+                    <div className="space-y-3">
+                      {dealSimilarityAnalysis.recommendations.map((recommendation, index) => {
+                        const getPriorityColor = (priority: string) => {
+                          switch (priority) {
+                            case 'high': return 'bg-red-50 border-red-200 text-red-900';
+                            case 'medium': return 'bg-yellow-50 border-yellow-200 text-yellow-900';
+                            case 'low': return 'bg-green-50 border-green-200 text-green-900';
+                            default: return 'bg-blue-50 border-blue-200 text-blue-900';
+                          }
+                        };
+
+                        const getPriorityIcon = (priority: string) => {
+                          switch (priority) {
+                            case 'high': return <AlertTriangle className="w-4 h-4" />;
+                            case 'medium': return <TrendingUp className="w-4 h-4" />;
+                            case 'low': return <CheckCircle className="w-4 h-4" />;
+                            default: return <Target className="w-4 h-4" />;
+                          }
+                        };
+
+                        return (
+                          <Card key={index} className={`border ${getPriorityColor(recommendation.priority)}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  {getPriorityIcon(recommendation.priority)}
+                                  <h4 className="font-semibold">{recommendation.title}</h4>
+                                  <Badge variant="outline" className="text-xs">
+                                    {recommendation.type.toUpperCase()}
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-medium">{recommendation.confidence}% confidence</div>
+                                  <div className="text-xs text-slate-500">{recommendation.priority} priority</div>
+                                </div>
+                              </div>
+                              <p className="text-sm mb-2">{recommendation.description}</p>
+                              <div className="bg-white p-2 rounded border border-slate-200 mb-2">
+                                <strong className="text-xs text-slate-600">Action:</strong>
+                                <p className="text-sm">{recommendation.action}</p>
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-slate-600">
+                                <span><strong>Expected Impact:</strong> {recommendation.expected_impact}</span>
+                                {recommendation.based_on_deals.length > 0 && (
+                                  <span>Based on {recommendation.based_on_deals.length} similar deals</span>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Similar Deals */}
+                  {dealSimilarityAnalysis.similar_deals.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-slate-900 flex items-center">
+                        <Target className="w-5 h-5 mr-2 text-green-600" />
+                        Similar Deals ({dealSimilarityAnalysis.similar_deals.length})
+                      </h3>
+                      <div className="space-y-3">
+                        {dealSimilarityAnalysis.similar_deals.map((similarDeal, index) => (
+                          <Card key={index} className="border border-slate-200">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <h4 className="font-medium text-slate-900">{similarDeal.title}</h4>
+                                    <Badge className={`text-xs ${
+                                      similarDeal.outcome === 'won' ? 'bg-green-100 text-green-800' :
+                                      similarDeal.outcome === 'lost' ? 'bg-red-100 text-red-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {similarDeal.outcome}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-slate-600">{similarDeal.company} • {similarDeal.stage}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold">${similarDeal.value?.toLocaleString()}</p>
+                                  <p className="text-sm text-green-600">{similarDeal.similarity_score}% similar</p>
+                                </div>
+                              </div>
+                              
+                              {similarDeal.similarity_reasons.length > 0 && (
+                                <div className="mb-2">
+                                  <strong className="text-xs text-slate-600">Why it's similar:</strong>
+                                  <ul className="text-sm text-slate-700 mt-1">
+                                    {similarDeal.similarity_reasons.map((reason, idx) => (
+                                      <li key={idx} className="flex items-center space-x-1">
+                                        <span className="w-1 h-1 bg-green-500 rounded-full"></span>
+                                        <span>{reason}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              
+                              {similarDeal.key_differences.length > 0 && (
+                                <div>
+                                  <strong className="text-xs text-slate-600">Key differences:</strong>
+                                  <ul className="text-sm text-slate-700 mt-1">
+                                    {similarDeal.key_differences.map((diff, idx) => (
+                                      <li key={idx} className="flex items-center space-x-1">
+                                        <span className="w-1 h-1 bg-orange-500 rounded-full"></span>
+                                        <span>{diff}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pattern Insights */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-slate-900 flex items-center">
+                      <TrendingUp className="w-5 h-5 mr-2 text-purple-600" />
+                      Pattern Insights
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-medium text-green-800 mb-2">Success Factors</h4>
+                        <ul className="text-sm text-green-700 space-y-1">
+                          {dealSimilarityAnalysis.analysis_summary.success_factors.map((factor, idx) => (
+                            <li key={idx} className="flex items-center space-x-1">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>{factor}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <h4 className="font-medium text-red-800 mb-2">Risk Factors</h4>
+                        <ul className="text-sm text-red-700 space-y-1">
+                          {dealSimilarityAnalysis.analysis_summary.risk_factors.map((risk, idx) => (
+                            <li key={idx} className="flex items-center space-x-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              <span>{risk}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    {dealSimilarityAnalysis.analysis_summary.pattern_insights.length > 0 && (
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 className="font-medium text-blue-800 mb-2">Key Insights</h4>
+                        <ul className="text-sm text-blue-700 space-y-1">
+                          {dealSimilarityAnalysis.analysis_summary.pattern_insights.map((insight, idx) => (
+                            <li key={idx} className="flex items-center space-x-1">
+                              <Brain className="w-3 h-3" />
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                <Button variant="outline" onClick={() => setShowRecommendations(false)}>
+                  Close
+                </Button>
+                {selectedDealForRecommendations && (
+                  <Button 
+                    onClick={() => {
+                      setShowRecommendations(false);
+                      handleAICoach(selectedDealForRecommendations);
+                    }}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Get AI Coach
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

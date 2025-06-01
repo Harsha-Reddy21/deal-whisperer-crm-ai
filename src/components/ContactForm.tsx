@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,19 +32,67 @@ const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps)
     e.preventDefault();
     if (!user) return;
 
+    // Validation for mandatory fields
+    if (!formData.name.trim()) {
+      toast({
+        title: "Name is required",
+        description: "Please enter the contact's name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.company.trim()) {
+      toast({
+        title: "Company is required",
+        description: "Please enter the company name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      toast({
+        title: "Email is required",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      toast({
+        title: "Phone is required",
+        description: "Please enter a phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Invalid email format",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('contacts')
         .insert({
           user_id: user.id,
-          name: formData.name,
-          company: formData.company,
-          title: formData.title,
-          email: formData.email,
-          phone: formData.phone,
+          name: formData.name.trim(),
+          company: formData.company.trim(),
+          title: formData.title.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           status: formData.status,
-          persona: formData.persona,
+          persona: formData.persona.trim(),
           score: Math.floor(Math.random() * 100) // Random score for demo
         });
 
@@ -107,12 +154,13 @@ const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps)
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
+              <Label htmlFor="company">Company *</Label>
               <Input
                 id="company"
                 value={formData.company}
                 onChange={(e) => handleChange('company', e.target.value)}
                 placeholder="Acme Corp"
+                required
               />
             </div>
             
@@ -128,23 +176,25 @@ const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps)
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
               placeholder="john@company.com"
+              required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone *</Label>
             <Input
               id="phone"
               value={formData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
               placeholder="+1 (555) 123-4567"
+              required
             />
           </div>
 
