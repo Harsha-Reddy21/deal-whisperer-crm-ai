@@ -4,26 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, Brain, MessageSquare, Target, AlertCircle, RefreshCw } from 'lucide-react';
-import { generateCustomerPersona, CustomerPersona, isOpenAIConfigured } from '@/lib/openai';
+import { generateLeadPersona, CustomerPersona, isOpenAIConfigured } from '@/lib/openai';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CustomerPersonaBuilder = () => {
   const { user } = useAuth();
-  const [selectedContactId, setSelectedContactId] = useState<string>('');
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [persona, setPersona] = useState<CustomerPersona | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasInteractionData, setHasInteractionData] = useState<boolean>(false);
 
-  // Fetch contacts
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', user?.id],
+  // Fetch leads instead of contacts
+  const { data: leads = [] } = useQuery({
+    queryKey: ['leads', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
       const { data, error } = await supabase
-        .from('contacts')
+        .from('leads')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -34,20 +35,74 @@ const CustomerPersonaBuilder = () => {
     enabled: !!user,
   });
 
-  const selectedContact = contacts.find(c => c.id === selectedContactId);
+  const selectedLead = leads.find(l => l.id === selectedLeadId);
+
+  // Check for interaction data when a lead is selected
+  const { data: interactionData } = useQuery({
+    queryKey: ['lead-interactions', selectedLeadId],
+    queryFn: async () => {
+      if (!selectedLeadId) return null;
+      
+      // Check for activities related to the lead (through converted contact)
+      const { data: activities, error: activitiesError } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('contact_id', selectedLead?.converted_contact_id || '')
+        .limit(5);
+
+      if (activitiesError) console.error('Error fetching activities:', activitiesError);
+
+      // Check for deals related to the lead
+      const { data: deals, error: dealsError } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('contact_id', selectedLead?.converted_contact_id || '')
+        .limit(5);
+
+      if (dealsError) console.error('Error fetching deals:', dealsError);
+
+      const hasData: boolean = Boolean(
+        (activities && activities.length > 0) || 
+        (deals && deals.length > 0) || 
+        (selectedLead && (selectedLead.email || selectedLead.phone || selectedLead.company))
+      );
+
+      setHasInteractionData(hasData);
+
+      return {
+        activities: activities || [],
+        deals: deals || [],
+        hasData
+      };
+    },
+    enabled: !!selectedLeadId && !!selectedLead,
+  });
 
   const generatePersona = async () => {
-    if (!selectedContact) return;
+    if (!selectedLead) return;
     
     setIsGenerating(true);
     setError(null);
     
     try {
-      const aiPersona = await generateCustomerPersona(selectedContact);
+      // Adapt lead data to work with the new lead persona generation function
+      const adaptedLeadData = {
+        name: selectedLead.name,
+        company: selectedLead.company || '',
+        email: selectedLead.email || '',
+        phone: selectedLead.phone || '',
+        status: selectedLead.status || 'new',
+        source: selectedLead.source,
+        score: selectedLead.score,
+        activities: interactionData?.activities || [],
+        deals: interactionData?.deals || []
+      };
+
+      const aiPersona = await generateLeadPersona(adaptedLeadData);
       setPersona(aiPersona);
     } catch (error) {
       console.error('Error generating persona:', error);
-      setError(error instanceof Error ? error.message : 'Failed to generate customer persona');
+      setError(error instanceof Error ? error.message : 'Failed to generate lead persona');
     } finally {
       setIsGenerating(false);
     }
@@ -61,7 +116,7 @@ const CustomerPersonaBuilder = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Brain className="w-5 h-5 mr-2 text-blue-600" />
-            Customer Persona Builder
+            Lead Persona Builder
           </CardTitle>
           <CardDescription>
             AI auto-generates behavioral profiles for leads based on interaction history
@@ -71,37 +126,61 @@ const CustomerPersonaBuilder = () => {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700 mb-2 block">
-                Select Contact
+                Select Lead
               </label>
-              <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+              <Select value={selectedLeadId} onValueChange={setSelectedLeadId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a contact to analyze" />
+                  <SelectValue placeholder="Choose a lead to analyze" />
                 </SelectTrigger>
                 <SelectContent>
-                  {contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                      {contact.name} - {contact.company}
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      {lead.name} - {lead.company || 'No Company'}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {selectedContact && (
+            {selectedLead && (
               <div className="bg-slate-50 p-4 rounded-lg">
-                <h4 className="font-medium text-slate-900 mb-2">Contact Information</h4>
+                <h4 className="font-medium text-slate-900 mb-2">Lead Information</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="text-slate-600">Name:</span> <span className="font-medium">{selectedContact.name}</span></div>
-                  <div><span className="text-slate-600">Company:</span> <span className="font-medium">{selectedContact.company}</span></div>
-                  <div><span className="text-slate-600">Email:</span> <span className="font-medium">{selectedContact.email}</span></div>
-                  <div><span className="text-slate-600">Status:</span> <span className="font-medium">{selectedContact.status}</span></div>
+                  <div><span className="text-slate-600">Name:</span> <span className="font-medium">{selectedLead.name}</span></div>
+                  <div><span className="text-slate-600">Company:</span> <span className="font-medium">{selectedLead.company || 'Not specified'}</span></div>
+                  <div><span className="text-slate-600">Email:</span> <span className="font-medium">{selectedLead.email || 'Not provided'}</span></div>
+                  <div><span className="text-slate-600">Status:</span> <span className="font-medium">{selectedLead.status}</span></div>
+                  <div><span className="text-slate-600">Source:</span> <span className="font-medium">{selectedLead.source}</span></div>
+                  <div><span className="text-slate-600">Score:</span> <span className="font-medium">{selectedLead.score || 0}</span></div>
+                </div>
+                
+                {/* Interaction Data Status */}
+                <div className="mt-3 pt-3 border-t border-slate-200">
+                  <div className="flex items-center space-x-2">
+                    {hasInteractionData ? (
+                      <>
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm text-green-700 font-medium">Interaction data available</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <span className="text-sm text-orange-700 font-medium">Limited interaction data</span>
+                      </>
+                    )}
+                  </div>
+                  {interactionData && (
+                    <div className="text-xs text-slate-600 mt-1">
+                      Activities: {interactionData.activities.length} | Deals: {interactionData.deals.length}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             <Button 
               onClick={generatePersona}
-              disabled={!selectedContact || isGenerating || !openAIConfigured}
+              disabled={!selectedLead || isGenerating || !openAIConfigured}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               {isGenerating ? (
@@ -130,7 +209,30 @@ const CustomerPersonaBuilder = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-red-700 text-sm">{error}</p>
+              <div className="text-red-700 text-sm">
+                {error.includes('Insufficient lead information') ? (
+                  <div>
+                    <p className="font-medium mb-1">Insufficient lead information</p>
+                    <p>This lead needs more basic information for persona generation. Please add:</p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Lead name (required)</li>
+                      <li>At least one of: company, email, or phone</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <p>{error}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!hasInteractionData && selectedLead && !error && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <div className="text-blue-700 text-sm">
+                <p className="font-medium mb-1">Limited interaction data detected</p>
+                <p>AI will generate a basic persona based on available lead information. For more detailed insights, consider adding activities or converting to a contact.</p>
+              </div>
             </div>
           )}
 
