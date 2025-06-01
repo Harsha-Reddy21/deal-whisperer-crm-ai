@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import DealForm from './DealForm';
+import SmartFilters from './SmartFilters';
 
 interface Deal {
   id: string;
@@ -30,8 +32,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showDealForm, setShowDealForm] = useState(false);
+  const [filters, setFilters] = useState({});
 
-  const { data: deals = [], isLoading, refetch } = useQuery({
+  const { data: allDeals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -66,10 +69,43 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     enabled: !!user,
   });
 
+  // Apply filters to deals
+  const filteredDeals = allDeals.filter(deal => {
+    // Smart filters
+    if (filters.smart === 'high-risk') {
+      return deal.probability <= 40;
+    }
+    if (filters.smart === 'stalled') {
+      const daysSinceActivity = Math.floor((new Date().getTime() - new Date(deal.last_activity).getTime()) / (1000 * 60 * 60 * 24));
+      return daysSinceActivity >= 7;
+    }
+    if (filters.smart === 'needs-attention') {
+      const daysSinceActivity = Math.floor((new Date().getTime() - new Date(deal.last_activity).getTime()) / (1000 * 60 * 60 * 24));
+      return (deal.stage === 'Discovery' || deal.stage === 'Proposal') && daysSinceActivity >= 3;
+    }
+
+    // Standard filters
+    if (filters.stage && deal.stage !== filters.stage) return false;
+    
+    if (filters.valueRange) {
+      const [min, max] = filters.valueRange.split('-').map(v => v.replace('+', ''));
+      const minValue = parseInt(min) || 0;
+      const maxValue = max ? parseInt(max) : Infinity;
+      if (deal.value < minValue || deal.value > maxValue) return false;
+    }
+
+    if (filters.probability) {
+      if (filters.probability === 'high' && deal.probability < 70) return false;
+      if (filters.probability === 'medium' && (deal.probability < 40 || deal.probability >= 70)) return false;
+      if (filters.probability === 'low' && deal.probability >= 40) return false;
+    }
+
+    return true;
+  });
+
   const handleAICoach = (deal: Deal, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
+    e.stopPropagation();
     onSelectDeal(deal);
-    // Switch to AI Coach tab - we'll need to communicate this to parent
     const event = new CustomEvent('switchToAICoach', { detail: deal });
     window.dispatchEvent(event);
   };
@@ -124,17 +160,25 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           </div>
         </CardHeader>
         <CardContent>
-          {deals.length === 0 ? (
+          <SmartFilters onFilterChange={setFilters} activeFilters={filters} />
+          
+          {filteredDeals.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-600 mb-4">No deals found. Create your first deal to get started!</p>
-              <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Deal
-              </Button>
+              {allDeals.length === 0 ? (
+                <>
+                  <p className="text-slate-600 mb-4">No deals found. Create your first deal to get started!</p>
+                  <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First Deal
+                  </Button>
+                </>
+              ) : (
+                <p className="text-slate-600">No deals match the current filters. Try adjusting your filter criteria.</p>
+              )}
             </div>
           ) : (
             <div className="grid gap-4">
-              {deals.map((deal) => (
+              {filteredDeals.map((deal) => (
                 <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => onSelectDeal(deal)}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">

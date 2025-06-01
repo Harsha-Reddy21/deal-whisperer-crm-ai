@@ -3,39 +3,76 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, TrendingUp, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { MessageSquare, TrendingUp, AlertTriangle, CheckCircle, Clock, ThumbsUp, ThumbsDown, Calendar, History } from 'lucide-react';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AICoachProps {
   selectedDeal: any;
 }
 
 const AICoach = ({ selectedDeal }: AICoachProps) => {
+  const { toast } = useToast();
+  const [completedActions, setCompletedActions] = useState<string[]>([]);
+  const [feedback, setFeedback] = useState<{[key: string]: 'positive' | 'negative' | null}>({});
+
   const recommendations = [
     {
+      id: 'follow-up',
       type: 'high',
       icon: AlertTriangle,
       title: 'Schedule Follow-up',
       description: 'It\'s been 3 days since last contact. Deals with gaps >48hrs have 32% lower close rates.',
       action: 'Send follow-up email',
-      impact: '+15% close probability'
+      impact: '+15% close probability',
+      timeline: '2 hours ago',
+      completed: false
     },
     {
+      id: 'value-prop',
       type: 'medium',
       icon: TrendingUp,
       title: 'Value Proposition',
       description: 'Similar deals succeed when ROI is clearly demonstrated. Consider sharing case study.',
       action: 'Send ROI calculator',
-      impact: '+12% close probability'
+      impact: '+12% close probability',
+      timeline: '1 day ago',
+      completed: false
     },
     {
+      id: 'next-steps',
       type: 'low',
       icon: CheckCircle,
       title: 'Next Steps',
       description: 'Deal is progressing well. Maintain momentum with clear next steps.',
       action: 'Schedule demo',
-      impact: '+8% close probability'
+      impact: '+8% close probability',
+      timeline: '3 days ago',
+      completed: false
     }
   ];
+
+  const toggleActionCompletion = (actionId: string) => {
+    setCompletedActions(prev => 
+      prev.includes(actionId) 
+        ? prev.filter(id => id !== actionId)
+        : [...prev, actionId]
+    );
+    
+    toast({
+      title: completedActions.includes(actionId) ? "Action marked as incomplete" : "Action completed!",
+      description: "Progress updated successfully.",
+    });
+  };
+
+  const handleFeedback = (actionId: string, feedbackType: 'positive' | 'negative') => {
+    setFeedback(prev => ({ ...prev, [actionId]: feedbackType }));
+    toast({
+      title: "Feedback recorded",
+      description: "Thank you for helping improve our AI suggestions!",
+    });
+  };
 
   const getRecommendationColor = (type: string) => {
     switch (type) {
@@ -54,6 +91,8 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
       default: return 'text-gray-600';
     }
   };
+
+  const completionRate = (completedActions.length / recommendations.length) * 100;
 
   return (
     <div className="space-y-6">
@@ -77,6 +116,25 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
                 <p className="text-slate-600 text-sm">Current Probability: {selectedDeal.probability}%</p>
               </div>
 
+              {/* Progress Tracker */}
+              <Card className="border border-blue-200 bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-slate-900 flex items-center">
+                      <CheckCircle className="w-4 h-4 mr-2 text-blue-600" />
+                      Progress Tracker
+                    </h4>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                      {completedActions.length}/{recommendations.length} completed
+                    </Badge>
+                  </div>
+                  <Progress value={completionRate} className="mb-2" />
+                  <p className="text-sm text-slate-600">
+                    {completionRate.toFixed(0)}% of AI recommendations completed
+                  </p>
+                </CardContent>
+              </Card>
+
               <div className="space-y-4">
                 <h4 className="font-semibold text-slate-900 flex items-center">
                   <TrendingUp className="w-4 h-4 mr-2" />
@@ -90,15 +148,58 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
                         <rec.icon className={`w-5 h-5 mt-0.5 ${getIconColor(rec.type)}`} />
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center justify-between">
-                            <h5 className="font-medium text-slate-900">{rec.title}</h5>
+                            <h5 className="font-medium text-slate-900 flex items-center">
+                              {rec.title}
+                              {completedActions.includes(rec.id) && (
+                                <CheckCircle className="w-4 h-4 ml-2 text-green-600" />
+                              )}
+                            </h5>
                             <Badge variant="outline" className="text-xs">
                               {rec.impact}
                             </Badge>
                           </div>
+                          
+                          {/* Timeline Integration */}
+                          <div className="flex items-center text-xs text-slate-500">
+                            <History className="w-3 h-3 mr-1" />
+                            AI suggested {rec.timeline}
+                          </div>
+                          
                           <p className="text-sm text-slate-600">{rec.description}</p>
-                          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600">
-                            {rec.action}
-                          </Button>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-purple-600 to-blue-600"
+                                onClick={() => toggleActionCompletion(rec.id)}
+                                variant={completedActions.includes(rec.id) ? "outline" : "default"}
+                              >
+                                {completedActions.includes(rec.id) ? "Mark Incomplete" : rec.action}
+                              </Button>
+                            </div>
+                            
+                            {/* Feedback Rating */}
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-slate-500">Helpful?</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className={`p-1 h-6 w-6 ${feedback[rec.id] === 'positive' ? 'bg-green-100 text-green-600' : ''}`}
+                                onClick={() => handleFeedback(rec.id, 'positive')}
+                              >
+                                <ThumbsUp className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className={`p-1 h-6 w-6 ${feedback[rec.id] === 'negative' ? 'bg-red-100 text-red-600' : ''}`}
+                                onClick={() => handleFeedback(rec.id, 'negative')}
+                              >
+                                <ThumbsDown className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
