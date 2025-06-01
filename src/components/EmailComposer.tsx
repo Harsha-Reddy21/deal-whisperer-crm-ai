@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Mail, Send, FileText, Paperclip, X } from 'lucide-react';
+import { Mail, Send, Paperclip, X, Sparkles, Copy, Edit3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { generateEmailContent, isOpenAIConfigured, EmailGenerationRequest } from '@/lib/openai';
 
 interface EmailComposerProps {
   open: boolean;
@@ -37,46 +37,65 @@ const EmailComposer = ({
     cc: '',
     bcc: '',
     subject: prefilledSubject,
-    body: '',
-    templateId: ''
+    body: ''
   });
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<string>('');
+  const [showGeneratedContent, setShowGeneratedContent] = useState(false);
 
-  // Fetch email templates
-  const { data: templates = [] } = useQuery({
-    queryKey: ['email-templates', user?.id],
+  // Update form data when props change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      to: prefilledTo,
+      subject: prefilledSubject
+    }));
+  }, [prefilledTo, prefilledSubject]);
+
+  // Fetch user profile for signature details
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return null;
       
       const { data, error } = await supabase
-        .from('email_templates')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('name');
+        .from('profiles')
+        .select('first_name, last_name, company, role, email')
+        .eq('id', user.id)
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.log('No profile found, using user email data');
+        return {
+          first_name: user.email?.split('@')[0] || 'User',
+          last_name: null,
+          company: null,
+          role: null,
+          email: user.email
+        };
+      }
       return data;
     },
     enabled: !!user && open,
   });
 
-  // Fetch contacts for autocomplete
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts', user?.id],
+  // Fetch contact details for better AI generation context
+  const { data: contactDetails } = useQuery({
+    queryKey: ['contact-details', contactId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!contactId) return null;
       
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, email')
-        .eq('user_id', user.id)
-        .order('name');
+        .select('name, company, email')
+        .eq('id', contactId)
+        .single();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!user && open,
+    enabled: !!contactId && open,
   });
 
   const sendEmailMutation = useMutation({
@@ -138,22 +157,73 @@ const EmailComposer = ({
       cc: '',
       bcc: '',
       subject: '',
-      body: '',
-      templateId: ''
+      body: ''
     });
     setAttachments([]);
+    setGeneratedContent('');
+    setShowGeneratedContent(false);
   };
 
-  const handleTemplateSelect = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (template) {
-      setFormData(prev => ({
-        ...prev,
-        templateId,
-        subject: template.subject,
-        body: template.body
-      }));
+  const generateAIContent = async () => {
+    if (!formData.subject.trim()) {
+      toast({
+        title: "Subject required",
+        description: "Please enter a subject line to generate email content.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    setIsGeneratingEmail(true);
+    try {
+      const request: EmailGenerationRequest = {
+        subject: formData.subject,
+        recipientName: contactDetails?.name,
+        recipientCompany: contactDetails?.company,
+        context: dealId ? 'Deal-related communication' : 'General business communication',
+        tone: 'professional',
+        senderName: userProfile?.first_name && userProfile?.last_name 
+          ? `${userProfile.first_name} ${userProfile.last_name}` 
+          : userProfile?.first_name || user?.email?.split('@')[0] || 'User',
+        senderPosition: userProfile?.role,
+        senderCompany: userProfile?.company,
+        senderEmail: user?.email,
+        senderPhone: undefined // Phone not available in profiles table
+      };
+
+      const response = await generateEmailContent(request);
+      setGeneratedContent(response.content);
+      setShowGeneratedContent(true);
+      
+      toast({
+        title: "Email content generated",
+        description: "AI has generated personalized email content with your details.",
+      });
+    } catch (error) {
+      console.error('Error generating email content:', error);
+      toast({
+        title: "Error generating content",
+        description: error instanceof Error ? error.message : 'Failed to generate email content',
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingEmail(false);
+    }
+  };
+
+  const copyGeneratedContent = () => {
+    setFormData(prev => ({ ...prev, body: generatedContent }));
+    setShowGeneratedContent(false);
+    toast({
+      title: "Content copied",
+      description: "Generated content has been copied to the message field.",
+    });
+  };
+
+  const editGeneratedContent = () => {
+    setFormData(prev => ({ ...prev, body: generatedContent }));
+    setShowGeneratedContent(false);
+    // Focus will automatically go to the textarea
   };
 
   const handleFileAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,6 +248,8 @@ const EmailComposer = ({
     sendEmailMutation.mutate(formData);
   };
 
+  const openAIConfigured = isOpenAIConfigured();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
@@ -187,31 +259,11 @@ const EmailComposer = ({
             Compose Email
           </DialogTitle>
           <DialogDescription>
-            Send an email to your contacts
+            Send an email to your contacts with AI-generated personalized content
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Template Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center">
-              <FileText className="w-4 h-4 mr-1" />
-              Use Template (Optional)
-            </label>
-            <Select value={formData.templateId} onValueChange={handleTemplateSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a template..." />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Recipients */}
           <div className="space-y-2">
             <label className="text-sm font-medium">To *</label>
@@ -242,22 +294,100 @@ const EmailComposer = ({
             </div>
           </div>
 
-          {/* Subject */}
+          {/* Subject with AI Generation */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Subject *</label>
-            <Input
-              placeholder="Email subject"
-              value={formData.subject}
-              onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-              required
-            />
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Email subject"
+                value={formData.subject}
+                onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+                required
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                onClick={generateAIContent}
+                disabled={!formData.subject.trim() || isGeneratingEmail || !openAIConfigured}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                {isGeneratingEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate with AI
+                  </>
+                )}
+              </Button>
+            </div>
+            {!openAIConfigured && (
+              <p className="text-xs text-amber-600">
+                OpenAI API key not configured. AI generation unavailable.
+              </p>
+            )}
           </div>
+
+          {/* Generated Content Preview */}
+          {showGeneratedContent && (
+            <Card className="border-purple-200 bg-purple-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center text-purple-700">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI Generated Personalized Content
+                </CardTitle>
+                <CardDescription className="text-purple-600">
+                  Review the generated content with your personal details and recipient information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-white p-3 rounded border border-purple-200 max-h-40 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">
+                    {generatedContent}
+                  </pre>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={copyGeneratedContent}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy to Message
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={editGeneratedContent}
+                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    <Edit3 className="w-4 h-4 mr-1" />
+                    Copy & Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowGeneratedContent(false)}
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Close
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Message Body */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Message *</label>
             <Textarea
-              placeholder="Type your message here..."
+              placeholder="Type your message here or generate personalized content with AI..."
               className="min-h-[200px]"
               value={formData.body}
               onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
