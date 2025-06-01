@@ -11,6 +11,9 @@ import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
 import ObjectionHandler from '@/components/ObjectionHandler';
+import ActivitiesManager from '@/components/ActivitiesManager';
+import LeadManagement from '@/components/LeadManagement';
+import ReportsDashboard from '@/components/ReportsDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -213,12 +216,15 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white/60 backdrop-blur-sm">
-            <TabsTrigger value="pipeline">Deal Pipeline</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-8 bg-white/60 backdrop-blur-sm">
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="activities">Activities</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
-            <TabsTrigger value="objection-handler">Objection Handler</TabsTrigger>
-            <TabsTrigger value="analytics">Win-Loss Analytics</TabsTrigger>
+            <TabsTrigger value="objection-handler">Objections</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline" className="space-y-6">
@@ -227,6 +233,18 @@ const Index = () => {
 
           <TabsContent value="contacts" className="space-y-6">
             <ContactsList />
+          </TabsContent>
+
+          <TabsContent value="leads" className="space-y-6">
+            <LeadManagement />
+          </TabsContent>
+
+          <TabsContent value="activities" className="space-y-6">
+            <ActivitiesManager />
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-6">
+            <ReportsDashboard />
           </TabsContent>
 
           <TabsContent value="ai-coach" className="space-y-6">
