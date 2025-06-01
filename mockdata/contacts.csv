@@ -1,0 +1,16 @@
+id,name,company,title,email,phone,status,persona,score,last_contact,avatar,user_id,created_at,updated_at
+contact-001,John Doe,Acme Corp,VP of Technology,john.doe@acmecorp.com,+1 (555) 123-4567,Hot Lead,Technical Decision Maker,75,2024-01-15,,user123,2024-01-10T10:00:00Z,2024-01-15T14:30:00Z
+contact-002,Sarah Chen,TechFlow Solutions,VP of Engineering,sarah.chen@techflow.com,+1 (555) 234-5678,Qualified,Innovation Leader,85,2024-01-12,,user123,2024-01-08T09:15:00Z,2024-01-12T16:45:00Z
+contact-003,Michael Rodriguez,DataSync Corp,CTO,m.rodriguez@datasync.com,+1 (555) 345-6789,Hot Lead,Data-Driven Executive,72,2024-01-14,,user123,2023-12-20T11:30:00Z,2024-01-14T13:20:00Z
+contact-004,Amanda Foster,GrowthHack Media,Marketing Director,amanda@growthhack.media,+1 (555) 890-1234,Customer,Growth-Oriented Marketer,88,2024-01-16,,user123,2023-11-15T14:10:00Z,2024-01-16T09:45:00Z
+contact-005,Emily Johnson,CloudVision Inc,Head of Product,emily.j@cloudvision.com,+1 (555) 456-7890,Qualified,Product Strategist,82,2024-01-13,,user123,2024-01-05T11:20:00Z,2024-01-13T15:30:00Z
+contact-006,David Kim,StartupLab,Founder & CEO,david@startuplab.io,+1 (555) 567-8901,Cold Lead,Visionary Entrepreneur,45,2024-01-10,,user123,2024-01-10T08:00:00Z,2024-01-10T08:00:00Z
+contact-007,Lisa Thompson,Enterprise Solutions Ltd,IT Director,lisa.thompson@enterprise-sol.com,+1 (555) 678-9012,Hot Lead,Infrastructure Specialist,78,2024-01-11,,user123,2024-01-07T15:45:00Z,2024-01-11T10:15:00Z
+contact-008,Robert Martinez,FinTech Innovations,Chief Technology Officer,robert.m@fintech-innov.com,+1 (555) 789-0123,Qualified,Security-Focused Leader,68,2024-01-09,,user123,2024-01-03T12:20:00Z,2024-01-09T17:30:00Z
+contact-009,James Wilson,AI Dynamics,Research Lead,j.wilson@aidynamics.com,+1 (555) 901-2345,Cold Lead,Research-Driven Analyst,52,2024-01-08,,user123,2024-01-02T16:30:00Z,2024-01-08T14:20:00Z
+contact-010,Maria Garcia,SecureNet Systems,VP of Operations,maria.garcia@securenet.com,+1 (555) 012-3456,Customer,Operations Excellence Leader,92,2024-01-17,,user123,2023-12-15T09:10:00Z,2024-01-17T11:45:00Z
+contact-011,Alex Thompson,Digital Dynamics,Software Engineer,alex.t@digitaldynamics.com,+1 (555) 111-2222,Cold Lead,Technical Implementer,38,2024-01-06,,user123,2024-01-06T14:00:00Z,2024-01-06T14:00:00Z
+contact-012,Rachel Kim,InnovateTech,Product Manager,rachel.kim@innovatetech.com,+1 (555) 222-3333,Hot Lead,Product Innovation Specialist,79,2024-01-14,,user123,2024-01-04T11:30:00Z,2024-01-14T16:20:00Z
+contact-013,Mark Johnson,CloudFirst Solutions,DevOps Manager,mark.j@cloudfirst.com,+1 (555) 333-4444,Qualified,Cloud Architecture Expert,71,2024-01-12,,user123,2024-01-01T09:45:00Z,2024-01-12T13:15:00Z
+contact-014,Jennifer Lee,DataFlow Corp,Business Analyst,jennifer.lee@dataflow.com,+1 (555) 444-5555,Cold Lead,Analytics Specialist,42,2024-01-05,,user123,2024-01-05T16:20:00Z,2024-01-05T16:20:00Z
+contact-015,Tom Wilson,NextGen Systems,Sales Director,tom.wilson@nextgen.com,+1 (555) 555-6666,Customer,Revenue Growth Leader,89,2024-01-18,,user123,2023-10-20T12:00:00Z,2024-01-18T10:30:00Z 

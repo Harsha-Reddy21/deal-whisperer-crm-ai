@@ -1,0 +1,11 @@
+id,title,company,contact_id,contact_name,value,stage,probability,next_step,last_activity,user_id,created_at,updated_at
+deal-001,Enterprise Software Deal,Acme Corp,contact-001,John Doe,50000,Discovery,50,Schedule discovery call,2024-01-15,user123,2024-01-15T10:00:00Z,2024-01-15T14:30:00Z
+deal-002,Cloud Migration Project,TechFlow Solutions,contact-002,Sarah Chen,125000,Proposal,65,Present technical proposal to stakeholders,2024-01-12,user123,2024-01-08T09:15:00Z,2024-01-12T16:45:00Z
+deal-003,Data Analytics Platform,DataSync Corp,contact-003,Michael Rodriguez,85000,Negotiation,75,Review contract terms and pricing,2024-01-14,user123,2023-12-20T11:30:00Z,2024-01-14T13:20:00Z
+deal-004,Marketing Automation Suite,GrowthHack Media,contact-004,Amanda Foster,65000,Closing,90,Finalize implementation timeline,2024-01-16,user123,2023-11-15T14:10:00Z,2024-01-16T09:45:00Z
+deal-005,CRM Integration Package,CloudVision Inc,contact-005,Emily Johnson,200000,Negotiation,80,Address integration requirements,2024-01-13,user123,2024-01-05T11:20:00Z,2024-01-13T15:30:00Z
+deal-006,Security Audit Services,StartupLab,contact-006,David Kim,45000,Discovery,25,Conduct security assessment meeting,2024-01-10,user123,2024-01-10T08:00:00Z,2024-01-10T08:00:00Z
+deal-007,Mobile App Development,Enterprise Solutions Ltd,contact-007,Lisa Thompson,175000,Proposal,60,Demo mobile prototypes,2024-01-11,user123,2024-01-07T15:45:00Z,2024-01-11T10:15:00Z
+deal-008,AI Implementation Project,FinTech Innovations,contact-008,Robert Martinez,95000,Discovery,40,Present AI capabilities overview,2024-01-09,user123,2024-01-03T12:20:00Z,2024-01-09T17:30:00Z
+deal-009,Infrastructure Upgrade,AI Dynamics,contact-009,James Wilson,35000,Proposal,60,Provide infrastructure assessment report,2024-01-08,user123,2024-01-02T16:30:00Z,2024-01-08T14:20:00Z
+deal-010,Digital Transformation Initiative,SecureNet Systems,contact-010,Maria Garcia,150000,Closing,85,Schedule executive sign-off meeting,2024-01-17,user123,2023-12-15T09:10:00Z,2024-01-17T11:45:00Z 
