@@ -81,6 +81,29 @@ const ObjectionHandler = () => {
                 onChange={(e) => setObjection(e.target.value)}
                 className="min-h-[100px] resize-none"
               />
+              
+              {/* Sample Objections */}
+              <div className="mt-3">
+                <p className="text-sm text-slate-600 mb-2">Try these sample objections:</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setObjection("Your solution is too expensive for our budget. We're looking for something more cost-effective.")}
+                    className="text-xs"
+                  >
+                    💰 Price Objection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setObjection("We're happy with our current solution and don't see the need to switch right now.")}
+                    className="text-xs"
+                  >
+                    🔄 Status Quo Objection
+                  </Button>
+                </div>
+              </div>
             </div>
             
             <Button 

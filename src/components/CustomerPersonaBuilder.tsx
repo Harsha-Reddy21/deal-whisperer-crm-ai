@@ -43,14 +43,29 @@ const CustomerPersonaBuilder = () => {
     queryFn: async () => {
       if (!selectedLeadId) return null;
       
-      // Check for activities related to the lead (through converted contact)
-      const { data: activities, error: activitiesError } = await supabase
+      // Check for activities related to the lead directly by lead_id
+      const { data: leadActivities, error: leadActivitiesError } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('lead_id', selectedLeadId)
+        .limit(10);
+
+      if (leadActivitiesError) console.error('Error fetching lead activities:', leadActivitiesError);
+
+      // Also check for activities related to the lead through converted contact
+      const { data: contactActivities, error: contactActivitiesError } = await supabase
         .from('activities')
         .select('*')
         .eq('contact_id', selectedLead?.converted_contact_id || '')
-        .limit(5);
+        .limit(10);
 
-      if (activitiesError) console.error('Error fetching activities:', activitiesError);
+      if (contactActivitiesError) console.error('Error fetching contact activities:', contactActivitiesError);
+
+      // Combine both activity sources
+      const allActivities = [
+        ...(leadActivities || []),
+        ...(contactActivities || [])
+      ];
 
       // Check for deals related to the lead
       const { data: deals, error: dealsError } = await supabase
@@ -62,15 +77,14 @@ const CustomerPersonaBuilder = () => {
       if (dealsError) console.error('Error fetching deals:', dealsError);
 
       const hasData: boolean = Boolean(
-        (activities && activities.length > 0) || 
-        (deals && deals.length > 0) || 
-        (selectedLead && (selectedLead.email || selectedLead.phone || selectedLead.company))
+        allActivities.length > 0 || 
+        (deals && deals.length > 0)
       );
 
       setHasInteractionData(hasData);
 
       return {
-        activities: activities || [],
+        activities: allActivities,
         deals: deals || [],
         hasData
       };
@@ -164,8 +178,8 @@ const CustomerPersonaBuilder = () => {
                       </>
                     ) : (
                       <>
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-sm text-orange-700 font-medium">Limited interaction data</span>
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span className="text-sm text-red-700 font-medium">No interaction data</span>
                       </>
                     )}
                   </div>
@@ -180,13 +194,18 @@ const CustomerPersonaBuilder = () => {
 
             <Button 
               onClick={generatePersona}
-              disabled={!selectedLead || isGenerating || !openAIConfigured}
+              disabled={!selectedLead || isGenerating || !openAIConfigured || !hasInteractionData}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               {isGenerating ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                   Generating Persona...
+                </>
+              ) : !hasInteractionData && selectedLead ? (
+                <>
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Need Interaction Data
                 </>
               ) : (
                 <>
@@ -230,8 +249,8 @@ const CustomerPersonaBuilder = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center space-x-2">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
               <div className="text-blue-700 text-sm">
-                <p className="font-medium mb-1">Limited interaction data detected</p>
-                <p>AI will generate a basic persona based on available lead information. For more detailed insights, consider adding activities or converting to a contact.</p>
+                <p className="font-medium mb-1">No interaction data found</p>
+                <p>To generate an AI persona, this lead needs at least one activity or deal. Please add some interaction history first.</p>
               </div>
             </div>
           )}

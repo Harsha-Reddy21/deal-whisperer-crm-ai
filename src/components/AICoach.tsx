@@ -62,6 +62,7 @@ const AICoach = ({ selectedDeal, onSelectDeal }: AICoachProps) => {
   const [showDealDetails, setShowDealDetails] = useState(false);
   const [dealContext, setDealContext] = useState<DealContext | null>(null);
   const [activeTab, setActiveTab] = useState('recommendations');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch deals for selection
   const { data: deals = [] } = useQuery({
@@ -504,24 +505,11 @@ const AICoach = ({ selectedDeal, onSelectDeal }: AICoachProps) => {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  {!recommendation.applied ? (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => applyRecommendationMutation.mutate({
-                                        recommendationId: recommendation.id,
-                                        action: recommendation.action
-                                      })}
-                                      disabled={applyRecommendationMutation.isPending}
-                                      className="bg-gradient-to-r from-purple-600 to-blue-600"
-                                    >
-                                      <Zap className="w-3 h-3 mr-1" />
-                                      Apply
-                                    </Button>
-                                  ) : (
+                                  {recommendation.applied ? (
                                     <Badge variant="outline" className="bg-green-100 text-green-800">
                                       Applied
                                     </Badge>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
                               
