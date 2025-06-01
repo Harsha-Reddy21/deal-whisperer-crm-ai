@@ -103,4 +103,7 @@ export { researchCompanyInfo, generateCompanies } from './companyResearcher';
 export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAnalyzer';
 
 // Smart Lead Analyzer
-export * from './smartLeadAnalyzer'; 
+export * from './smartLeadAnalyzer';
+
+// LinkedIn Contact Enricher
+export * from './linkedinEnricher'; 

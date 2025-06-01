@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc, Edit, Trash2 } from 'lucide-react';
+import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc, Edit, Trash2, Linkedin, Globe, Star, TrendingUp, Building2, MapPin, GraduationCap, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import ContactForm from './ContactForm';
+import { searchLinkedInContacts, type LinkedInSearchResponse, type LinkedInContact } from '@/lib/ai';
 
 interface Contact {
   id: string;
@@ -53,10 +54,27 @@ const ContactsList = () => {
     status: 'Cold Lead'
   });
 
+  // LinkedIn Search state
+  const [showLinkedInDialog, setShowLinkedInDialog] = useState(false);
+  const [linkedInResults, setLinkedInResults] = useState<LinkedInSearchResponse | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [addingContactId, setAddingContactId] = useState<string | null>(null);
+  const [searchForm, setSearchForm] = useState({
+    searchQuery: '',
+    targetIndustries: [] as string[],
+    targetRoles: [] as string[],
+    companySize: 'any' as const,
+    location: '',
+    projectDescription: '',
+    maxResults: 5
+  });
+
   const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts', user?.id],
     queryFn: async () => {
       if (!user) return [];
+      
+      console.log('Fetching contacts for user:', user.id);
       
       const { data, error } = await supabase
         .from('contacts')
@@ -65,6 +83,7 @@ const ContactsList = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.error('Error loading contacts:', error);
         toast({
           title: "Error loading contacts",
           description: error.message,
@@ -72,6 +91,8 @@ const ContactsList = () => {
         });
         return [];
       }
+
+      console.log('Loaded contacts:', data?.length || 0);
 
       return data.map(contact => ({
         id: contact.id,
@@ -89,6 +110,8 @@ const ContactsList = () => {
       }));
     },
     enabled: !!user,
+    staleTime: 0, // Always refetch when requested
+    refetchOnMount: true, // Always refetch when component mounts
   });
 
   // Advanced search and filter algorithm
@@ -319,6 +342,139 @@ const ContactsList = () => {
     }
   };
 
+  const handleLinkedInSearch = async () => {
+    if (!searchForm.searchQuery.trim()) {
+      toast({
+        title: "Search query required",
+        description: "Please enter a search query to find LinkedIn contacts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSearching(true);
+    setShowLinkedInDialog(true);
+
+    try {
+      const results = await searchLinkedInContacts({
+        searchQuery: searchForm.searchQuery,
+        targetIndustries: searchForm.targetIndustries.length > 0 ? searchForm.targetIndustries : undefined,
+        targetRoles: searchForm.targetRoles.length > 0 ? searchForm.targetRoles : undefined,
+        companySize: searchForm.companySize !== 'any' ? searchForm.companySize : undefined,
+        location: searchForm.location || undefined,
+        projectDescription: searchForm.projectDescription || undefined,
+        idealCustomerProfile: "CRM and sales technology users, decision makers in technology adoption",
+        maxResults: searchForm.maxResults
+      });
+
+      setLinkedInResults(results);
+      
+      toast({
+        title: "LinkedIn Search Complete!",
+        description: `Found ${results.contacts.length} relevant contacts with average relevance score of ${results.searchMetadata.averageRelevanceScore}%.`,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Search failed",
+        description: error.message || "Failed to search LinkedIn contacts. Please try again.",
+        variant: "destructive",
+      });
+      setShowLinkedInDialog(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const addLinkedInContact = async (linkedInContact: LinkedInContact) => {
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to add contacts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Set loading state for this specific contact
+    setAddingContactId(linkedInContact.id);
+
+    console.log('Adding LinkedIn contact:', linkedInContact);
+    console.log('User ID:', user.id);
+
+    try {
+      const contactData = {
+        user_id: user.id,
+        name: linkedInContact.name,
+        company: linkedInContact.company,
+        title: linkedInContact.title,
+        email: linkedInContact.email || '',
+        phone: linkedInContact.phone || '',
+        status: linkedInContact.contactPotential === 'high' ? 'Hot Lead' : 
+                linkedInContact.contactPotential === 'medium' ? 'Qualified' : 'Cold Lead',
+        score: linkedInContact.relevanceScore,
+        persona: `LinkedIn: ${linkedInContact.profileSummary.substring(0, 100)}...`
+      };
+
+      console.log('Contact data to insert:', contactData);
+
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert(contactData)
+        .select();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Contact inserted successfully:', data);
+
+      // Refetch contacts to update the list
+      console.log('Refetching contacts...');
+      const refetchResult = await refetch();
+      console.log('Refetch result:', refetchResult);
+      
+      // Verify the contact was added
+      setTimeout(() => {
+        const addedContact = contacts.find(c => c.name === linkedInContact.name && c.company === linkedInContact.company);
+        if (addedContact) {
+          console.log('Contact successfully found in list:', addedContact);
+          toast({
+            title: "✅ Verified!",
+            description: `${linkedInContact.name} is now visible in your contacts list.`,
+            variant: "default",
+          });
+        } else {
+          console.log('Contact not found in list yet, current contacts:', contacts.length);
+          toast({
+            title: "Contact added to database",
+            description: `${linkedInContact.name} was saved. Refresh the page if not visible.`,
+            variant: "default",
+          });
+        }
+      }, 1000);
+      
+      // Show success feedback
+      toast({
+        title: "Success!",
+        description: `${linkedInContact.name} has been added to your contacts.`,
+        variant: "default",
+      });
+
+    } catch (error: any) {
+      console.error('Error adding LinkedIn contact:', error);
+      toast({
+        title: "Error adding contact",
+        description: error.message || "Failed to add contact. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Clear loading state
+      setAddingContactId(null);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Hot Lead': return 'bg-red-100 text-red-800';
@@ -362,10 +518,26 @@ const ContactsList = () => {
                 Manage your contacts with AI-generated personas
               </CardDescription>
             </div>
-            <Button onClick={() => setShowContactForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Contact
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button 
+                onClick={() => setShowLinkedInDialog(true)}
+                className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
+              >
+                <Linkedin className="w-4 h-4 mr-2" />
+                Get from LinkedIn
+              </Button>
+              <Button 
+                onClick={() => refetch()}
+                variant="outline"
+                size="sm"
+              >
+                🔄 Refresh
+              </Button>
+              <Button onClick={() => setShowContactForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -641,6 +813,349 @@ const ContactsList = () => {
         onOpenChange={setShowContactForm} 
         onContactCreated={refetch}
       />
+
+      {/* LinkedIn Search Dialog */}
+      <Dialog open={showLinkedInDialog} onOpenChange={setShowLinkedInDialog}>
+        <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Linkedin className="w-5 h-5 mr-2 text-blue-600" />
+              Get Contacts from LinkedIn
+            </DialogTitle>
+            <DialogDescription>
+              Find and add relevant LinkedIn contacts that align with your project and ideal customer profile.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!linkedInResults ? (
+            <div className="space-y-6">
+              {/* Search Form */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Search Query *</label>
+                  <Input
+                    value={searchForm.searchQuery}
+                    onChange={(e) => setSearchForm(prev => ({ ...prev, searchQuery: e.target.value }))}
+                    placeholder="e.g., CTO technology companies, VP Sales SaaS, Marketing Director"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Target Industries (Optional)</label>
+                    <Input
+                      value={searchForm.targetIndustries.join(', ')}
+                      onChange={(e) => setSearchForm(prev => ({ 
+                        ...prev, 
+                        targetIndustries: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                      }))}
+                      placeholder="Technology, SaaS, Healthcare, Finance"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Target Roles (Optional)</label>
+                    <Input
+                      value={searchForm.targetRoles.join(', ')}
+                      onChange={(e) => setSearchForm(prev => ({ 
+                        ...prev, 
+                        targetRoles: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                      }))}
+                      placeholder="CTO, VP Sales, Director, Manager"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Company Size</label>
+                    <Select 
+                      value={searchForm.companySize} 
+                      onValueChange={(value: any) => setSearchForm(prev => ({ ...prev, companySize: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any Size</SelectItem>
+                        <SelectItem value="startup">Startup (1-50)</SelectItem>
+                        <SelectItem value="small">Small (51-200)</SelectItem>
+                        <SelectItem value="medium">Medium (201-1000)</SelectItem>
+                        <SelectItem value="large">Large (1001-5000)</SelectItem>
+                        <SelectItem value="enterprise">Enterprise (5000+)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Location (Optional)</label>
+                    <Input
+                      value={searchForm.location}
+                      onChange={(e) => setSearchForm(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="San Francisco, New York, Global"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Max Results</label>
+                    <Select 
+                      value={searchForm.maxResults.toString()} 
+                      onValueChange={(value) => setSearchForm(prev => ({ ...prev, maxResults: parseInt(value) }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 contacts</SelectItem>
+                        <SelectItem value="5">5 contacts</SelectItem>
+                        <SelectItem value="10">10 contacts</SelectItem>
+                        <SelectItem value="15">15 contacts</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Project Description (Optional)</label>
+                  <Input
+                    value={searchForm.projectDescription}
+                    onChange={(e) => setSearchForm(prev => ({ ...prev, projectDescription: e.target.value }))}
+                    placeholder="Describe your project or solution to find better aligned contacts"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                <Button variant="outline" onClick={() => setShowLinkedInDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleLinkedInSearch}
+                  disabled={isSearching || !searchForm.searchQuery.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
+                >
+                  {isSearching ? (
+                    <>
+                      <Globe className="w-4 h-4 mr-2 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Search LinkedIn
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Search Results */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-slate-900">{linkedInResults.searchMetadata.totalFound}</div>
+                  <div className="text-sm text-slate-600">Contacts Found</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{linkedInResults.searchMetadata.averageRelevanceScore}%</div>
+                  <div className="text-sm text-slate-600">Avg Relevance</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{linkedInResults.contacts.filter(c => c.contactPotential === 'high').length}</div>
+                  <div className="text-sm text-slate-600">High Potential</div>
+                </div>
+              </div>
+
+              {/* Contact Results */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                  <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                  LinkedIn Contacts Found
+                </h3>
+                
+                {linkedInResults.contacts.map((contact, index) => {
+                  const potentialColors = {
+                    high: 'bg-green-100 text-green-800 border-green-200',
+                    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                    low: 'bg-gray-100 text-gray-800 border-gray-200'
+                  };
+                  
+                  return (
+                    <Card key={contact.id} className="border border-slate-200">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Contact Header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-4">
+                              <Avatar className="w-12 h-12">
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  {contact.name.split(' ').map(n => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-slate-900">{contact.name}</h4>
+                                <p className="text-sm text-slate-600 flex items-center">
+                                  <Briefcase className="w-3 h-3 mr-1" />
+                                  {contact.title} at {contact.company}
+                                </p>
+                                <p className="text-sm text-slate-500 flex items-center mt-1">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  {contact.location}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={potentialColors[contact.contactPotential]}>
+                                {contact.contactPotential.toUpperCase()} POTENTIAL
+                              </Badge>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-blue-600">{contact.relevanceScore}%</div>
+                                <div className="text-xs text-slate-500">Relevance</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Profile Summary */}
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-blue-900">{contact.profileSummary}</p>
+                          </div>
+
+                          {/* Alignment Reason */}
+                          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                            <h5 className="font-medium text-green-900 mb-1">Why This Contact Aligns:</h5>
+                            <p className="text-sm text-green-800">{contact.alignmentReason}</p>
+                          </div>
+
+                          {/* Skills and Experience */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h5 className="font-medium text-slate-900 mb-2 flex items-center">
+                                <TrendingUp className="w-4 h-4 mr-1" />
+                                Key Skills
+                              </h5>
+                              <div className="flex flex-wrap gap-1">
+                                {contact.skills.slice(0, 5).map((skill, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {skill}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <h5 className="font-medium text-slate-900 mb-2 flex items-center">
+                                <GraduationCap className="w-4 h-4 mr-1" />
+                                Education
+                              </h5>
+                              <div className="space-y-1">
+                                {contact.education.slice(0, 2).map((edu, idx) => (
+                                  <p key={idx} className="text-sm text-slate-600">{edu}</p>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Contact Info and Actions */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                            <div className="flex items-center space-x-4 text-sm text-slate-600">
+                              {contact.email && (
+                                <div className="flex items-center">
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  {contact.email}
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Building2 className="w-4 h-4 mr-1" />
+                                Decision Power: {contact.estimatedDecisionMakingPower}%
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.open(contact.linkedinUrl, '_blank')}
+                              >
+                                <Linkedin className="w-4 h-4 mr-1" />
+                                View Profile
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => addLinkedInContact(contact)}
+                                disabled={addingContactId === contact.id}
+                                className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                              >
+                                {addingContactId === contact.id ? (
+                                  <>
+                                    <Globe className="w-4 h-4 mr-1 animate-spin" />
+                                    Adding...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Add Contact
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Insights */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-900">AI Insights</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Recommended Approach</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {linkedInResults.insights.recommendedApproach.slice(0, 3).map((approach, idx) => (
+                          <li key={idx} className="text-sm text-slate-600 flex items-start">
+                            <TrendingUp className="w-3 h-3 mt-1 mr-2 text-blue-600 flex-shrink-0" />
+                            {approach}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Next Steps</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {linkedInResults.insights.nextSteps.slice(0, 3).map((step, idx) => (
+                          <li key={idx} className="text-sm text-slate-600 flex items-start">
+                            <Star className="w-3 h-3 mt-1 mr-2 text-green-600 flex-shrink-0" />
+                            {step}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                <Button variant="outline" onClick={() => setLinkedInResults(null)}>
+                  New Search
+                </Button>
+                <Button variant="outline" onClick={() => setShowLinkedInDialog(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
