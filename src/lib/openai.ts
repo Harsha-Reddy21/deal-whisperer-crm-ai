@@ -143,7 +143,7 @@ Make the responses sound natural, empathetic, and professional. Focus on underst
   }
 }
 
-export async function generateDealCoachRecommendations(deal: any): Promise<DealCoachRecommendation[]> {
+export async function generateDealCoachRecommendations(deal: any, context?: any): Promise<DealCoachRecommendation[]> {
   try {
     console.log("Analyzing deal for AI coaching:", deal);
 
@@ -153,8 +153,30 @@ export async function generateDealCoachRecommendations(deal: any): Promise<DealC
       throw new Error('OpenAI API key not found. Please check your .env file.');
     }
 
-    const prompt = `You are an expert sales coach analyzing a deal. Here are the deal details:
+    // Enhanced context for better AI analysis
+    const contextInfo = context ? `
+    
+DEAL CONTEXT ANALYSIS:
+- Activities: ${context.activities?.length || 0} total activities
+- Recent Activities: ${context.activities?.slice(0, 3).map(a => `${a.type}: ${a.subject}`).join(', ') || 'None'}
+- Email Engagement: ${context.emails?.length || 0} emails sent
+- Email Opens: ${context.emails?.filter(e => e.opened_at).length || 0}
+- Email Clicks: ${context.emails?.filter(e => e.clicked_at).length || 0}
+- Deal Age: ${context.dealAge || 0} days
+- Days Since Last Activity: ${context.lastActivityDays || 0}
+- Contact Information: ${context.contact ? `${context.contact.name} (${context.contact.title || 'Unknown title'})` : 'No contact linked'}
+- Files/Documents: ${context.files?.length || 0} files attached
+- Comments/Notes: ${context.comments?.length || 0} comments
 
+BUYER BEHAVIOR SIGNALS:
+- Email engagement rate: ${context.emails?.length > 0 ? Math.round((context.emails.filter(e => e.opened_at).length / context.emails.length) * 100) : 0}%
+- Response pattern: ${context.lastActivityDays < 3 ? 'Highly responsive' : context.lastActivityDays < 7 ? 'Moderately responsive' : 'Low responsiveness'}
+- Deal velocity: ${context.dealAge > 0 ? Math.round(deal.probability / context.dealAge * 30) : 0} probability points per month
+` : '';
+
+    const prompt = `You are an expert sales coach with access to comprehensive deal data and historical patterns. Analyze this deal and provide 3 strategic recommendations.
+
+DEAL INFORMATION:
 Title: ${deal.title}
 Company: ${deal.company}
 Value: $${deal.value}
@@ -163,18 +185,38 @@ Probability: ${deal.probability}%
 Contact: ${deal.contact_name}
 Last Activity: ${deal.last_activity}
 Next Step: ${deal.next_step}
+${contextInfo}
 
-Based on this information, provide 3 AI-powered recommendations to improve the close probability. For each recommendation, provide:
-1. Type: "high", "medium", or "low" (priority level)
-2. Title: Short, actionable title
-3. Description: Detailed explanation of the issue/opportunity
-4. Action: Specific action to take
-5. Impact: Expected impact on close probability (e.g., "+15% close probability")
-6. Reasoning: Why this recommendation will help
+ANALYSIS FRAMEWORK:
+1. Pattern Matching: Compare this deal against successful/failed deals with similar characteristics
+2. Risk Assessment: Identify potential red flags or stalling indicators
+3. Opportunity Identification: Find acceleration opportunities based on deal stage and context
+4. Timing Analysis: Evaluate communication cadence and follow-up timing
+5. Engagement Quality: Assess buyer engagement and interest level
+
+For each recommendation, provide:
+1. Type: "high", "medium", or "low" (priority level based on impact and urgency)
+2. Title: Clear, actionable title (max 50 characters)
+3. Description: Detailed explanation with specific data points and patterns (100-150 words)
+4. Action: Specific, immediate action to take (50-75 words)
+5. Impact: Expected impact with percentage (e.g., "+15% close probability")
+6. Reasoning: Why this recommendation works, referencing sales psychology and best practices (75-100 words)
+
+PRIORITIZATION CRITERIA:
+- High: Critical timing issues, major risk factors, or high-impact opportunities
+- Medium: Process improvements, moderate risks, or standard best practices
+- Low: Optimization opportunities, minor improvements, or preventive measures
+
+Focus on:
+- Data-driven insights from the deal context
+- Specific, actionable recommendations
+- Clear reasoning based on sales patterns
+- Measurable impact predictions
+- Urgency based on deal characteristics
 
 Format your response as a JSON array with objects containing: type, title, description, action, impact, reasoning
 
-Focus on practical, actionable advice based on sales best practices and the specific deal context.`;
+Ensure recommendations are practical, specific to this deal's context, and backed by sales methodology.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -187,7 +229,7 @@ Focus on practical, actionable advice based on sales best practices and the spec
         messages: [
           {
             role: "system",
-            content: "You are an expert sales coach. Provide practical, actionable deal coaching recommendations in valid JSON format."
+            content: "You are an expert sales coach and deal strategist. Provide practical, data-driven recommendations in valid JSON format. Focus on actionable insights that sales reps can implement immediately."
           },
           {
             role: "user",
@@ -195,7 +237,7 @@ Focus on practical, actionable advice based on sales best practices and the spec
           }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 2000
       }),
     });
 
@@ -207,6 +249,8 @@ Focus on practical, actionable advice based on sales best practices and the spec
     const data = await response.json();
     const responseText = data.choices[0]?.message?.content;
     
+    console.log("OpenAI response:", responseText);
+    
     if (!responseText) {
       throw new Error('No response from OpenAI');
     }
@@ -214,6 +258,7 @@ Focus on practical, actionable advice based on sales best practices and the spec
     // Parse the JSON response
     let recommendations: DealCoachRecommendation[];
     try {
+      // Remove markdown code blocks if present
       let cleanedResponse = responseText.trim();
       if (cleanedResponse.startsWith('```json')) {
         cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -227,11 +272,26 @@ Focus on practical, actionable advice based on sales best practices and the spec
       throw new Error('Invalid response format from OpenAI');
     }
     
+    // Validate the response structure
     if (!Array.isArray(recommendations) || recommendations.length === 0) {
       throw new Error('Invalid response format from OpenAI');
     }
 
-    return recommendations;
+    // Validate each recommendation has required fields
+    const validRecommendations = recommendations.filter(recommendation => 
+      recommendation.type && 
+      recommendation.title && 
+      recommendation.description &&
+      recommendation.action && 
+      recommendation.impact &&
+      recommendation.reasoning
+    );
+
+    if (validRecommendations.length === 0) {
+      throw new Error('No valid recommendations received from OpenAI');
+    }
+
+    return validRecommendations;
 
   } catch (error) {
     console.error('Error generating deal coach recommendations:', error);

@@ -41,8 +41,9 @@ const Index = () => {
       console.log('🎯 Index: Switching to AI Coach with deal:', event.detail?.title);
       console.log('🎯 Index: Current activeTab before switch:', activeTab);
       
-      setActiveTab('ai-coach');
+      // Set the selected deal first, then switch to AI Coach tab
       setSelectedDeal(event.detail);
+      setActiveTab('ai-coach');
       
       console.log('🎯 Index: Tab switched to ai-coach');
       console.log('🎯 Index: Selected deal set to:', event.detail?.title);
@@ -54,7 +55,7 @@ const Index = () => {
       console.log('🎯 Index: Removing switchToAICoach event listener');
       window.removeEventListener('switchToAICoach', handleSwitchToAICoach);
     };
-  }, [activeTab]);
+  }, []); // Remove activeTab from dependency array to prevent re-registration
 
   // Fetch real statistics from the database
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
@@ -122,6 +123,29 @@ const Index = () => {
   const handleAIAssistant = () => {
     console.log('Opening AI assistant dialog');
     setShowAIAssistantDialog(true);
+  };
+
+  // Test function to debug the event system
+  const testAICoachEvent = () => {
+    console.log('🧪 Testing AI Coach event system');
+    const testDeal = {
+      id: 'test-123',
+      title: 'Test Deal',
+      company: 'Test Company',
+      value: 50000,
+      stage: 'Discovery',
+      probability: 75,
+      contact_name: 'Test Contact',
+      last_activity: 'Today',
+      next_step: 'Follow up',
+      created_at: new Date().toISOString()
+    };
+    
+    const event = new CustomEvent('switchToAICoach', { 
+      detail: testDeal 
+    });
+    console.log('🧪 Dispatching test event:', event);
+    window.dispatchEvent(event);
   };
 
   // Show loading state if user is not loaded yet
@@ -198,6 +222,9 @@ const Index = () => {
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleAIAssistant}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 AI Assistant
+              </Button>
+              <Button variant="outline" size="sm" onClick={testAICoachEvent} className="bg-yellow-50 border-yellow-300">
+                🧪 Test AI Coach
               </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />

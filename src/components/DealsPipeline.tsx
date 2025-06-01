@@ -297,17 +297,51 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   };
 
   const handleAICoach = (deal: Deal) => {
-    console.log('🎯 DealsPipeline: AI Coach button clicked for deal:', deal.title);
+    console.log('🧠 DealsPipeline: AI Coach requested for deal:', deal.title);
+    console.log('🧠 DealsPipeline: Deal object:', deal);
     
+    // Dispatch custom event to switch to AI Coach tab
+    const event = new CustomEvent('switchToAICoach', { 
+      detail: deal 
+    });
+    console.log('🧠 DealsPipeline: Dispatching switchToAICoach event with detail:', event.detail);
+    window.dispatchEvent(event);
+    console.log('🧠 DealsPipeline: Event dispatched successfully');
+    
+    // Also call onSelectDeal for backward compatibility
     if (onSelectDeal) {
-      console.log('🎯 DealsPipeline: Calling onSelectDeal with deal:', deal.title);
+      console.log('🧠 DealsPipeline: Calling onSelectDeal with deal:', deal.title);
       onSelectDeal(deal);
     }
     
-    console.log('🎯 DealsPipeline: Dispatching switchToAICoach event');
-    const event = new CustomEvent('switchToAICoach', { detail: deal });
-    window.dispatchEvent(event);
-    console.log('🎯 DealsPipeline: Event dispatched successfully');
+    // Additional fallback: Try to trigger tab change via URL hash or other method
+    setTimeout(() => {
+      console.log('🧠 DealsPipeline: Fallback check - verifying AI Coach opened');
+      // This timeout allows us to check if the event worked
+    }, 100);
+  };
+
+  // Calculate AI readiness score for each deal
+  const calculateAIReadiness = (deal: Deal) => {
+    let score = 0;
+    if (deal.value > 0) score += 20;
+    if (deal.probability > 0) score += 20;
+    if (deal.contact_name) score += 20;
+    if (deal.stage !== 'Discovery') score += 20;
+    if (deal.next_step && deal.next_step !== 'Follow up required') score += 20;
+    return score;
+  };
+
+  const getAIReadinessColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getAIReadinessLabel = (score: number) => {
+    if (score >= 80) return 'High';
+    if (score >= 60) return 'Medium';
+    return 'Low';
   };
 
   const getStageColor = (stage: string) => {
@@ -500,79 +534,128 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
               </div>
             ) : (
               <div className="grid gap-4">
-                {filteredAndSortedDeals.map((deal) => (
-                  <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-slate-900">{deal.title}</h3>
-                            <div className="flex items-center space-x-2">
-                              <Badge className={getStageColor(deal.stage)}>
-                                {deal.stage}
-                              </Badge>
-                              <span className="text-lg font-bold text-slate-900">
-                                ${deal.value.toLocaleString()}
-                              </span>
+                {filteredAndSortedDeals.map((deal) => {
+                  const aiReadiness = calculateAIReadiness(deal);
+                  return (
+                    <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-slate-900">{deal.title}</h3>
+                              <div className="flex items-center space-x-2">
+                                <Badge className={getStageColor(deal.stage)}>
+                                  {deal.stage}
+                                </Badge>
+                                <span className="text-lg font-bold text-slate-900">
+                                  ${deal.value.toLocaleString()}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          
-                          <div className="flex items-center space-x-4 text-sm text-slate-600">
-                            <div className="flex items-center">
-                              <User className="w-4 h-4 mr-1" />
-                              {deal.company}
+                            
+                            <div className="flex items-center space-x-4 text-sm text-slate-600">
+                              <div className="flex items-center">
+                                <User className="w-4 h-4 mr-1" />
+                                {deal.company}
+                              </div>
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                Last activity: {deal.last_activity}
+                              </div>
                             </div>
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              Last activity: {deal.last_activity}
-                            </div>
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-slate-600">Close Probability:</span>
-                              <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
-                                {deal.probability}%
-                              </span>
-                              <Progress value={deal.probability} className="w-20" />
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-slate-600">Close Probability:</span>
+                                  <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
+                                    {deal.probability}%
+                                  </span>
+                                  <Progress value={deal.probability} className="w-20" />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-slate-600">AI Readiness:</span>
+                                  <span className={`text-sm font-medium ${getAIReadinessColor(aiReadiness)}`}>
+                                    {getAIReadinessLabel(aiReadiness)}
+                                  </span>
+                                  <Progress value={aiReadiness} className="w-16" />
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant={aiReadiness >= 60 ? "default" : "outline"}
+                                  onClick={() => handleAICoach(deal)}
+                                  className={aiReadiness >= 60 ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" : "hover:bg-purple-50"}
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-1" />
+                                  {aiReadiness >= 60 ? "Get AI Insights" : "AI Coach"}
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => handleEdit(deal)}
+                                  className="hover:bg-blue-50"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => setDeletingDeal(deal)}
+                                  className="hover:bg-red-50 text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleAICoach(deal)}
-                                className="hover:bg-purple-50"
-                              >
-                                <MessageSquare className="w-4 h-4 mr-1" />
-                                AI Coach
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => handleEdit(deal)}
-                                className="hover:bg-blue-50"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => setDeletingDeal(deal)}
-                                className="hover:bg-red-50 text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
 
-                          <div className="bg-slate-50 p-2 rounded text-sm">
-                            <strong>Next Step:</strong> {deal.next_step}
+                            <div className="bg-slate-50 p-2 rounded text-sm">
+                              <strong>Next Step:</strong> {deal.next_step}
+                            </div>
+
+                            {/* AI Insights Preview */}
+                            {aiReadiness >= 80 && (
+                              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded border border-green-200">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span className="text-sm font-medium text-green-800">AI Insight Available</span>
+                                </div>
+                                <p className="text-sm text-green-700">
+                                  This deal has high-quality data. AI can provide detailed recommendations for acceleration.
+                                </p>
+                              </div>
+                            )}
+                            
+                            {aiReadiness >= 60 && aiReadiness < 80 && (
+                              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded border border-yellow-200">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                  <span className="text-sm font-medium text-yellow-800">AI Analysis Ready</span>
+                                </div>
+                                <p className="text-sm text-yellow-700">
+                                  Good data quality. AI can provide targeted recommendations to improve close probability.
+                                </p>
+                              </div>
+                            )}
+                            
+                            {aiReadiness < 60 && (
+                              <div className="bg-gradient-to-r from-red-50 to-pink-50 p-3 rounded border border-red-200">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                  <span className="text-sm font-medium text-red-800">Limited AI Data</span>
+                                </div>
+                                <p className="text-sm text-red-700">
+                                  Add more deal details (contact, activities, notes) to unlock AI recommendations.
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
