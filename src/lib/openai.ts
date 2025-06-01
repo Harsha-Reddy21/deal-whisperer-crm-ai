@@ -656,3 +656,59 @@ export function isOpenAIConfigured(): boolean {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   return !!apiKey && apiKey.length > 0;
 }
+
+export async function generateAIAssistantResponse(prompt: string): Promise<string> {
+  try {
+    console.log("Generating AI assistant response for:", prompt);
+
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('OpenAI API key not found. Please check your .env file.');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert sales assistant. Provide helpful, actionable advice for sales professionals. Be concise, practical, and focus on actionable insights. Format your responses clearly with bullet points or numbered lists when appropriate."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.choices[0]?.message?.content;
+    
+    if (!responseText) {
+      throw new Error('No response from OpenAI');
+    }
+
+    return responseText;
+
+  } catch (error) {
+    console.error('Error generating AI assistant response:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to generate AI response. Please check your connection and try again.');
+  }
+}

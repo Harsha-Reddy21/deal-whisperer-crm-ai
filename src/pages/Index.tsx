@@ -9,6 +9,7 @@ import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut,
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
 import AICoach from '@/components/AICoach';
+import AIAssistant from '@/components/AIAssistant';
 import ObjectionHandler from '@/components/ObjectionHandler';
 import CustomerPersonaBuilder from '@/components/CustomerPersonaBuilder';
 import WinLossExplainer from '@/components/WinLossExplainer';
@@ -27,7 +28,6 @@ const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [activeTab, setActiveTab] = useState('pipeline');
   const [showTasksDialog, setShowTasksDialog] = useState(false);
-  const [showAIAssistantDialog, setShowAIAssistantDialog] = useState(false);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -121,8 +121,8 @@ const Index = () => {
   };
 
   const handleAIAssistant = () => {
-    console.log('Opening AI assistant dialog');
-    setShowAIAssistantDialog(true);
+    console.log('Switching to AI Assistant tab');
+    setActiveTab('ai-assistant');
   };
 
   // Test function to debug the event system
@@ -258,12 +258,13 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-12 bg-white/60 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-13 bg-white/60 backdrop-blur-sm">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="activities">Activities</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
             <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
             <TabsTrigger value="objection-handler">Objections</TabsTrigger>
             <TabsTrigger value="persona-builder">Personas</TabsTrigger>
@@ -291,6 +292,10 @@ const Index = () => {
 
           <TabsContent value="reports" className="space-y-6">
             <ReportsDashboard />
+          </TabsContent>
+
+          <TabsContent value="ai-assistant" className="space-y-6">
+            <AIAssistant />
           </TabsContent>
 
           <TabsContent value="ai-coach" className="space-y-6">
@@ -344,32 +349,6 @@ const Index = () => {
             <div className="p-4 bg-green-50 rounded-lg">
               <h4 className="font-medium text-slate-900">Contract review meeting</h4>
               <p className="text-sm text-slate-600">Final review with DataSync Inc at 4:30 PM</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Assistant Dialog */}
-      <Dialog open={showAIAssistantDialog} onOpenChange={setShowAIAssistantDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>AI Sales Assistant</DialogTitle>
-            <DialogDescription>
-              Get instant help with your sales process
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">💡 Quick Insights</h4>
-              <p className="text-sm text-slate-600">Your pipeline is 23% ahead of last month. Focus on closing 3 deals in negotiation stage.</p>
-            </div>
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">📧 Suggested Actions</h4>
-              <p className="text-sm text-slate-600">Send follow-up emails to 2 prospects who haven't responded in 3+ days.</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">🎯 Priority Recommendations</h4>
-              <p className="text-sm text-slate-600">Schedule demos with your top 3 qualified leads to accelerate the sales cycle.</p>
             </div>
           </div>
         </DialogContent>
