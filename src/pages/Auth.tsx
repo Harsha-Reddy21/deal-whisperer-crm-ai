@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, Mail, Lock, User } from 'lucide-react';
+import { TrendingUp, Mail, Lock, User, AlertCircle, Info } from 'lucide-react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,54 +28,47 @@ const Auth = () => {
     lastName: '',
   });
 
+  // Check if we're in development mode
+  const isDevelopmentMode = () => {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    return !url || 
+           !key || 
+           url.includes('your-project-ref') || 
+           url.includes('ixqjqjqjqjqjqjqjqjqj') ||
+           key.includes('your-anon-key-here') ||
+           key.includes('example');
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signIn(signInForm.email, signInForm.password);
-
-    if (error) {
-      toast({
-        title: "Sign In Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
+    try {
+      await signIn(signInForm.email, signInForm.password);
       navigate('/');
+    } catch (error: any) {
+      // Error handling is now done in the AuthContext
+      console.error('Sign in error:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await signUp(
-      signUpForm.email,
-      signUpForm.password,
-      signUpForm.firstName,
-      signUpForm.lastName
-    );
-
-    if (error) {
-      toast({
-        title: "Sign Up Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to verify your account.",
-      });
+    try {
+      await signUp(signUpForm.email, signUpForm.password);
+      // Success handling is now done in the AuthContext
+    } catch (error: any) {
+      // Error handling is now done in the AuthContext
+      console.error('Sign up error:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -89,6 +82,17 @@ const Auth = () => {
           <CardDescription>AI-Powered Sales Management</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Development Mode Alert */}
+          {isDevelopmentMode() && (
+            <Alert className="mb-6 border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Development Mode:</strong> Using mock authentication for testing. 
+                Any email/password will work for sign in.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Tabs defaultValue="signin" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -104,7 +108,7 @@ const Auth = () => {
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder={isDevelopmentMode() ? "Any email (dev mode)" : "Enter your email"}
                       className="pl-10"
                       value={signInForm.email}
                       onChange={(e) => setSignInForm({ ...signInForm, email: e.target.value })}
@@ -119,7 +123,7 @@ const Auth = () => {
                     <Input
                       id="signin-password"
                       type="password"
-                      placeholder="Enter your password"
+                      placeholder={isDevelopmentMode() ? "Any password (dev mode)" : "Enter your password"}
                       className="pl-10"
                       value={signInForm.password}
                       onChange={(e) => setSignInForm({ ...signInForm, password: e.target.value })}
@@ -172,7 +176,7 @@ const Auth = () => {
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="Enter your email"
+                      placeholder={isDevelopmentMode() ? "Any email (dev mode)" : "Enter your email"}
                       className="pl-10"
                       value={signUpForm.email}
                       onChange={(e) => setSignUpForm({ ...signUpForm, email: e.target.value })}
@@ -187,7 +191,7 @@ const Auth = () => {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Create a password"
+                      placeholder={isDevelopmentMode() ? "Any password (dev mode)" : "Create a password"}
                       className="pl-10"
                       value={signUpForm.password}
                       onChange={(e) => setSignUpForm({ ...signUpForm, password: e.target.value })}
@@ -205,6 +209,19 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Setup Instructions for Production */}
+          {isDevelopmentMode() && (
+            <Alert className="mt-6 border-yellow-200 bg-yellow-50">
+              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800 text-xs">
+                <strong>For Production:</strong> Update your .env file with real Supabase credentials from{' '}
+                <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline">
+                  supabase.com
+                </a>
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     </div>

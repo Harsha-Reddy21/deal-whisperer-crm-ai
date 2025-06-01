@@ -23,6 +23,12 @@ export type {
   EmailGenerationResponse
 } from './emailGenerator';
 
+// Export email summarization types
+export type {
+  EmailSummaryRequest,
+  EmailSummaryResponse 
+} from './emailSummarizer';
+
 // Export company research types
 export type {
   CompanyInfo,
@@ -38,6 +44,19 @@ export type {
   TavilySearchResult,
   TavilySearchResponse
 } from './tavilySearch';
+
+// Export transcription service types
+export type {
+  TranscriptionRequest,
+  TranscriptionResponse,
+  SummarizationRequest,
+  SummarizationResponse
+} from './transcriptionService';
+
+// Export CRM data analysis types
+export type {
+  CRMDataContext 
+} from './crmDataAnalyzer';
 
 // Export configuration utilities
 export {
@@ -56,6 +75,15 @@ export {
   searchCompaniesList
 } from './tavilySearch';
 
+// Export transcription utilities
+export {
+  transcribeAudio,
+  summarizeTranscript,
+  extractAudioFromVideo,
+  validateTranscriptionFile,
+  getEstimatedTranscriptionTime
+} from './transcriptionService';
+
 // Export AI services
 export { generateObjectionSuggestions } from './objectionHandler';
 export { generateDealCoachRecommendations } from './dealCoach';
@@ -65,16 +93,11 @@ export { generateAIAssistantResponse } from './assistant';
 export { findPeopleForProduct } from './productPersonaMatcher';
 export { generateEmailContent } from './emailGenerator';
 
-// Email Summarization
-export { 
-  summarizeEmails, 
-  summarizeSingleEmail,
-  type EmailSummaryRequest,
-  type EmailSummaryResponse 
-} from './emailSummarizer';
+// Email summarization
+export { summarizeEmails, summarizeSingleEmail } from './emailSummarizer';
 
-// Company Research
-export {
-  researchCompanyInfo,
-  generateCompanies
-} from './companyResearcher'; 
+// Company research
+export { researchCompanyInfo, generateCompanies } from './companyResearcher';
+
+// CRM data analysis
+export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAnalyzer'; 

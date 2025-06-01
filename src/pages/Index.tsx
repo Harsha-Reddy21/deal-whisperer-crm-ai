@@ -20,6 +20,8 @@ import ReportsDashboard from '@/components/ReportsDashboard';
 import EmailManager from '@/components/EmailManager';
 import CalendarScheduling from '@/components/CalendarScheduling';
 import FileManagement from '@/components/FileManagement';
+import TranscriptsManager from '@/components/TranscriptsManager';
+import ChatCRM from '@/components/ChatCRM';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [activeTab, setActiveTab] = useState('pipeline');
-  const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [showChatCRM, setShowChatCRM] = useState(false);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -124,9 +126,9 @@ const Index = () => {
     await signOut();
   };
 
-  const handleTodaysTasks = () => {
-    console.log('Opening tasks dialog');
-    setShowTasksDialog(true);
+  const handleChatCRM = () => {
+    console.log('Opening ChatCRM dialog');
+    setShowChatCRM(true);
   };
 
   const handleAIAssistant = () => {
@@ -231,9 +233,9 @@ const Index = () => {
                 <User className="w-4 h-4 text-slate-600" />
                 <span className="text-sm text-slate-700">{user?.email}</span>
               </div>
-              <Button variant="outline" size="sm" onClick={handleTodaysTasks}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Today's Tasks
+              <Button variant="outline" size="sm" onClick={handleChatCRM}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                ChatCRM
               </Button>
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleAIAssistant}>
                 <MessageSquare className="w-4 h-4 mr-2" />
@@ -290,6 +292,7 @@ const Index = () => {
               <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
               <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
               <TabsTrigger value="companies" className="whitespace-nowrap">Companies</TabsTrigger>
+              <TabsTrigger value="transcripts" className="whitespace-nowrap">Transcripts</TabsTrigger>
             </TabsList>
           </div>
 
@@ -348,34 +351,15 @@ const Index = () => {
           <TabsContent value="companies" className="space-y-6">
             <CompaniesManager />
           </TabsContent>
+
+          <TabsContent value="transcripts" className="space-y-6">
+            <TranscriptsManager />
+          </TabsContent>
         </Tabs>
       </div>
 
-      {/* Today's Tasks Dialog */}
-      <Dialog open={showTasksDialog} onOpenChange={setShowTasksDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Today's Tasks</DialogTitle>
-            <DialogDescription>
-              Your scheduled tasks and follow-ups for today
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">Follow up with Acme Corp</h4>
-              <p className="text-sm text-slate-600">Discovery call scheduled for 2:00 PM</p>
-            </div>
-            <div className="p-4 bg-yellow-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">Send proposal to TechFlow</h4>
-              <p className="text-sm text-slate-600">Due today - $75K enterprise deal</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-slate-900">Contract review meeting</h4>
-              <p className="text-sm text-slate-600">Final review with DataSync Inc at 4:30 PM</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* ChatCRM Dialog */}
+      <ChatCRM open={showChatCRM} onOpenChange={setShowChatCRM} />
     </div>
   );
 };

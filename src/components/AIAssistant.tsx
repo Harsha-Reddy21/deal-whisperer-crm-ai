@@ -3,10 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { 
   Brain, 
   MessageSquare, 
@@ -18,14 +15,11 @@ import {
   TrendingUp, 
   Target, 
   FileText,
-  Send,
-  Copy,
-  ThumbsUp,
-  RefreshCw,
-  Lightbulb
+  Database
 } from 'lucide-react';
-import { generateObjectionSuggestions, generateAIAssistantResponse, isOpenAIConfigured } from '@/lib/openai';
+import { isOpenAIConfigured } from '@/lib/ai';
 import { useToast } from '@/hooks/use-toast';
+import ChatCRM from './ChatCRM';
 
 interface AITemplate {
   id: string;
@@ -36,20 +30,11 @@ interface AITemplate {
   prompt: string;
 }
 
-interface ChatMessage {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
 const AIAssistant = () => {
-  const [activeMode, setActiveMode] = useState<'templates' | 'chat'>('templates');
+  const [activeMode, setActiveMode] = useState<'templates' | 'chatcrm'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<AITemplate | null>(null);
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showChatCRM, setShowChatCRM] = useState(false);
   const { toast } = useToast();
 
   const aiTemplates: AITemplate[] = [
@@ -110,86 +95,17 @@ const AIAssistant = () => {
 
   const handleTryTemplate = (template: AITemplate) => {
     setSelectedTemplate(template);
-    setCustomPrompt(template.prompt);
-    setActiveMode('chat');
-    
-    // Add the template prompt as a user message
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: template.prompt,
-      timestamp: new Date()
-    };
-    
-    setChatMessages([userMessage]);
+    setActiveMode('chatcrm');
+    setShowChatCRM(true);
     
     toast({
-      title: "Template loaded",
-      description: `${template.title} template is ready to use. Customize the prompt and send!`,
+      title: "Template selected",
+      description: `${template.title} template loaded. You can now use it in ChatCRM.`,
     });
   };
 
-  const handleSendMessage = async () => {
-    if (!customPrompt.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: customPrompt,
-      timestamp: new Date()
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setIsGenerating(true);
-
-    try {
-      let responseContent: string;
-      
-      if (openAIConfigured) {
-        // Use actual OpenAI API
-        responseContent = await generateAIAssistantResponse(customPrompt);
-      } else {
-        // Provide helpful fallback response
-        responseContent = `I understand you'd like help with: "${customPrompt}"\n\nTo enable full AI functionality, please configure your OpenAI API key in the environment variables.\n\nFor now, I can suggest that you:\n\n• Gather relevant information about your target\n• Research their recent activities and news\n• Identify specific pain points\n• Craft a personalized approach\n• Use the AI templates as starting points\n\nWould you like me to help you with any specific aspect of this request?`;
-      }
-      
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: responseContent,
-        timestamp: new Date()
-      };
-
-      setChatMessages(prev => [...prev, assistantMessage]);
-      setCustomPrompt('');
-    } catch (error) {
-      console.error('Error generating AI response:', error);
-      
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: `I apologize, but I encountered an error while processing your request: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or check your API configuration.`,
-        timestamp: new Date()
-      };
-
-      setChatMessages(prev => [...prev, errorMessage]);
-      
-      toast({
-        title: "Error",
-        description: "Failed to generate AI response. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyMessage = (content: string) => {
-    navigator.clipboard.writeText(content);
-    toast({
-      title: "Copied!",
-      description: "Message copied to clipboard.",
-    });
+  const handleOpenChatCRM = () => {
+    setShowChatCRM(true);
   };
 
   const getCategoryColor = (category: string) => {
@@ -218,15 +134,15 @@ const AIAssistant = () => {
         </CardHeader>
         <CardContent>
           {/* Mode Selection */}
-          <Tabs value={activeMode} onValueChange={(value) => setActiveMode(value as 'templates' | 'chat')} className="space-y-6">
+          <Tabs value={activeMode} onValueChange={(value) => setActiveMode(value as 'templates' | 'chatcrm')} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 bg-slate-100">
               <TabsTrigger value="templates" className="flex items-center">
                 <Sparkles className="w-4 h-4 mr-2" />
                 AI Templates
               </TabsTrigger>
-              <TabsTrigger value="chat" className="flex items-center">
+              <TabsTrigger value="chatcrm" className="flex items-center">
                 <MessageSquare className="w-4 h-4 mr-2" />
-                Custom Prompt
+                Chat CRM
               </TabsTrigger>
             </TabsList>
 
@@ -301,125 +217,57 @@ const AIAssistant = () => {
               </div>
             </TabsContent>
 
-            {/* Custom Prompt Tab */}
-            <TabsContent value="chat" className="space-y-6">
+            {/* Chat CRM Tab */}
+            <TabsContent value="chatcrm" className="space-y-6">
               <div className="space-y-4">
-                {/* Chat Messages */}
                 <Card className="border border-slate-200">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center">
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Conversation
+                      <Database className="w-4 h-4 mr-2" />
+                      ChatCRM - Data-Driven AI Assistant
                     </CardTitle>
+                    <CardDescription>
+                      Intelligent AI assistant with access to your real CRM data for contextual insights and recommendations.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ScrollArea className="h-96 w-full">
-                      <div className="space-y-4">
-                        {chatMessages.length === 0 ? (
-                          <div className="text-center py-8 text-slate-500">
-                            <Lightbulb className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                            <p className="text-sm">Start a conversation with the AI assistant</p>
-                            <p className="text-xs text-slate-400 mt-1">Ask questions or use a template to get started</p>
-                          </div>
-                        ) : (
-                          chatMessages.map((message) => (
-                            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[80%] rounded-lg p-3 ${
-                                message.type === 'user' 
-                                  ? 'bg-blue-600 text-white' 
-                                  : 'bg-slate-100 text-slate-900'
-                              }`}>
-                                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                                <div className="flex items-center justify-between mt-2">
-                                  <div className={`text-xs ${
-                                    message.type === 'user' ? 'text-blue-100' : 'text-slate-500'
-                                  }`}>
-                                    {message.timestamp.toLocaleTimeString()}
-                                  </div>
-                                  {message.type === 'assistant' && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleCopyMessage(message.content)}
-                                      className="h-6 w-6 p-0 hover:bg-slate-200"
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                        
-                        {isGenerating && (
-                          <div className="flex justify-start">
-                            <div className="bg-slate-100 rounded-lg p-3 max-w-[80%]">
-                              <div className="flex items-center space-x-2">
-                                <RefreshCw className="w-4 h-4 animate-spin text-slate-600" />
-                                <span className="text-sm text-slate-600">AI is thinking...</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <MessageSquare className="w-8 h-8 text-white" />
                       </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-
-                {/* Input Area */}
-                <Card className="border border-slate-200">
-                  <CardContent className="p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-slate-700 mb-2 block">
-                          What would you like to generate for each record?
-                        </label>
-                        <Textarea
-                          placeholder="Write instructions in your own words to generate an output for each record. What can I do?"
-                          value={customPrompt}
-                          onChange={(e) => setCustomPrompt(e.target.value)}
-                          className="min-h-[120px] resize-none"
-                        />
-                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                        Ready to Chat with Your CRM Data
+                      </h3>
+                      <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                        Get specific insights, recommendations, and analysis based on your actual deals, contacts, and performance metrics.
+                      </p>
                       
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-slate-500">
-                          {openAIConfigured ? (
-                            <span className="text-green-600">✓ AI enabled</span>
-                          ) : (
-                            <span className="text-orange-600">⚠ Configure OpenAI API key for full functionality</span>
-                          )}
+                      {selectedTemplate && (
+                        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 max-w-md mx-auto">
+                          <div className="flex items-center justify-center mb-2">
+                            <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
+                            <span className="text-sm font-medium text-blue-900">Template Selected</span>
+                          </div>
+                          <p className="text-sm text-blue-700">{selectedTemplate.title}</p>
+                          <p className="text-xs text-blue-600 mt-1">You can use this template as a starting point in ChatCRM</p>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setChatMessages([]);
-                              setCustomPrompt('');
-                            }}
-                          >
-                            Clear
-                          </Button>
-                          <Button
-                            onClick={handleSendMessage}
-                            disabled={!customPrompt.trim() || isGenerating}
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                          >
-                            {isGenerating ? (
-                              <>
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="w-4 h-4 mr-2" />
-                                Send
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                      )}
+                      
+                      <Button 
+                        onClick={handleOpenChatCRM}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        size="lg"
+                      >
+                        <MessageSquare className="w-5 h-5 mr-2" />
+                        Open ChatCRM
+                      </Button>
+                      
+                      <div className="mt-6 text-xs text-slate-500">
+                        {openAIConfigured ? (
+                          <span className="text-green-600">✓ AI enabled with real CRM data access</span>
+                        ) : (
+                          <span className="text-orange-600">⚠ Configure OpenAI API key for full functionality</span>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -429,6 +277,9 @@ const AIAssistant = () => {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* ChatCRM Dialog */}
+      <ChatCRM open={showChatCRM} onOpenChange={setShowChatCRM} />
     </div>
   );
 };

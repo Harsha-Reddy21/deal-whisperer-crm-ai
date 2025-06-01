@@ -1,191 +1,151 @@
 # Deal Whisperer CRM AI
 
-A comprehensive AI-powered CRM system built with React, TypeScript, and Supabase. Features advanced search, sorting, CSV import capabilities, and AI-driven sales coaching.
+A comprehensive AI-powered Customer Relationship Management (CRM) system built with React, TypeScript, and Supabase.
 
 ## Features
 
 ### Core CRM Functionality
-- **Contact Management**: Store and manage customer contacts with AI-generated personas
-- **Lead Management**: Track and convert leads with scoring and source tracking
-- **Deal Pipeline**: Manage sales opportunities through customizable pipeline stages
-- **Activity Tracking**: Log calls, emails, meetings, notes, and tasks
-- **File Management**: Upload and organize documents with CSV import capabilities
-
-### Advanced Search & Filtering
-- **Multi-field Search**: Search across names, companies, emails, titles, descriptions
-- **Weighted Relevance**: Smart search algorithm with relevance scoring
-- **Advanced Filters**: Filter by status, source, score ranges, priority, etc.
-- **Flexible Sorting**: Sort by multiple fields with custom ordering
-- **Real-time Results**: Instant search and filter updates
-
-### CSV Import System
-- **Multi-format Support**: Import contacts, leads, deals, and activities
-- **Smart Column Mapping**: Flexible header recognition (e.g., "name", "full_name", "contact_name")
-- **Data Validation**: Comprehensive validation with detailed error reporting
-- **Template Downloads**: Pre-configured CSV templates for each data type
-- **Progress Tracking**: Real-time import progress and results
+- **Pipeline Management**: Visual deal pipeline with drag-and-drop functionality
+- **Contact Management**: Complete contact database with relationship tracking
+- **Company Management**: Company profiles with AI-powered research capabilities
+- **Lead Management**: Lead scoring and qualification system
+- **Activity Tracking**: Comprehensive activity logging and management
+- **Email Management**: Gmail-like email interface with AI summarization
+- **Calendar Integration**: Meeting scheduling and calendar management
+- **File Management**: Document storage and organization
+- **Transcripts**: Audio/video transcription with AI summarization
 
 ### AI-Powered Features
-- **AI Sales Coach**: Get personalized recommendations for deals
-- **Objection Handling**: AI-powered responses to common sales objections
-- **Persona Builder**: Automatically generate customer personas
-- **Win-Loss Analysis**: AI insights on deal outcomes
-- **Email Templates**: AI-generated email templates
+- **ChatCRM**: Intelligent AI assistant with real-time CRM data analysis
+- **AI Assistant**: Template-based AI tools with ChatCRM integration
+- **AI Coach**: Deal-specific coaching and recommendations
+- **Objection Handler**: AI-powered objection handling suggestions
+- **Customer Persona Builder**: AI-generated customer personas
+- **Win-Loss Analysis**: AI analysis of deal outcomes
+- **Email Summarization**: AI-powered email insights and summaries
+- **Company Research**: AI-powered company information gathering
+- **Transcription Services**: Speech-to-text with AI summarization
 
-## CSV Import Guide
+### ChatCRM - Data-Driven AI Assistant
 
-### Supported Data Types
+The ChatCRM feature provides an intelligent AI assistant that has access to your actual CRM data:
 
-#### 1. Contacts
-**Required Fields**: `name`
-**Optional Fields**: `email`, `company`, `phone`, `status`, `persona`, `title`, `score`
+#### Key Capabilities:
+- **Real-time Data Access**: Analyzes your actual deals, contacts, companies, activities, and emails
+- **Contextual Responses**: Provides specific insights based on your real performance metrics
+- **Data-Driven Recommendations**: Suggests improvements based on current data patterns
+- **Performance Analysis**: Calculates conversion rates, pipeline health, and revenue metrics
+- **Trend Identification**: Identifies patterns and opportunities in your data
 
-**Valid Status Values**:
-- `Cold Lead`
-- `Hot Lead` 
-- `Qualified`
-- `Customer`
+#### Example Questions You Can Ask:
+- "What's my pipeline health?"
+- "Which deals need attention?"
+- "How can I improve my close rate?"
+- "Show me my top performing contacts"
+- "Analyze my sales trends"
+- "What's my average deal size?"
+- "Which companies have the most contacts?"
+- "What are my recent activities?"
 
-**Example CSV**:
-```csv
-name,email,company,phone,status,persona,title,score
-John Doe,john@example.com,Acme Corp,555-1234,Qualified,decision_maker,CEO,85
-```
+#### Technical Implementation:
+- Fetches real-time data from all CRM tables (deals, contacts, companies, activities, emails, leads)
+- Calculates comprehensive statistics and trends
+- Formats data context for AI analysis
+- Provides specific, actionable insights based on actual numbers
 
-#### 2. Leads
-**Required Fields**: `name`
-**Optional Fields**: `email`, `company`, `phone`, `status`, `source`, `score`
+### AI Assistant - Template-Based Tools with ChatCRM Integration
 
-**Valid Status Values**:
-- `new`
-- `contacted`
-- `qualified`
-- `unqualified`
+The AI Assistant provides pre-built templates for common sales tasks, seamlessly integrated with the ChatCRM system:
 
-**Valid Source Values**:
-- `manual`
-- `form`
-- `import`
-- `integration`
+#### Available Templates:
+- **Research and evaluate a company for fit**: Analyze company alignment with your offering
+- **Confirm decision-maker**: Determine if a contact has decision-making authority
+- **Create personalized email with PS line**: Generate tailored sales emails
+- **Summarize company news**: Gather recent company developments
+- **Identify relevant job openings**: Find openings that indicate need for your solution
+- **Identify competitors**: Research competitive landscape
 
-**Example CSV**:
-```csv
-name,email,company,phone,status,source,score
-Jane Smith,jane@example.com,Tech Inc,555-5678,new,form,75
-```
-
-#### 3. Deals
-**Required Fields**: `title`
-**Optional Fields**: `company`, `value`, `stage`, `probability`, `contact_name`, `next_step`
-
-**Valid Stage Values**:
-- `Discovery`
-- `Proposal`
-- `Negotiation`
-- `Closing`
-
-**Example CSV**:
-```csv
-title,company,value,stage,probability,contact_name,next_step
-Big Deal,Acme Corp,50000,Discovery,25,John Doe,Schedule demo
-```
-
-#### 4. Activities
-**Required Fields**: `subject`, `type`
-**Optional Fields**: `description`, `priority`, `status`, `due_date`
-
-**Valid Type Values**:
-- `call`
-- `email`
-- `meeting`
-- `note`
-- `task`
-
-**Valid Status Values**:
-- `pending`
-- `completed`
-- `cancelled`
-
-**Valid Priority Values**:
-- `low`
-- `medium`
-- `high`
-
-**Example CSV**:
-```csv
-subject,type,description,priority,status,due_date
-Follow up call,call,Call to discuss proposal,high,pending,2024-01-15
-```
-
-### Column Header Mapping
-
-The system supports flexible column header naming. These headers will be automatically mapped:
-
-**Name Fields**: `name`, `full_name`, `contact_name`, `lead_name`
-**Email Fields**: `email`, `email_address`
-**Company Fields**: `company`, `organization`, `company_name`
-**Phone Fields**: `phone`, `phone_number`, `mobile`
-**Title Fields**: `title`, `job_title`, `position`
-
-### Import Process
-
-1. **Select Data Type**: Choose from Contacts, Leads, Deals, or Activities
-2. **Download Template**: Get a sample CSV with correct format and valid values
-3. **Upload CSV File**: Select your prepared CSV file
-4. **Preview Data**: Review headers, row count, and sample data
-5. **Import**: Click "Import Data" to process the file
-6. **Review Results**: Check success/error counts and detailed error messages
-
-### Troubleshooting
-
-**Common Import Errors**:
-
-1. **"invalid input syntax for type uuid"**
-   - **Cause**: Invalid UUID in assigned_to field
-   - **Solution**: Remove assigned_to column or use valid UUIDs
-
-2. **"violates check constraint"**
-   - **Cause**: Invalid status/source/stage/type/priority values
-   - **Solution**: Use only the valid values listed above
-
-3. **"Name is required"**
-   - **Cause**: Missing required name/title/subject field
-   - **Solution**: Ensure all rows have required fields filled
-
-4. **"CSV file is empty"**
-   - **Cause**: Empty or invalid CSV file
-   - **Solution**: Check file format and ensure it contains data
-
-## Installation
-
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Set up Supabase project and configure environment variables
-4. Run the development server: `npm run dev`
+#### Integration with ChatCRM:
+- Select any template to automatically open ChatCRM
+- Templates provide starting points for data-driven conversations
+- Access to real CRM data enhances template effectiveness
+- Seamless transition from template selection to intelligent chat
 
 ## Technology Stack
 
-- **Frontend**: React 18, TypeScript, Vite
-- **UI Components**: shadcn/ui, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Storage)
-- **State Management**: React Query (TanStack Query)
-- **Charts**: Recharts
-- **Icons**: Lucide React
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Authentication, Real-time)
+- **AI Integration**: OpenAI GPT-4, Tavily Search API
+- **UI Components**: shadcn/ui, Radix UI
+- **State Management**: TanStack Query (React Query)
+- **Build Tool**: Vite
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ and npm
+- Supabase account
+- OpenAI API key
+- Tavily API key (optional, for enhanced company research)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd deal-whisperer-crm-ai
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
+
+Fill in your environment variables:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OPENAI_API_KEY=your_openai_api_key
+VITE_TAVILY_API_KEY=your_tavily_api_key
+```
+
+4. Run database migrations:
+```bash
+npx supabase db push
+```
+
+5. Start the development server:
+```bash
+npm run dev
+```
 
 ## Database Schema
 
-### Tables
-- `contacts`: Customer contact information
-- `leads`: Potential customers and prospects
-- `deals`: Sales opportunities and pipeline
-- `activities`: Sales activities and tasks
-- `files`: Document storage metadata
+The application uses a comprehensive database schema including:
+- Users and authentication
+- Deals pipeline management
+- Contacts and companies
+- Activities and tasks
+- Email tracking and management
+- Lead management and scoring
+- File storage and transcripts
 
-### Key Constraints
-- All tables have user-based row-level security
-- Status fields use check constraints for data integrity
-- Foreign key relationships maintain data consistency
-- Automatic timestamps for created_at and updated_at
+## AI Configuration
+
+### OpenAI Integration
+- Supports GPT-4 for advanced reasoning and analysis
+- Configurable temperature and token limits
+- Comprehensive error handling and fallbacks
+
+### Tavily Search Integration
+- Real-time web search for company research
+- Business-focused domain filtering
+- Fallback to simulated data when unavailable
 
 ## Contributing
 
