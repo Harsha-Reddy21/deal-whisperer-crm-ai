@@ -67,11 +67,25 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   });
 
   const handleAICoach = (deal: Deal, e: React.MouseEvent) => {
+    console.log('🤖 AI Coach button clicked for deal:', deal);
+    console.log('🤖 Deal details:', {
+      id: deal.id,
+      title: deal.title,
+      company: deal.company,
+      value: deal.value,
+      probability: deal.probability,
+      stage: deal.stage
+    });
+    
     e.stopPropagation(); // Prevent card click
+    console.log('🤖 Calling onSelectDeal with deal:', deal.title);
     onSelectDeal(deal);
+    
     // Switch to AI Coach tab - we'll need to communicate this to parent
+    console.log('🤖 Dispatching switchToAICoach event');
     const event = new CustomEvent('switchToAICoach', { detail: deal });
     window.dispatchEvent(event);
+    console.log('🤖 AI Coach event dispatched successfully');
   };
 
   const getStageColor = (stage: string) => {
