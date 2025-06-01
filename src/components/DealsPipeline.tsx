@@ -46,6 +46,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [valueFilter, setValueFilter] = useState<string>('all');
+  const [outcomeFilter, setOutcomeFilter] = useState<string>('all');
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -132,6 +133,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       filtered = filtered.filter(deal => deal.stage === stageFilter);
     }
 
+    // Outcome filter
+    if (outcomeFilter !== 'all') {
+      filtered = filtered.filter(deal => deal.outcome === outcomeFilter);
+    }
+
     // Value filter
     if (valueFilter !== 'all') {
       switch (valueFilter) {
@@ -189,7 +195,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     }
 
     return filtered;
-  }, [deals, searchTerm, stageFilter, valueFilter, sortField, sortDirection]);
+  }, [deals, searchTerm, stageFilter, valueFilter, outcomeFilter, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -204,6 +210,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setSearchTerm('');
     setStageFilter('all');
     setValueFilter('all');
+    setOutcomeFilter('all');
     setSortField('created_at');
     setSortDirection('desc');
   };
@@ -366,10 +373,34 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     return 'text-red-600';
   };
 
+  const getOutcomeColor = (outcome: string) => {
+    switch (outcome) {
+      case 'won': return 'bg-green-100 text-green-800 border-green-200';
+      case 'lost': return 'bg-red-100 text-red-800 border-red-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getOutcomeIcon = (outcome: string) => {
+    switch (outcome) {
+      case 'won': return '🏆';
+      case 'lost': return '❌';
+      case 'in_progress': return '⏳';
+      default: return '⏳';
+    }
+  };
+
   // Calculate pipeline metrics
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
   const weightedValue = deals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
   const averageDealSize = deals.length > 0 ? totalValue / deals.length : 0;
+  
+  // Calculate outcome metrics
+  const wonDeals = deals.filter(deal => deal.outcome === 'won').length;
+  const lostDeals = deals.filter(deal => deal.outcome === 'lost').length;
+  const inProgressDeals = deals.filter(deal => deal.outcome === 'in_progress').length;
+  const wonValue = deals.filter(deal => deal.outcome === 'won').reduce((sum, deal) => sum + deal.value, 0);
 
   if (isLoading) {
     return (
@@ -386,7 +417,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   return (
     <div className="space-y-6">
       {/* Pipeline Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">Total Pipeline</CardTitle>
@@ -400,23 +431,34 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Weighted Pipeline</CardTitle>
-            <Target className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-slate-600">Won Deals</CardTitle>
+            <div className="text-green-600">🏆</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">${weightedValue.toLocaleString()}</div>
-            <p className="text-xs text-slate-600">Probability adjusted</p>
+            <div className="text-2xl font-bold text-slate-900">{wonDeals}</div>
+            <p className="text-xs text-slate-600">${wonValue.toLocaleString()} value</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Avg Deal Size</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-slate-600">In Progress</CardTitle>
+            <div className="text-blue-600">⏳</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">${averageDealSize.toLocaleString()}</div>
-            <p className="text-xs text-slate-600">Per opportunity</p>
+            <div className="text-2xl font-bold text-slate-900">{inProgressDeals}</div>
+            <p className="text-xs text-slate-600">Active opportunities</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Lost Deals</CardTitle>
+            <div className="text-red-600">❌</div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{lostDeals}</div>
+            <p className="text-xs text-slate-600">Closed lost</p>
           </CardContent>
         </Card>
       </div>
@@ -480,7 +522,19 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                   </SelectContent>
                 </Select>
 
-                {(searchTerm || stageFilter !== 'all' || valueFilter !== 'all') && (
+                <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Outcome" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Outcomes</SelectItem>
+                    <SelectItem value="won">Won</SelectItem>
+                    <SelectItem value="lost">Lost</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(searchTerm || stageFilter !== 'all' || valueFilter !== 'all' || outcomeFilter !== 'all') && (
                   <Button variant="outline" size="sm" onClick={clearFilters}>
                     Clear
                   </Button>
@@ -551,6 +605,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                               <div className="flex items-center space-x-2">
                                 <Badge className={getStageColor(deal.stage)}>
                                   {deal.stage}
+                                </Badge>
+                                <Badge className={`${getOutcomeColor(deal.outcome)} border`}>
+                                  {getOutcomeIcon(deal.outcome)} {deal.outcome === 'in_progress' ? 'In Progress' : deal.outcome.charAt(0).toUpperCase() + deal.outcome.slice(1)}
                                 </Badge>
                                 <span className="text-lg font-bold text-slate-900">
                                   ${deal.value.toLocaleString()}

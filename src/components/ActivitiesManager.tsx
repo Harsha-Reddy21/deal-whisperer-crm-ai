@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, CheckCircle, AlertCircle, Phone, Mail, MessageSquare, FileText, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, AlertCircle, Phone, Mail, MessageSquare, FileText, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,8 @@ interface Activity {
   status: string;
   due_date: string;
   created_at: string;
+  contact_name?: string;
+  lead_name?: string;
 }
 
 type SortField = 'subject' | 'type' | 'priority' | 'status' | 'due_date' | 'created_at';
@@ -59,7 +61,11 @@ const ActivitiesManager = () => {
       
       const { data, error } = await supabase
         .from('activities')
-        .select('*')
+        .select(`
+          *,
+          contacts(name),
+          leads(name)
+        `)
         .eq('user_id', user.id)
         .order('due_date', { ascending: true });
 
@@ -80,7 +86,9 @@ const ActivitiesManager = () => {
         priority: activity.priority || 'medium',
         status: activity.status || 'pending',
         due_date: activity.due_date || '',
-        created_at: activity.created_at
+        created_at: activity.created_at,
+        contact_name: activity.contacts?.name,
+        lead_name: activity.leads?.name
       }));
     },
     enabled: !!user,
@@ -104,8 +112,10 @@ const ActivitiesManager = () => {
         const typeMatch = activity.type.toLowerCase().includes(searchLower);
         const priorityMatch = activity.priority.toLowerCase().includes(searchLower);
         const statusMatch = activity.status.toLowerCase().includes(searchLower);
+        const contactMatch = activity.contact_name?.toLowerCase().includes(searchLower);
+        const leadMatch = activity.lead_name?.toLowerCase().includes(searchLower);
         
-        return subjectMatch || descriptionMatch || typeMatch || priorityMatch || statusMatch;
+        return subjectMatch || descriptionMatch || typeMatch || priorityMatch || statusMatch || contactMatch || leadMatch;
       });
 
       // Sort by relevance when searching
@@ -113,12 +123,16 @@ const ActivitiesManager = () => {
         const aSubject = a.subject.toLowerCase().includes(searchLower) ? 3 : 0;
         const aDescription = a.description.toLowerCase().includes(searchLower) ? 2 : 0;
         const aType = a.type.toLowerCase().includes(searchLower) ? 1 : 0;
-        const aRelevance = aSubject + aDescription + aType;
+        const aContact = a.contact_name?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const aLead = a.lead_name?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const aRelevance = aSubject + aDescription + aType + aContact + aLead;
 
         const bSubject = b.subject.toLowerCase().includes(searchLower) ? 3 : 0;
         const bDescription = b.description.toLowerCase().includes(searchLower) ? 2 : 0;
         const bType = b.type.toLowerCase().includes(searchLower) ? 1 : 0;
-        const bRelevance = bSubject + bDescription + bType;
+        const bContact = b.contact_name?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const bLead = b.lead_name?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const bRelevance = bSubject + bDescription + bType + bContact + bLead;
 
         return bRelevance - aRelevance;
       });
@@ -456,7 +470,7 @@ const ActivitiesManager = () => {
                   <div className="flex items-center space-x-2 flex-1">
                     <Search className="w-4 h-4 text-slate-400" />
                     <Input 
-                      placeholder="Search activities by subject, description..." 
+                      placeholder="Search activities by subject, description, contact, lead..." 
                       className="flex-1" 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -583,6 +597,18 @@ const ActivitiesManager = () => {
                                   
                                   {activity.description && (
                                     <p className="text-sm text-slate-600">{activity.description}</p>
+                                  )}
+
+                                  {/* Contact/Lead Information */}
+                                  {(activity.contact_name || activity.lead_name) && (
+                                    <div className="flex items-center space-x-1 text-sm text-slate-600">
+                                      <User className="w-4 h-4" />
+                                      <span>
+                                        {activity.contact_name || activity.lead_name}
+                                        {activity.contact_name && ' (Contact)'}
+                                        {activity.lead_name && ' (Lead)'}
+                                      </span>
+                                    </div>
                                   )}
 
                                   <div className="flex items-center justify-between">
