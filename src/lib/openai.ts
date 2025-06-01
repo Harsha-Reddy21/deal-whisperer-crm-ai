@@ -400,6 +400,78 @@ Base your analysis on the contact information provided and common behavioral pat
   }
 }
 
+export async function generateRAGCustomerPersona(ragPrompt: string): Promise<CustomerPersona> {
+  try {
+    console.log("Generating RAG-enhanced customer persona");
+
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error('OpenAI API key not found. Please check your .env file.');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert sales psychologist with access to comprehensive behavioral data. Create detailed customer personas based on actual interaction patterns and behavioral analysis. Always respond with valid JSON format."
+          },
+          {
+            role: "user",
+            content: ragPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.choices[0]?.message?.content;
+    
+    if (!responseText) {
+      throw new Error('No response from OpenAI');
+    }
+
+    // Parse the JSON response
+    let persona: CustomerPersona;
+    try {
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      persona = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', responseText);
+      throw new Error('Invalid response format from OpenAI');
+    }
+    
+    return persona;
+
+  } catch (error) {
+    console.error('Error generating RAG customer persona:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to generate RAG customer persona. Please check your connection and try again.');
+  }
+}
+
 export async function generateWinLossAnalysis(deals: any[]): Promise<WinLossAnalysis> {
   try {
     console.log("Analyzing win/loss patterns for deals:", deals);
