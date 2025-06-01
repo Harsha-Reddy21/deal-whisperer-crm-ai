@@ -86,9 +86,10 @@ const WinLossExplainer = () => {
 
   const openAIConfigured = isOpenAIConfigured();
 
-  // Calculate basic stats
-  const wonDeals = deals.filter(deal => deal.stage === 'Closing').length;
-  const lostDeals = deals.filter(deal => deal.probability < 20).length;
+  // Calculate basic stats using the actual outcome field
+  const wonDeals = deals.filter(deal => deal.outcome === 'won').length;
+  const lostDeals = deals.filter(deal => deal.outcome === 'lost').length;
+  const inProgressDeals = deals.filter(deal => deal.outcome === 'in_progress' || !deal.outcome).length;
   const totalDeals = deals.length;
   const winRate = totalDeals > 0 ? ((wonDeals / totalDeals) * 100).toFixed(1) : '0';
 
@@ -140,8 +141,8 @@ const WinLossExplainer = () => {
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-blue-600">Total Deals</p>
-                  <p className="text-2xl font-bold text-blue-700">{totalDeals}</p>
+                  <p className="text-sm text-blue-600">In Progress</p>
+                  <p className="text-2xl font-bold text-blue-700">{inProgressDeals}</p>
                 </div>
                 <BarChart3 className="w-8 h-8 text-blue-600" />
               </div>

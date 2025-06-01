@@ -18,6 +18,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          lead_id: string | null
           priority: string | null
           status: string | null
           subject: string
@@ -33,6 +34,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          lead_id?: string | null
           priority?: string | null
           status?: string | null
           subject: string
@@ -48,6 +50,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          lead_id?: string | null
           priority?: string | null
           status?: string | null
           subject?: string
@@ -68,6 +71,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -180,6 +190,7 @@ export type Database = {
           id: string
           last_activity: string | null
           next_step: string | null
+          outcome: string | null
           probability: number | null
           stage: string | null
           title: string
@@ -195,6 +206,7 @@ export type Database = {
           id?: string
           last_activity?: string | null
           next_step?: string | null
+          outcome?: string | null
           probability?: number | null
           stage?: string | null
           title: string
@@ -210,6 +222,7 @@ export type Database = {
           id?: string
           last_activity?: string | null
           next_step?: string | null
+          outcome?: string | null
           probability?: number | null
           stage?: string | null
           title?: string

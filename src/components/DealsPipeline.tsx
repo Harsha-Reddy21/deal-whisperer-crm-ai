@@ -25,6 +25,7 @@ interface Deal {
   last_activity: string;
   next_step: string;
   created_at: string;
+  outcome: string;
 }
 
 interface DealsPipelineProps {
@@ -52,7 +53,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     company: '',
     value: '',
     stage: 'Discovery',
-    probability: ''
+    probability: '',
+    outcome: 'in_progress'
   });
 
   const { data: deals = [], isLoading, refetch } = useQuery({
@@ -85,7 +87,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         contact_name: deal.contact_name || '',
         last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
         next_step: deal.next_step || 'Follow up required',
-        created_at: deal.created_at
+        created_at: deal.created_at,
+        outcome: deal.outcome || 'in_progress'
       }));
     },
     enabled: !!user,
@@ -212,7 +215,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       company: deal.company,
       value: deal.value.toString(),
       stage: deal.stage,
-      probability: deal.probability.toString()
+      probability: deal.probability.toString(),
+      outcome: deal.outcome
     });
   };
 
@@ -245,7 +249,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           company: editForm.company.trim(),
           value: Number(editForm.value),
           stage: editForm.stage,
-          probability: Number(editForm.probability) || 0
+          probability: Number(editForm.probability) || 0,
+          outcome: editForm.outcome
         })
         .eq('id', editingDeal.id)
         .eq('user_id', user.id);
@@ -721,6 +726,19 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 min="0"
                 max="100"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Outcome</label>
+              <Select value={editForm.outcome} onValueChange={(value) => setEditForm({ ...editForm, outcome: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="won">Won</SelectItem>
+                  <SelectItem value="lost">Lost</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setEditingDeal(null)}>

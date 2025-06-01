@@ -415,7 +415,7 @@ export async function generateWinLossAnalysis(deals: any[]): Promise<WinLossAnal
       value: deal.value,
       stage: deal.stage,
       probability: deal.probability,
-      outcome: deal.stage === 'Closing' ? 'won' : (deal.probability < 20 ? 'lost' : 'in_progress')
+      outcome: deal.outcome || (deal.stage === 'Closing' ? 'won' : (deal.probability < 20 ? 'lost' : 'in_progress'))
     }));
 
     const prompt = `You are an expert sales analyst. Analyze the following deals data to identify win/loss patterns:
