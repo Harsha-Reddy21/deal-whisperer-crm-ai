@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -35,10 +37,21 @@ const ContactsList = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [scoreFilter, setScoreFilter] = useState<string>('all');
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    status: 'Cold Lead'
+  });
 
   const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts', user?.id],
@@ -190,6 +203,88 @@ const ContactsList = () => {
     setScoreFilter('all');
     setSortField('created_at');
     setSortDirection('desc');
+  };
+
+  const handleEdit = (contact: Contact) => {
+    setEditingContact(contact);
+    setEditForm({
+      name: contact.name,
+      email: contact.email,
+      company: contact.company,
+      phone: contact.phone,
+      status: contact.status
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingContact || !user) return;
+
+    if (!editForm.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .update({
+          name: editForm.name.trim(),
+          email: editForm.email.trim(),
+          company: editForm.company.trim(),
+          phone: editForm.phone.trim(),
+          status: editForm.status
+        })
+        .eq('id', editingContact.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Contact updated",
+        description: "Contact has been successfully updated.",
+      });
+
+      setEditingContact(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error updating contact",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingContact || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', deletingContact.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Contact deleted",
+        description: "Contact has been successfully deleted.",
+      });
+
+      setDeletingContact(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting contact",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const createSampleContact = async () => {
@@ -425,6 +520,22 @@ const ContactsList = () => {
                               <Button size="sm" variant="outline" className="hover:bg-purple-50">
                                 View Persona
                               </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleEdit(contact)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => setDeletingContact(contact)}
+                                className="hover:bg-red-50 text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -437,6 +548,93 @@ const ContactsList = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={!!editingContact} onOpenChange={() => setEditingContact(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogDescription>
+              Update contact information. Name is required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Name *</label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Contact name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <Input
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="Email address"
+                type="email"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Company</label>
+              <Input
+                value={editForm.company}
+                onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                placeholder="Company name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Phone</label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                placeholder="Phone number"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Status</label>
+              <Select value={editForm.status} onValueChange={(value) => setEditForm({ ...editForm, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cold Lead">Cold Lead</SelectItem>
+                  <SelectItem value="Hot Lead">Hot Lead</SelectItem>
+                  <SelectItem value="Qualified">Qualified</SelectItem>
+                  <SelectItem value="Customer">Customer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setEditingContact(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingContact} onOpenChange={() => setDeletingContact(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingContact?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ContactForm 
         open={showContactForm} 

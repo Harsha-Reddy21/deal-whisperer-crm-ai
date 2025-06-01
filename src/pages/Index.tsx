@@ -267,7 +267,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="ai-coach" className="space-y-6">
-            <AICoach selectedDeal={selectedDeal} />
+            <AICoach selectedDeal={selectedDeal} onSelectDeal={setSelectedDeal} />
           </TabsContent>
 
           <TabsContent value="objection-handler" className="space-y-6">

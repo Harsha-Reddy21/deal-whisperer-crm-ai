@@ -1,100 +1,200 @@
-# Welcome to your Lovable project
+# Deal Whisperer CRM AI
 
-## Project info
+A comprehensive AI-powered CRM system built with React, TypeScript, and Supabase. Features advanced search, sorting, CSV import capabilities, and AI-driven sales coaching.
 
-**URL**: https://lovable.dev/projects/2732b526-c2f2-43bf-b2fd-9646d027ef17
+## Features
 
-## OpenAI Integration
+### Core CRM Functionality
+- **Contact Management**: Store and manage customer contacts with AI-generated personas
+- **Lead Management**: Track and convert leads with scoring and source tracking
+- **Deal Pipeline**: Manage sales opportunities through customizable pipeline stages
+- **Activity Tracking**: Log calls, emails, meetings, notes, and tasks
+- **File Management**: Upload and organize documents with CSV import capabilities
 
-This project includes an AI-powered objection handler that uses OpenAI's GPT-4 model to generate intelligent sales objection responses.
+### Advanced Search & Filtering
+- **Multi-field Search**: Search across names, companies, emails, titles, descriptions
+- **Weighted Relevance**: Smart search algorithm with relevance scoring
+- **Advanced Filters**: Filter by status, source, score ranges, priority, etc.
+- **Flexible Sorting**: Sort by multiple fields with custom ordering
+- **Real-time Results**: Instant search and filter updates
 
-### Setup
+### CSV Import System
+- **Multi-format Support**: Import contacts, leads, deals, and activities
+- **Smart Column Mapping**: Flexible header recognition (e.g., "name", "full_name", "contact_name")
+- **Data Validation**: Comprehensive validation with detailed error reporting
+- **Template Downloads**: Pre-configured CSV templates for each data type
+- **Progress Tracking**: Real-time import progress and results
 
-1. Create a `.env` file in the root directory
-2. Add your OpenAI API key:
-   ```
-   VITE_OPENAI_API_KEY=your_openai_api_key_here
-   ```
+### AI-Powered Features
+- **AI Sales Coach**: Get personalized recommendations for deals
+- **Objection Handling**: AI-powered responses to common sales objections
+- **Persona Builder**: Automatically generate customer personas
+- **Win-Loss Analysis**: AI insights on deal outcomes
+- **Email Templates**: AI-generated email templates
 
-### Features
+## CSV Import Guide
 
-- **AI Objection Handler**: Paste any customer objection and get 3 AI-generated response strategies
-- **Smart Responses**: Each response includes approach type, effectiveness score, and reasoning
-- **Copy to Clipboard**: Easily copy responses for use in your sales conversations
-- **Fallback Handling**: Graceful fallback responses if the API is unavailable
+### Supported Data Types
 
-### Usage
+#### 1. Contacts
+**Required Fields**: `name`
+**Optional Fields**: `email`, `company`, `phone`, `status`, `persona`, `title`, `score`
 
-Navigate to the Objection Handler component and:
-1. Enter a customer objection in the text area
-2. Click "Get AI Suggestions"
-3. Review the generated response strategies
-4. Copy or use the responses in your sales conversations
+**Valid Status Values**:
+- `Cold Lead`
+- `Hot Lead` 
+- `Qualified`
+- `Customer`
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/2732b526-c2f2-43bf-b2fd-9646d027ef17) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+**Example CSV**:
+```csv
+name,email,company,phone,status,persona,title,score
+John Doe,john@example.com,Acme Corp,555-1234,Qualified,decision_maker,CEO,85
 ```
 
-**Edit a file directly in GitHub**
+#### 2. Leads
+**Required Fields**: `name`
+**Optional Fields**: `email`, `company`, `phone`, `status`, `source`, `score`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+**Valid Status Values**:
+- `new`
+- `contacted`
+- `qualified`
+- `unqualified`
 
-**Use GitHub Codespaces**
+**Valid Source Values**:
+- `manual`
+- `form`
+- `import`
+- `integration`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**Example CSV**:
+```csv
+name,email,company,phone,status,source,score
+Jane Smith,jane@example.com,Tech Inc,555-5678,new,form,75
+```
 
-## What technologies are used for this project?
+#### 3. Deals
+**Required Fields**: `title`
+**Optional Fields**: `company`, `value`, `stage`, `probability`, `contact_name`, `next_step`
 
-This project is built with:
+**Valid Stage Values**:
+- `Discovery`
+- `Proposal`
+- `Negotiation`
+- `Closing`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+**Example CSV**:
+```csv
+title,company,value,stage,probability,contact_name,next_step
+Big Deal,Acme Corp,50000,Discovery,25,John Doe,Schedule demo
+```
 
-## How can I deploy this project?
+#### 4. Activities
+**Required Fields**: `subject`, `type`
+**Optional Fields**: `description`, `priority`, `status`, `due_date`
 
-Simply open [Lovable](https://lovable.dev/projects/2732b526-c2f2-43bf-b2fd-9646d027ef17) and click on Share -> Publish.
+**Valid Type Values**:
+- `call`
+- `email`
+- `meeting`
+- `note`
+- `task`
 
-## Can I connect a custom domain to my Lovable project?
+**Valid Status Values**:
+- `pending`
+- `completed`
+- `cancelled`
 
-Yes, you can!
+**Valid Priority Values**:
+- `low`
+- `medium`
+- `high`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+**Example CSV**:
+```csv
+subject,type,description,priority,status,due_date
+Follow up call,call,Call to discuss proposal,high,pending,2024-01-15
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Column Header Mapping
+
+The system supports flexible column header naming. These headers will be automatically mapped:
+
+**Name Fields**: `name`, `full_name`, `contact_name`, `lead_name`
+**Email Fields**: `email`, `email_address`
+**Company Fields**: `company`, `organization`, `company_name`
+**Phone Fields**: `phone`, `phone_number`, `mobile`
+**Title Fields**: `title`, `job_title`, `position`
+
+### Import Process
+
+1. **Select Data Type**: Choose from Contacts, Leads, Deals, or Activities
+2. **Download Template**: Get a sample CSV with correct format and valid values
+3. **Upload CSV File**: Select your prepared CSV file
+4. **Preview Data**: Review headers, row count, and sample data
+5. **Import**: Click "Import Data" to process the file
+6. **Review Results**: Check success/error counts and detailed error messages
+
+### Troubleshooting
+
+**Common Import Errors**:
+
+1. **"invalid input syntax for type uuid"**
+   - **Cause**: Invalid UUID in assigned_to field
+   - **Solution**: Remove assigned_to column or use valid UUIDs
+
+2. **"violates check constraint"**
+   - **Cause**: Invalid status/source/stage/type/priority values
+   - **Solution**: Use only the valid values listed above
+
+3. **"Name is required"**
+   - **Cause**: Missing required name/title/subject field
+   - **Solution**: Ensure all rows have required fields filled
+
+4. **"CSV file is empty"**
+   - **Cause**: Empty or invalid CSV file
+   - **Solution**: Check file format and ensure it contains data
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up Supabase project and configure environment variables
+4. Run the development server: `npm run dev`
+
+## Technology Stack
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Components**: shadcn/ui, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Storage)
+- **State Management**: React Query (TanStack Query)
+- **Charts**: Recharts
+- **Icons**: Lucide React
+
+## Database Schema
+
+### Tables
+- `contacts`: Customer contact information
+- `leads`: Potential customers and prospects
+- `deals`: Sales opportunities and pipeline
+- `activities`: Sales activities and tasks
+- `files`: Document storage metadata
+
+### Key Constraints
+- All tables have user-based row-level security
+- Status fields use check constraints for data integrity
+- Foreign key relationships maintain data consistency
+- Automatic timestamps for created_at and updated_at
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.

@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { DollarSign, Calendar, User, MessageSquare, TrendingUp, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
+import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -17,8 +19,8 @@ interface Deal {
   title: string;
   company: string;
   value: number;
-  probability: number;
   stage: string;
+  probability: number;
   contact_name: string;
   last_activity: string;
   next_step: string;
@@ -26,21 +28,32 @@ interface Deal {
 }
 
 interface DealsPipelineProps {
-  onSelectDeal: (deal: Deal) => void;
+  onSelectDeal?: (deal: Deal) => void;
 }
 
-type SortField = 'title' | 'company' | 'value' | 'probability' | 'stage' | 'created_at' | 'last_activity';
+type SortField = 'title' | 'company' | 'value' | 'stage' | 'probability' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [showDealForm, setShowDealForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDealForm, setShowDealForm] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [deletingDeal, setDeletingDeal] = useState<Deal | null>(null);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [valueFilter, setValueFilter] = useState<string>('all');
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: '',
+    company: '',
+    value: '',
+    stage: 'Discovery',
+    probability: ''
+  });
 
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
@@ -67,8 +80,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         title: deal.title,
         company: deal.company || '',
         value: Number(deal.value),
-        probability: deal.probability || 0,
         stage: deal.stage || 'Discovery',
+        probability: deal.probability || 0,
         contact_name: deal.contact_name || '',
         last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
         next_step: deal.next_step || 'Follow up required',
@@ -89,10 +102,10 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         const titleMatch = deal.title.toLowerCase().includes(searchLower);
         const companyMatch = deal.company.toLowerCase().includes(searchLower);
         const contactMatch = deal.contact_name.toLowerCase().includes(searchLower);
-        const nextStepMatch = deal.next_step.toLowerCase().includes(searchLower);
         const stageMatch = deal.stage.toLowerCase().includes(searchLower);
+        const nextStepMatch = deal.next_step.toLowerCase().includes(searchLower);
         
-        return titleMatch || companyMatch || contactMatch || nextStepMatch || stageMatch;
+        return titleMatch || companyMatch || contactMatch || stageMatch || nextStepMatch;
       });
 
       // Sort by relevance when searching
@@ -149,23 +162,18 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             aValue = a.value;
             bValue = b.value;
             break;
-          case 'probability':
-            aValue = a.probability;
-            bValue = b.probability;
-            break;
           case 'stage':
-            // Custom stage ordering
             const stageOrder = { 'Discovery': 1, 'Proposal': 2, 'Negotiation': 3, 'Closing': 4 };
             aValue = stageOrder[a.stage as keyof typeof stageOrder] || 0;
             bValue = stageOrder[b.stage as keyof typeof stageOrder] || 0;
             break;
+          case 'probability':
+            aValue = a.probability;
+            bValue = b.probability;
+            break;
           case 'created_at':
             aValue = new Date(a.created_at);
             bValue = new Date(b.created_at);
-            break;
-          case 'last_activity':
-            aValue = a.last_activity === 'No activity' ? new Date(0) : new Date(a.last_activity);
-            bValue = b.last_activity === 'No activity' ? new Date(0) : new Date(b.last_activity);
             break;
           default:
             return 0;
@@ -197,26 +205,109 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setSortDirection('desc');
   };
 
-  const handleAICoach = (deal: Deal, e: React.MouseEvent) => {
-    console.log('🤖 AI Coach button clicked for deal:', deal);
-    console.log('🤖 Deal details:', {
-      id: deal.id,
+  const handleEdit = (deal: Deal) => {
+    setEditingDeal(deal);
+    setEditForm({
       title: deal.title,
       company: deal.company,
-      value: deal.value,
-      probability: deal.probability,
-      stage: deal.stage
+      value: deal.value.toString(),
+      stage: deal.stage,
+      probability: deal.probability.toString()
     });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingDeal || !user) return;
+
+    if (!editForm.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editForm.value || isNaN(Number(editForm.value))) {
+      toast({
+        title: "Error",
+        description: "Valid value is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .update({
+          title: editForm.title.trim(),
+          company: editForm.company.trim(),
+          value: Number(editForm.value),
+          stage: editForm.stage,
+          probability: Number(editForm.probability) || 0
+        })
+        .eq('id', editingDeal.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Deal updated",
+        description: "Deal has been successfully updated.",
+      });
+
+      setEditingDeal(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error updating deal",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingDeal || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .delete()
+        .eq('id', deletingDeal.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Deal deleted",
+        description: "Deal has been successfully deleted.",
+      });
+
+      setDeletingDeal(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting deal",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAICoach = (deal: Deal) => {
+    console.log('🎯 DealsPipeline: AI Coach button clicked for deal:', deal.title);
     
-    e.stopPropagation(); // Prevent card click
-    console.log('🤖 Calling onSelectDeal with deal:', deal.title);
-    onSelectDeal(deal);
+    if (onSelectDeal) {
+      console.log('🎯 DealsPipeline: Calling onSelectDeal with deal:', deal.title);
+      onSelectDeal(deal);
+    }
     
-    // Switch to AI Coach tab - we'll need to communicate this to parent
-    console.log('🤖 Dispatching switchToAICoach event');
+    console.log('🎯 DealsPipeline: Dispatching switchToAICoach event');
     const event = new CustomEvent('switchToAICoach', { detail: deal });
     window.dispatchEvent(event);
-    console.log('🤖 AI Coach event dispatched successfully');
+    console.log('🎯 DealsPipeline: Event dispatched successfully');
   };
 
   const getStageColor = (stage: string) => {
@@ -230,20 +321,16 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   };
 
   const getProbabilityColor = (probability: number) => {
-    if (probability >= 80) return 'text-green-600';
-    if (probability >= 60) return 'text-yellow-600';
-    if (probability >= 40) return 'text-orange-600';
+    if (probability >= 75) return 'text-green-600';
+    if (probability >= 50) return 'text-yellow-600';
+    if (probability >= 25) return 'text-orange-600';
     return 'text-red-600';
   };
 
   // Calculate pipeline metrics
-  const pipelineMetrics = useMemo(() => {
-    const totalValue = filteredAndSortedDeals.reduce((sum, deal) => sum + deal.value, 0);
-    const weightedValue = filteredAndSortedDeals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
-    const avgDealSize = filteredAndSortedDeals.length > 0 ? totalValue / filteredAndSortedDeals.length : 0;
-    
-    return { totalValue, weightedValue, avgDealSize };
-  }, [filteredAndSortedDeals]);
+  const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
+  const weightedValue = deals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
+  const averageDealSize = deals.length > 0 ? totalValue / deals.length : 0;
 
   if (isLoading) {
     return (
@@ -260,40 +347,37 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   return (
     <div className="space-y-6">
       {/* Pipeline Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Total Pipeline</p>
-                <p className="text-2xl font-bold text-slate-900">${pipelineMetrics.totalValue.toLocaleString()}</p>
-              </div>
-              <DollarSign className="w-8 h-8 text-blue-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Pipeline</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">${totalValue.toLocaleString()}</div>
+            <p className="text-xs text-slate-600">{deals.length} active deals</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Weighted Pipeline</p>
-                <p className="text-2xl font-bold text-slate-900">${pipelineMetrics.weightedValue.toLocaleString()}</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Weighted Pipeline</CardTitle>
+            <Target className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">${weightedValue.toLocaleString()}</div>
+            <p className="text-xs text-slate-600">Probability adjusted</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Avg Deal Size</p>
-                <p className="text-2xl font-bold text-slate-900">${pipelineMetrics.avgDealSize.toLocaleString()}</p>
-              </div>
-              <User className="w-8 h-8 text-purple-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Avg Deal Size</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">${averageDealSize.toLocaleString()}</div>
+            <p className="text-xs text-slate-600">Per opportunity</p>
           </CardContent>
         </Card>
       </div>
@@ -307,7 +391,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 Sales Pipeline
               </CardTitle>
               <CardDescription>
-                Track your deals and get AI-powered recommendations
+                Track and manage your sales opportunities
               </CardDescription>
             </div>
             <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
@@ -323,7 +407,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
               <div className="flex items-center space-x-2 flex-1">
                 <Search className="w-4 h-4 text-slate-400" />
                 <Input 
-                  placeholder="Search deals by title, company, contact, next step..." 
+                  placeholder="Search deals by title, company, contact..." 
                   className="flex-1" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -373,10 +457,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 { field: 'title', label: 'Title' },
                 { field: 'company', label: 'Company' },
                 { field: 'value', label: 'Value' },
-                { field: 'probability', label: 'Probability' },
                 { field: 'stage', label: 'Stage' },
-                { field: 'created_at', label: 'Date Added' },
-                { field: 'last_activity', label: 'Last Activity' }
+                { field: 'probability', label: 'Probability' },
+                { field: 'created_at', label: 'Date Added' }
               ].map(({ field, label }) => (
                 <Button
                   key={field}
@@ -418,15 +501,20 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             ) : (
               <div className="grid gap-4">
                 {filteredAndSortedDeals.map((deal) => (
-                  <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200 cursor-pointer" onClick={() => onSelectDeal(deal)}>
+                  <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-slate-900">{deal.title}</h3>
-                            <Badge className={getStageColor(deal.stage)}>
-                              {deal.stage}
-                            </Badge>
+                            <div className="flex items-center space-x-2">
+                              <Badge className={getStageColor(deal.stage)}>
+                                {deal.stage}
+                              </Badge>
+                              <span className="text-lg font-bold text-slate-900">
+                                ${deal.value.toLocaleString()}
+                              </span>
+                            </div>
                           </div>
                           
                           <div className="flex items-center space-x-4 text-sm text-slate-600">
@@ -435,12 +523,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                               {deal.company}
                             </div>
                             <div className="flex items-center">
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              ${deal.value.toLocaleString()}
-                            </div>
-                            <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
-                              {deal.last_activity}
+                              Last activity: {deal.last_activity}
                             </div>
                           </div>
 
@@ -450,22 +534,39 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                               <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
                                 {deal.probability}%
                               </span>
-                              <Progress value={deal.probability} className="w-16" />
+                              <Progress value={deal.probability} className="w-20" />
                             </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="hover:bg-blue-50"
-                              onClick={(e) => handleAICoach(deal, e)}
-                            >
-                              <MessageSquare className="w-4 h-4 mr-1" />
-                              AI Coach
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleAICoach(deal)}
+                                className="hover:bg-purple-50"
+                              >
+                                <MessageSquare className="w-4 h-4 mr-1" />
+                                AI Coach
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleEdit(deal)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => setDeletingDeal(deal)}
+                                className="hover:bg-red-50 text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
 
-                          <div className="text-sm">
-                            <span className="text-slate-600">Next step:</span>
-                            <span className="ml-1 text-slate-900 font-medium">{deal.next_step}</span>
+                          <div className="bg-slate-50 p-2 rounded text-sm">
+                            <strong>Next Step:</strong> {deal.next_step}
                           </div>
                         </div>
                       </div>
@@ -477,6 +578,96 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Deal Dialog */}
+      <Dialog open={!!editingDeal} onOpenChange={() => setEditingDeal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+            <DialogDescription>
+              Update deal information. Title and value are required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Title *</label>
+              <Input
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                placeholder="Deal title"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Company</label>
+              <Input
+                value={editForm.company}
+                onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                placeholder="Company name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Value *</label>
+              <Input
+                value={editForm.value}
+                onChange={(e) => setEditForm({ ...editForm, value: e.target.value })}
+                placeholder="Deal value"
+                type="number"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Stage</label>
+              <Select value={editForm.stage} onValueChange={(value) => setEditForm({ ...editForm, stage: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Discovery">Discovery</SelectItem>
+                  <SelectItem value="Proposal">Proposal</SelectItem>
+                  <SelectItem value="Negotiation">Negotiation</SelectItem>
+                  <SelectItem value="Closing">Closing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Probability (%)</label>
+              <Input
+                value={editForm.probability}
+                onChange={(e) => setEditForm({ ...editForm, probability: e.target.value })}
+                placeholder="Close probability"
+                type="number"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setEditingDeal(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingDeal} onOpenChange={() => setDeletingDeal(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingDeal?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DealForm 
         open={showDealForm} 

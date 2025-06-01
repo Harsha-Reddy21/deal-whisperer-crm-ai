@@ -4,7 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, TrendingUp, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, UserCheck, Star } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
+import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -14,14 +17,13 @@ import LeadForm from './LeadForm';
 interface Lead {
   id: string;
   name: string;
-  company: string;
   email: string;
+  company: string;
   phone: string;
+  status: string;
   source: string;
   score: number;
-  status: string;
   created_at: string;
-  assigned_to?: string;
 }
 
 type SortField = 'name' | 'company' | 'score' | 'status' | 'source' | 'created_at';
@@ -32,11 +34,23 @@ const LeadManagement = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [scoreFilter, setScoreFilter] = useState<string>('all');
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    status: 'new',
+    source: 'manual'
+  });
 
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads', user?.id],
@@ -61,14 +75,13 @@ const LeadManagement = () => {
       return data.map(lead => ({
         id: lead.id,
         name: lead.name,
-        company: lead.company || '',
         email: lead.email || '',
+        company: lead.company || '',
         phone: lead.phone || '',
+        status: lead.status || 'new',
         source: lead.source || 'manual',
         score: lead.score || 0,
-        status: lead.status || 'new',
-        created_at: lead.created_at,
-        assigned_to: lead.assigned_to
+        created_at: lead.created_at
       }));
     },
     enabled: !!user,
@@ -86,10 +99,10 @@ const LeadManagement = () => {
         const companyMatch = lead.company.toLowerCase().includes(searchLower);
         const emailMatch = lead.email.toLowerCase().includes(searchLower);
         const phoneMatch = lead.phone.toLowerCase().includes(searchLower);
-        const sourceMatch = lead.source.toLowerCase().includes(searchLower);
         const statusMatch = lead.status.toLowerCase().includes(searchLower);
+        const sourceMatch = lead.source.toLowerCase().includes(searchLower);
         
-        return nameMatch || companyMatch || emailMatch || phoneMatch || sourceMatch || statusMatch;
+        return nameMatch || companyMatch || emailMatch || phoneMatch || statusMatch || sourceMatch;
       });
 
       // Sort by relevance when searching
@@ -152,8 +165,7 @@ const LeadManagement = () => {
             bValue = b.score;
             break;
           case 'status':
-            // Custom status ordering
-            const statusOrder = { 'new': 1, 'contacted': 2, 'qualified': 3, 'unqualified': 4, 'converted': 5 };
+            const statusOrder = { 'new': 1, 'contacted': 2, 'qualified': 3, 'unqualified': 4 };
             aValue = statusOrder[a.status as keyof typeof statusOrder] || 0;
             bValue = statusOrder[b.status as keyof typeof statusOrder] || 0;
             break;
@@ -196,77 +208,122 @@ const LeadManagement = () => {
     setSortDirection('desc');
   };
 
-  // Calculate lead metrics
-  const leadMetrics = useMemo(() => {
-    const totalLeads = filteredAndSortedLeads.length;
-    const qualifiedLeads = filteredAndSortedLeads.filter(lead => lead.status === 'qualified').length;
-    const avgScore = totalLeads > 0 ? filteredAndSortedLeads.reduce((sum, lead) => sum + lead.score, 0) / totalLeads : 0;
-    const conversionRate = totalLeads > 0 ? (qualifiedLeads / totalLeads) * 100 : 0;
-    
-    return { totalLeads, qualifiedLeads, avgScore, conversionRate };
-  }, [filteredAndSortedLeads]);
+  const handleEdit = (lead: Lead) => {
+    setEditingLead(lead);
+    setEditForm({
+      name: lead.name,
+      email: lead.email,
+      company: lead.company,
+      phone: lead.phone,
+      status: lead.status,
+      source: lead.source
+    });
+  };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800';
-      case 'contacted': return 'bg-yellow-100 text-yellow-800';
-      case 'qualified': return 'bg-green-100 text-green-800';
-      case 'unqualified': return 'bg-red-100 text-red-800';
-      case 'converted': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleSaveEdit = async () => {
+    if (!editingLead || !user) return;
+
+    if (!editForm.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({
+          name: editForm.name.trim(),
+          email: editForm.email.trim(),
+          company: editForm.company.trim(),
+          phone: editForm.phone.trim(),
+          status: editForm.status,
+          source: editForm.source
+        })
+        .eq('id', editingLead.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Lead updated",
+        description: "Lead has been successfully updated.",
+      });
+
+      setEditingLead(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error updating lead",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    if (score >= 40) return 'text-orange-600';
-    return 'text-red-600';
-  };
+  const handleDelete = async () => {
+    if (!deletingLead || !user) return;
 
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'form': return '📝';
-      case 'import': return '📊';
-      case 'integration': return '🔗';
-      case 'manual': return '✋';
-      default: return '📋';
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', deletingLead.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Lead deleted",
+        description: "Lead has been successfully deleted.",
+      });
+
+      setDeletingLead(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Error deleting lead",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const convertToContact = async (lead: Lead) => {
+    if (!user) return;
+
     try {
       // Create contact from lead
-      const { data: contact, error: contactError } = await supabase
+      const { error: contactError } = await supabase
         .from('contacts')
         .insert({
-          user_id: user?.id,
+          user_id: user.id,
           name: lead.name,
-          company: lead.company,
           email: lead.email,
+          company: lead.company,
           phone: lead.phone,
           status: 'Qualified',
-          score: lead.score
-        })
-        .select()
-        .single();
+          score: lead.score,
+          persona: 'Converted from lead'
+        });
 
       if (contactError) throw contactError;
 
-      // Update lead status to converted
-      const { error: leadError } = await supabase
+      // Delete the lead
+      const { error: deleteError } = await supabase
         .from('leads')
-        .update({ 
-          status: 'converted',
-          converted_contact_id: contact.id
-        })
-        .eq('id', lead.id);
+        .delete()
+        .eq('id', lead.id)
+        .eq('user_id', user.id);
 
-      if (leadError) throw leadError;
+      if (deleteError) throw deleteError;
 
       toast({
         title: "Lead converted!",
-        description: `${lead.name} has been converted to a contact.`,
+        description: "Lead has been successfully converted to a contact.",
       });
 
       refetch();
@@ -279,65 +336,96 @@ const LeadManagement = () => {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new': return 'bg-blue-100 text-blue-800';
+      case 'contacted': return 'bg-yellow-100 text-yellow-800';
+      case 'qualified': return 'bg-green-100 text-green-800';
+      case 'unqualified': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'form': return '📝';
+      case 'import': return '📊';
+      case 'integration': return '🔗';
+      case 'manual': return '✋';
+      default: return '📋';
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    if (score >= 40) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
+  // Calculate lead metrics
+  const totalLeads = leads.length;
+  const qualifiedLeads = leads.filter(lead => lead.status === 'qualified').length;
+  const conversionRate = totalLeads > 0 ? ((qualifiedLeads / totalLeads) * 100).toFixed(1) : '0';
+  const averageScore = totalLeads > 0 ? (leads.reduce((sum, lead) => sum + lead.score, 0) / totalLeads).toFixed(1) : '0';
+
   if (isLoading) {
     return (
-      <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-        <CardContent className="p-8 text-center">
-          <div className="text-lg">Loading leads...</div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardContent className="p-8 text-center">
+            <div className="text-lg">Loading leads...</div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Lead Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Total Leads</p>
-                <p className="text-2xl font-bold text-slate-900">{leadMetrics.totalLeads}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Leads</CardTitle>
+            <Users className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{totalLeads}</div>
+            <p className="text-xs text-slate-600">Active prospects</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Qualified</p>
-                <p className="text-2xl font-bold text-slate-900">{leadMetrics.qualifiedLeads}</p>
-              </div>
-              <UserCheck className="w-8 h-8 text-green-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Qualified</CardTitle>
+            <Target className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{qualifiedLeads}</div>
+            <p className="text-xs text-slate-600">Ready for conversion</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Avg Score</p>
-                <p className="text-2xl font-bold text-slate-900">{leadMetrics.avgScore.toFixed(0)}</p>
-              </div>
-              <Star className="w-8 h-8 text-yellow-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Conversion Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{conversionRate}%</div>
+            <p className="text-xs text-slate-600">Lead to qualified</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Conversion Rate</p>
-                <p className="text-2xl font-bold text-slate-900">{leadMetrics.conversionRate.toFixed(1)}%</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-purple-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Avg Score</CardTitle>
+            <UserPlus className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{averageScore}</div>
+            <p className="text-xs text-slate-600">Quality metric</p>
           </CardContent>
         </Card>
       </div>
@@ -347,11 +435,11 @@ const LeadManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center">
-                <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
+                <UserPlus className="w-5 h-5 mr-2 text-blue-600" />
                 Lead Management
               </CardTitle>
               <CardDescription>
-                Track and convert your leads into customers
+                Track and nurture your sales leads
               </CardDescription>
             </div>
             <Button onClick={() => setShowLeadForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
@@ -367,7 +455,7 @@ const LeadManagement = () => {
               <div className="flex items-center space-x-2 flex-1">
                 <Search className="w-4 h-4 text-slate-400" />
                 <Input 
-                  placeholder="Search leads by name, company, email, phone..." 
+                  placeholder="Search leads by name, company, email..." 
                   className="flex-1" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -386,7 +474,6 @@ const LeadManagement = () => {
                     <SelectItem value="contacted">Contacted</SelectItem>
                     <SelectItem value="qualified">Qualified</SelectItem>
                     <SelectItem value="unqualified">Unqualified</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -397,7 +484,7 @@ const LeadManagement = () => {
                   <SelectContent>
                     <SelectItem value="all">All Sources</SelectItem>
                     <SelectItem value="manual">Manual</SelectItem>
-                    <SelectItem value="form">Web Form</SelectItem>
+                    <SelectItem value="form">Form</SelectItem>
                     <SelectItem value="import">Import</SelectItem>
                     <SelectItem value="integration">Integration</SelectItem>
                   </SelectContent>
@@ -480,10 +567,7 @@ const LeadManagement = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-semibold text-slate-900">{lead.name}</h3>
-                              <p className="text-sm text-slate-600">{lead.company}</p>
-                            </div>
+                            <h3 className="font-semibold text-slate-900">{lead.name}</h3>
                             <div className="flex items-center space-x-2">
                               <Badge className={getStatusColor(lead.status)}>
                                 {lead.status}
@@ -493,32 +577,68 @@ const LeadManagement = () => {
                               </span>
                             </div>
                           </div>
-
+                          
                           <div className="flex items-center space-x-4 text-sm text-slate-600">
-                            <span>{lead.email}</span>
-                            <span>{lead.phone}</span>
-                            <div className="flex items-center space-x-1">
-                              <span>{getSourceIcon(lead.source)}</span>
-                              <span className="capitalize">{lead.source}</span>
+                            <div className="flex items-center">
+                              <span className="mr-1">{getSourceIcon(lead.source)}</span>
+                              {lead.company || 'No company'}
+                            </div>
+                            <div className="flex items-center">
+                              <Mail className="w-4 h-4 mr-1" />
+                              {lead.email || 'No email'}
+                            </div>
+                            <div className="flex items-center">
+                              <Phone className="w-4 h-4 mr-1" />
+                              {lead.phone || 'No phone'}
                             </div>
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-500">
-                              Created: {new Date(lead.created_at).toLocaleDateString()}
-                            </span>
-                            <div className="flex space-x-2">
-                              {lead.status !== 'converted' && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-slate-600">Source:</span>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {getSourceIcon(lead.source)} {lead.source}
+                              </Badge>
+                              <span className="text-sm text-slate-600">
+                                Added {new Date(lead.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button size="sm" variant="outline">
+                                <Mail className="w-4 h-4 mr-1" />
+                                Email
+                              </Button>
+                              <Button size="sm" variant="outline">
+                                <Phone className="w-4 h-4 mr-1" />
+                                Call
+                              </Button>
+                              {lead.status === 'qualified' && (
                                 <Button 
                                   size="sm" 
-                                  variant="outline"
+                                  variant="outline" 
                                   onClick={() => convertToContact(lead)}
-                                  className="hover:bg-green-50"
+                                  className="hover:bg-green-50 text-green-600"
                                 >
-                                  <Users className="w-4 h-4 mr-1" />
-                                  Convert to Contact
+                                  <UserPlus className="w-4 h-4 mr-1" />
+                                  Convert
                                 </Button>
                               )}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleEdit(lead)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => setDeletingLead(lead)}
+                                className="hover:bg-red-50 text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -531,6 +651,107 @@ const LeadManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={!!editingLead} onOpenChange={() => setEditingLead(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Lead</DialogTitle>
+            <DialogDescription>
+              Update lead information. Name is required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Name *</label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Lead name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <Input
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="Email address"
+                type="email"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Company</label>
+              <Input
+                value={editForm.company}
+                onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                placeholder="Company name"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Phone</label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                placeholder="Phone number"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Status</label>
+              <Select value={editForm.status} onValueChange={(value) => setEditForm({ ...editForm, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="qualified">Qualified</SelectItem>
+                  <SelectItem value="unqualified">Unqualified</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Source</label>
+              <Select value={editForm.source} onValueChange={(value) => setEditForm({ ...editForm, source: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="form">Form</SelectItem>
+                  <SelectItem value="import">Import</SelectItem>
+                  <SelectItem value="integration">Integration</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setEditingLead(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingLead} onOpenChange={() => setDeletingLead(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingLead?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <LeadForm 
         open={showLeadForm} 

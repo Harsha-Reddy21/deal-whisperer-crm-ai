@@ -3,17 +3,65 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, TrendingUp, CheckCircle, MessageSquare, Clock, Lightbulb, RefreshCw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, TrendingUp, CheckCircle, MessageSquare, Clock, Lightbulb, RefreshCw, Search, DollarSign, User, Calendar } from 'lucide-react';
 import { generateDealCoachRecommendations, DealCoachRecommendation, isOpenAIConfigured } from '@/lib/openai';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AICoachProps {
   selectedDeal: any;
+  onSelectDeal?: (deal: any) => void;
 }
 
-const AICoach = ({ selectedDeal }: AICoachProps) => {
+const AICoach = ({ selectedDeal, onSelectDeal }: AICoachProps) => {
+  const { user } = useAuth();
   const [recommendations, setRecommendations] = useState<DealCoachRecommendation[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stageFilter, setStageFilter] = useState<string>('all');
+
+  // Fetch deals for selection
+  const { data: deals = [] } = useQuery({
+    queryKey: ['deals', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        company: deal.company || '',
+        value: Number(deal.value),
+        probability: deal.probability || 0,
+        stage: deal.stage || 'Discovery',
+        contact_name: deal.contact_name || '',
+        last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
+        next_step: deal.next_step || 'Follow up required',
+        created_at: deal.created_at
+      }));
+    },
+    enabled: !!user,
+  });
+
+  // Filter deals based on search and stage
+  const filteredDeals = deals.filter(deal => {
+    const matchesSearch = deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         deal.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         deal.contact_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStage = stageFilter === 'all' || deal.stage === stageFilter;
+    return matchesSearch && matchesStage;
+  });
 
   const defaultRecommendations = [
     {
@@ -84,6 +132,13 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
     }
   };
 
+  const handleDealSelect = (deal: any) => {
+    console.log('🧠 AICoach: Deal selected:', deal.title);
+    if (onSelectDeal) {
+      onSelectDeal(deal);
+    }
+  };
+
   const getRecommendationColor = (type: string) => {
     switch (type) {
       case 'high': return 'border-red-200 bg-red-50';
@@ -111,6 +166,16 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
     }
   };
 
+  const getStageColor = (stage: string) => {
+    switch (stage) {
+      case 'Discovery': return 'bg-blue-100 text-blue-800';
+      case 'Proposal': return 'bg-yellow-100 text-yellow-800';
+      case 'Negotiation': return 'bg-orange-100 text-orange-800';
+      case 'Closing': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const openAIConfigured = isOpenAIConfigured();
 
   return (
@@ -131,26 +196,37 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold text-slate-900">Analyzing Deal: {selectedDeal.title}</h3>
-                  {openAIConfigured && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={generateAIRecommendations}
-                      disabled={isAnalyzing}
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-2 border-purple-600 border-t-transparent mr-1"></div>
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Refresh AI Analysis
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {onSelectDeal && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => onSelectDeal(null)}
+                      >
+                        Select Different Deal
+                      </Button>
+                    )}
+                    {openAIConfigured && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={generateAIRecommendations}
+                        disabled={isAnalyzing}
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-2 border-purple-600 border-t-transparent mr-1"></div>
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            Refresh AI Analysis
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-slate-600 text-sm">Company: {selectedDeal.company}</p>
                 <p className="text-slate-600 text-sm">Value: ${selectedDeal.value.toLocaleString()}</p>
@@ -237,10 +313,112 @@ const AICoach = ({ selectedDeal }: AICoachProps) => {
               </div>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">Select a Deal for AI Analysis</h3>
-              <p className="text-slate-600">Click on any deal from the pipeline to get personalized AI recommendations.</p>
+            <div className="space-y-6">
+              <div className="text-center py-6">
+                <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">Select a Deal for AI Analysis</h3>
+                <p className="text-slate-600">Choose a deal from your pipeline to get personalized AI recommendations.</p>
+              </div>
+
+              {/* Deal Selection Interface */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Search className="w-4 h-4 text-slate-400" />
+                    <Input 
+                      placeholder="Search deals by title, company, or contact..." 
+                      className="flex-1" 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Select value={stageFilter} onValueChange={setStageFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="All Stages" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stages</SelectItem>
+                      <SelectItem value="Discovery">Discovery</SelectItem>
+                      <SelectItem value="Proposal">Proposal</SelectItem>
+                      <SelectItem value="Negotiation">Negotiation</SelectItem>
+                      <SelectItem value="Closing">Closing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="text-sm text-slate-600">
+                  Showing {filteredDeals.length} of {deals.length} deals
+                </div>
+
+                {filteredDeals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-600">
+                      {deals.length === 0 ? "No deals found. Create your first deal to get AI coaching!" : "No deals match your search criteria."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 max-h-96 overflow-y-auto">
+                    {filteredDeals.map((deal) => (
+                      <Card 
+                        key={deal.id} 
+                        className="border border-slate-200 hover:shadow-md transition-all duration-200 cursor-pointer hover:border-purple-300"
+                        onClick={() => handleDealSelect(deal)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold text-slate-900">{deal.title}</h4>
+                                <Badge className={getStageColor(deal.stage)}>
+                                  {deal.stage}
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex items-center space-x-4 text-sm text-slate-600">
+                                <div className="flex items-center">
+                                  <User className="w-4 h-4 mr-1" />
+                                  {deal.company}
+                                </div>
+                                <div className="flex items-center">
+                                  <DollarSign className="w-4 h-4 mr-1" />
+                                  ${deal.value.toLocaleString()}
+                                </div>
+                                <div className="flex items-center">
+                                  <Calendar className="w-4 h-4 mr-1" />
+                                  {deal.last_activity}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-slate-600">Close Probability:</span>
+                                  <span className="text-sm font-medium text-purple-600">
+                                    {deal.probability}%
+                                  </span>
+                                  <Progress value={deal.probability} className="w-16" />
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="hover:bg-purple-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDealSelect(deal);
+                                  }}
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-1" />
+                                  Get AI Coaching
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
