@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,9 +24,12 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
+  console.log('Index component rendered, user:', user);
+
   // Listen for AI Coach tab switch events
   useEffect(() => {
     const handleSwitchToAICoach = (event: any) => {
+      console.log('Switching to AI Coach with deal:', event.detail);
       setActiveTab('ai-coach');
       setSelectedDeal(event.detail);
     };
@@ -35,76 +39,115 @@ const Index = () => {
   }, []);
 
   // Fetch real statistics from the database
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['dashboard-stats', user?.id],
     queryFn: async () => {
-      if (!user) return null;
+      if (!user) {
+        console.log('No user found for stats query');
+        return null;
+      }
 
-      const [contactsResult, dealsResult] = await Promise.all([
-        supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id),
-        supabase.from('deals').select('id, value, stage', { count: 'exact' }).eq('user_id', user.id)
-      ]);
+      console.log('Fetching stats for user:', user.id);
 
-      const totalContacts = contactsResult.count || 0;
-      const totalDeals = dealsResult.count || 0;
-      const deals = dealsResult.data || [];
-      
-      const totalRevenue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
-      const closedDeals = deals.filter(deal => deal.stage === 'Closing').length;
-      const closeRate = totalDeals > 0 ? ((closedDeals / totalDeals) * 100).toFixed(1) : '0';
+      try {
+        const [contactsResult, dealsResult] = await Promise.all([
+          supabase.from('contacts').select('id', { count: 'exact' }).eq('user_id', user.id),
+          supabase.from('deals').select('id, value, stage', { count: 'exact' }).eq('user_id', user.id)
+        ]);
 
-      return {
-        totalContacts,
-        totalDeals,
-        totalRevenue,
-        closeRate
-      };
+        console.log('Contacts result:', contactsResult);
+        console.log('Deals result:', dealsResult);
+
+        if (contactsResult.error) {
+          console.error('Error fetching contacts:', contactsResult.error);
+        }
+        
+        if (dealsResult.error) {
+          console.error('Error fetching deals:', dealsResult.error);
+        }
+
+        const totalContacts = contactsResult.count || 0;
+        const totalDeals = dealsResult.count || 0;
+        const deals = dealsResult.data || [];
+        
+        const totalRevenue = deals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
+        const closedDeals = deals.filter(deal => deal.stage === 'Closing').length;
+        const closeRate = totalDeals > 0 ? ((closedDeals / totalDeals) * 100).toFixed(1) : '0';
+
+        const statsData = {
+          totalContacts,
+          totalDeals,
+          totalRevenue,
+          closeRate
+        };
+
+        console.log('Calculated stats:', statsData);
+        return statsData;
+      } catch (error) {
+        console.error('Error in stats query:', error);
+        throw error;
+      }
     },
     enabled: !!user,
   });
 
   const handleSignOut = async () => {
+    console.log('Signing out user');
     await signOut();
   };
 
   const handleTodaysTasks = () => {
+    console.log('Opening tasks dialog');
     setShowTasksDialog(true);
   };
 
   const handleAIAssistant = () => {
+    console.log('Opening AI assistant dialog');
     setShowAIAssistantDialog(true);
   };
+
+  // Show loading state if user is not loaded yet
+  if (!user) {
+    console.log('No user found, showing loading state');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-lg">Loading user data...</div>
+      </div>
+    );
+  }
 
   const displayStats = [
     {
       title: "Total Contacts",
-      value: stats?.totalContacts?.toString() || "0",
+      value: statsLoading ? "..." : (stats?.totalContacts?.toString() || "0"),
       change: "+12%",
       icon: Users,
       color: "text-blue-600"
     },
     {
       title: "Active Deals",
-      value: stats?.totalDeals?.toString() || "0",
+      value: statsLoading ? "..." : (stats?.totalDeals?.toString() || "0"),
       change: "+8%",
       icon: TrendingUp,
       color: "text-green-600"
     },
     {
       title: "Revenue Pipeline",
-      value: stats?.totalRevenue ? `$${(stats.totalRevenue / 1000).toFixed(0)}K` : "$0",
+      value: statsLoading ? "..." : (stats?.totalRevenue ? `$${(stats.totalRevenue / 1000).toFixed(0)}K` : "$0"),
       change: "+23%",
       icon: DollarSign,
       color: "text-purple-600"
     },
     {
       title: "Close Rate",
-      value: `${stats?.closeRate || 0}%`,
+      value: statsLoading ? "..." : `${stats?.closeRate || 0}%`,
       change: "+3.2%",
       icon: Target,
       color: "text-orange-600"
     }
   ];
+
+  console.log('Rendering main content with stats:', displayStats);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
