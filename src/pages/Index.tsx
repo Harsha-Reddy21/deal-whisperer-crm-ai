@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +13,9 @@ import ObjectionHandler from '@/components/ObjectionHandler';
 import ActivitiesManager from '@/components/ActivitiesManager';
 import LeadManagement from '@/components/LeadManagement';
 import ReportsDashboard from '@/components/ReportsDashboard';
+import EmailTemplates from '@/components/EmailTemplates';
+import CalendarScheduling from '@/components/CalendarScheduling';
+import FileManagement from '@/components/FileManagement';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -216,7 +218,7 @@ const Index = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 bg-white/60 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-11 bg-white/60 backdrop-blur-sm">
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
@@ -225,6 +227,9 @@ const Index = () => {
             <TabsTrigger value="ai-coach">AI Coach</TabsTrigger>
             <TabsTrigger value="objection-handler">Objections</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="email-templates">Email</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pipeline" className="space-y-6">
@@ -325,6 +330,18 @@ const Index = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="email-templates" className="space-y-6">
+            <EmailTemplates />
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-6">
+            <CalendarScheduling />
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-6">
+            <FileManagement />
           </TabsContent>
         </Tabs>
       </div>
