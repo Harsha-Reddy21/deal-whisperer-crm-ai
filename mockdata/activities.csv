@@ -28,4 +28,29 @@ act_026,CRM integration follow-up,call,Follow up on CRM integration requirements
 act_027,Quality control system presentation,meeting,Present manufacturing quality control solution,high,pending,2024-02-24,comp_002,Global Manufacturing Corp,cont_005,Susan Mitchell,deal_022,
 act_028,Medical device integration planning,meeting,Plan medical device integration strategy,medium,pending,2024-02-25,comp_003,HealthCare Innovations,cont_007,Dr. Andrew Chen,deal_023,
 act_029,Startup analytics dashboard setup,task,Set up analytics dashboard for startup client,low,pending,2024-02-26,comp_004,StartupVenture Inc,cont_009,Maya Patel,deal_024,
-act_030,Compliance system requirements gathering,meeting,Gather compliance management system requirements,high,pending,2024-02-27,comp_005,Financial Services Group,cont_011,Jonathan Smith,deal_025 
+act_030,Compliance system requirements gathering,meeting,Gather compliance management system requirements,high,pending,2024-02-27,comp_005,Financial Services Group,cont_011,Jonathan Smith,deal_025,
+act_031,AgriTech lead follow-up,call,Follow up on smart farming IoT interest and schedule demo,medium,pending,2024-03-01,comp_011,AgriTech Innovations,,Lisa Thompson,,lead_006
+act_032,Fashion brand lead nurturing,email,Send e-commerce case studies and pricing information,low,pending,2024-03-02,comp_015,Fashion Forward Brands,,James Rodriguez,,lead_007
+act_033,Food industry lead consultation,meeting,Discuss supply chain optimization requirements,high,pending,2024-03-03,comp_018,Food & Beverage Co,,Amanda Foster,,lead_008
+act_034,BioTech lead qualification,call,Qualify laboratory management system requirements,medium,pending,2024-03-04,comp_013,BioTech Research Labs,,Kevin Park,,lead_009
+act_035,Pharmaceutical lead presentation,meeting,Present research platform capabilities and ROI,high,pending,2024-03-05,comp_020,Pharmaceutical Research,,Michelle Lee,,lead_010
+act_036,Manufacturing lead discovery,call,Discover automation and quality control needs,medium,pending,2024-03-06,comp_002,Global Manufacturing Corp,,Brian Taylor,,lead_011
+act_037,Education lead demo,meeting,Demonstrate educational platform features and integrations,medium,pending,2024-03-07,comp_006,EduTech Academy,,Rachel Green,,lead_012
+act_038,Logistics lead assessment,call,Assess current logistics processes and pain points,high,pending,2024-03-08,comp_012,Logistics Express,,Steven Clark,,lead_013
+act_039,Energy lead consultation,meeting,Discuss renewable energy analytics and sustainability goals,medium,pending,2024-03-09,comp_014,Energy Solutions Corp,,Nicole White,,lead_014
+act_040,Transportation lead planning,call,Plan transportation management system requirements,high,pending,2024-03-10,comp_019,Transportation Systems,,Christopher Hall,,lead_015
+act_041,Insurance lead demo,meeting,Demo claims processing automation and efficiency gains,medium,pending,2024-03-11,comp_016,Insurance Specialists,,Jessica Brown,,lead_016
+act_042,Cloud lead technical review,call,Review cloud infrastructure requirements and migration strategy,high,pending,2024-03-12,comp_017,Cloud Computing Corp,,Andrew Davis,,lead_017
+act_043,Retail lead consultation,meeting,Discuss POS system enhancements and multi-location needs,medium,pending,2024-03-13,comp_007,Retail Chain Solutions,,Stephanie Miller,,lead_018
+act_044,Financial services lead qualification,call,Qualify compliance and risk management requirements,high,pending,2024-03-14,comp_005,Financial Services Group,,Daniel Wilson,,lead_019
+act_045,Consulting lead workshop,meeting,Conduct digital transformation assessment workshop,medium,pending,2024-03-15,comp_008,Consulting Partners LLC,,Lauren Johnson,,lead_020
+act_046,TechFlow lead technical discussion,call,Discuss advanced software integration capabilities,medium,pending,2024-03-16,comp_001,TechFlow Solutions,,Mark Thompson,,lead_021
+act_047,Healthcare lead case study review,email,Share medical device integration case studies,low,pending,2024-03-17,comp_003,HealthCare Innovations,,Elena Rodriguez,,lead_022
+act_048,Startup lead product walkthrough,meeting,Walkthrough analytics dashboard features and customization,high,pending,2024-03-18,comp_004,StartupVenture Inc,,Alex Kim,,lead_023
+act_049,Real estate lead needs analysis,call,Analyze property management software requirements,medium,pending,2024-03-19,comp_009,Real Estate Dynamics,,Samantha Davis,,lead_024
+act_050,Media lead content strategy,meeting,Discuss content management and distribution strategy,medium,pending,2024-03-20,comp_010,Media & Entertainment Co,,Carlos Martinez,,lead_025
+act_051,Contact relationship building,lunch,Build stronger relationship with key decision maker,low,completed,2024-02-28,comp_001,TechFlow Solutions,cont_001,John Doe,,
+act_052,Technical architecture review,meeting,Review technical architecture with engineering team,high,pending,2024-03-21,comp_002,Global Manufacturing Corp,cont_004,Michael Rodriguez,,
+act_053,Healthcare innovation discussion,call,Discuss latest healthcare technology trends and opportunities,medium,pending,2024-03-22,comp_003,HealthCare Innovations,cont_006,Amanda Foster,,
+act_054,Startup growth strategy,meeting,Discuss scaling challenges and technology roadmap,medium,pending,2024-03-23,comp_004,StartupVenture Inc,cont_008,Emily Johnson,,
+act_055,Risk assessment consultation,call,Conduct comprehensive risk assessment and mitigation planning,high,pending,2024-03-24,comp_005,Financial Services Group,cont_010,David Kim,, 
