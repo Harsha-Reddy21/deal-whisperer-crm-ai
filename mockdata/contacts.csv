@@ -1,27 +1,27 @@
-name,email,company_name,phone,status,persona,title,score
-John Doe,john.doe@acmecorp.com,Acme Corp,+1 (555) 123-4567,Qualified,decision_maker,VP of Technology,85
-Sarah Chen,sarah.chen@techflow.com,TechFlow Solutions,+1-555-0201,Qualified,decision_maker,VP of Engineering,92
-Michael Rodriguez,m.rodriguez@globalmanufacturing.com,Global Manufacturing Corp,+1-555-0202,Customer,technical_expert,CTO,88
-Amanda Foster,amanda@healthcareinnovations.com,HealthCare Innovations,+1-555-0203,Hot Lead,innovation_leader,Chief Medical Officer,85
-Emily Johnson,emily.j@startupventure.io,StartupVenture Inc,+1-555-0204,Qualified,entrepreneur,Founder & CEO,78
-David Kim,david@financialservicesgroup.com,Financial Services Group,+1-555-0205,Customer,security_leader,Chief Risk Officer,90
-Lisa Thompson,lisa.thompson@edutech-academy.com,EduTech Academy,+1-555-0206,Hot Lead,product_strategist,Head of Product,82
-Robert Martinez,robert.m@retailchainsolutions.com,Retail Chain Solutions,+1-555-0207,Customer,operations_leader,VP of Operations,89
-James Wilson,j.wilson@consultingpartners.com,Consulting Partners LLC,+1-555-0208,Qualified,consultant,Senior Partner,95
-Maria Garcia,maria.garcia@realestatedynamics.com,Real Estate Dynamics,+1-555-0209,Cold Lead,business_developer,Business Development Manager,68
-Alex Thompson,alex.t@mediaentertainment.com,Media & Entertainment Co,+1-555-0210,Hot Lead,creative_director,VP of Content,75
-Rachel Kim,rachel.kim@agritech-innovations.com,AgriTech Innovations,+1-555-0211,Qualified,technical_expert,Lead Engineer,72
-Mark Johnson,mark.j@logisticsexpress.com,Logistics Express,+1-555-0212,Customer,operations_leader,Operations Director,87
-Jennifer Lee,jennifer.lee@biotechresearch.com,BioTech Research Labs,+1-555-0213,Qualified,research_analyst,Research Director,80
-Tom Wilson,tom.wilson@energysolutions.com,Energy Solutions Corp,+1-555-0214,Customer,sustainability_leader,VP of Sustainability,93
-Jessica Brown,jessica.brown@fashionforward.com,Fashion Forward Brands,+1-555-0215,Hot Lead,brand_manager,Brand Director,69
-Kevin Davis,kevin.davis@insurancespecialists.com,Insurance Specialists,+1-555-0216,Customer,risk_manager,VP of Risk Management,88
-Linda White,linda.white@cloudcomputing.com,Cloud Computing Corp,+1-555-0217,Qualified,cloud_expert,Solutions Architect,94
-Ryan Miller,ryan.miller@foodbeverage.com,Food & Beverage Co,+1-555-0218,Cold Lead,supply_chain_manager,Supply Chain Director,71
-Nicole Taylor,nicole.taylor@transportsystems.com,Transportation Systems,+1-555-0219,Qualified,project_manager,Project Director,86
-Dr. Patricia Adams,patricia.adams@pharmaresearch.com,Pharmaceutical Research,+1-555-0220,Hot Lead,research_leader,VP of Research & Development,84
-Carlos Rodriguez,carlos.r@techflow.com,TechFlow Solutions,+1-555-0221,Qualified,technical_implementer,Senior Software Engineer,78
-Susan Mitchell,susan.mitchell@globalmanufacturing.com,Global Manufacturing Corp,+1-555-0222,Customer,procurement_manager,Procurement Director,85
-Dr. Andrew Chen,andrew.chen@healthcareinnovations.com,HealthCare Innovations,+1-555-0223,Qualified,medical_expert,Chief Technology Officer,82
-Maya Patel,maya.patel@startupventure.io,StartupVenture Inc,+1-555-0224,Hot Lead,product_manager,Head of Product,75
-Jonathan Smith,jonathan.smith@financialservicesgroup.com,Financial Services Group,+1-555-0225,Customer,compliance_officer,Chief Compliance Officer,91 
+id,name,email,company_id,company_name,phone,status,persona,title,score
+cont_001,John Doe,john.doe@acmecorp.com,comp_001,TechFlow Solutions,+1 (555) 123-4567,Qualified,decision_maker,VP of Technology,85
+cont_002,Sarah Chen,sarah.chen@techflow.com,comp_001,TechFlow Solutions,+1-555-0201,Qualified,decision_maker,VP of Engineering,92
+cont_003,Carlos Rodriguez,carlos.r@techflow.com,comp_001,TechFlow Solutions,+1-555-0221,Qualified,technical_implementer,Senior Software Engineer,78
+cont_004,Michael Rodriguez,m.rodriguez@globalmanufacturing.com,comp_002,Global Manufacturing Corp,+1-555-0202,Customer,technical_expert,CTO,88
+cont_005,Susan Mitchell,susan.mitchell@globalmanufacturing.com,comp_002,Global Manufacturing Corp,+1-555-0222,Customer,procurement_manager,Procurement Director,85
+cont_006,Amanda Foster,amanda@healthcareinnovations.com,comp_003,HealthCare Innovations,+1-555-0203,Hot Lead,innovation_leader,Chief Medical Officer,85
+cont_007,Dr. Andrew Chen,andrew.chen@healthcareinnovations.com,comp_003,HealthCare Innovations,+1-555-0223,Qualified,medical_expert,Chief Technology Officer,82
+cont_008,Emily Johnson,emily.j@startupventure.io,comp_004,StartupVenture Inc,+1-555-0204,Qualified,entrepreneur,Founder & CEO,78
+cont_009,Maya Patel,maya.patel@startupventure.io,comp_004,StartupVenture Inc,+1-555-0224,Hot Lead,product_manager,Head of Product,75
+cont_010,David Kim,david@financialservicesgroup.com,comp_005,Financial Services Group,+1-555-0205,Customer,security_leader,Chief Risk Officer,90
+cont_011,Jonathan Smith,jonathan.smith@financialservicesgroup.com,comp_005,Financial Services Group,+1-555-0225,Customer,compliance_officer,Chief Compliance Officer,91
+cont_012,Lisa Thompson,lisa.thompson@edutech-academy.com,comp_006,EduTech Academy,+1-555-0206,Hot Lead,product_strategist,Head of Product,82
+cont_013,Robert Martinez,robert.m@retailchainsolutions.com,comp_007,Retail Chain Solutions,+1-555-0207,Customer,operations_leader,VP of Operations,89
+cont_014,James Wilson,j.wilson@consultingpartners.com,comp_008,Consulting Partners LLC,+1-555-0208,Qualified,consultant,Senior Partner,95
+cont_015,Maria Garcia,maria.garcia@realestatedynamics.com,comp_009,Real Estate Dynamics,+1-555-0209,Cold Lead,business_developer,Business Development Manager,68
+cont_016,Alex Thompson,alex.t@mediaentertainment.com,comp_010,Media & Entertainment Co,+1-555-0210,Hot Lead,creative_director,VP of Content,75
+cont_017,Rachel Kim,rachel.kim@agritech-innovations.com,comp_011,AgriTech Innovations,+1-555-0211,Qualified,technical_expert,Lead Engineer,72
+cont_018,Mark Johnson,mark.j@logisticsexpress.com,comp_012,Logistics Express,+1-555-0212,Customer,operations_leader,Operations Director,87
+cont_019,Jennifer Lee,jennifer.lee@biotechresearch.com,comp_013,BioTech Research Labs,+1-555-0213,Qualified,research_analyst,Research Director,80
+cont_020,Tom Wilson,tom.wilson@energysolutions.com,comp_014,Energy Solutions Corp,+1-555-0214,Customer,sustainability_leader,VP of Sustainability,93
+cont_021,Jessica Brown,jessica.brown@fashionforward.com,comp_015,Fashion Forward Brands,+1-555-0215,Hot Lead,brand_manager,Brand Director,69
+cont_022,Kevin Davis,kevin.davis@insurancespecialists.com,comp_016,Insurance Specialists,+1-555-0216,Customer,risk_manager,VP of Risk Management,88
+cont_023,Linda White,linda.white@cloudcomputing.com,comp_017,Cloud Computing Corp,+1-555-0217,Qualified,cloud_expert,Solutions Architect,94
+cont_024,Ryan Miller,ryan.miller@foodbeverage.com,comp_018,Food & Beverage Co,+1-555-0218,Cold Lead,supply_chain_manager,Supply Chain Director,71
+cont_025,Nicole Taylor,nicole.taylor@transportsystems.com,comp_019,Transportation Systems,+1-555-0219,Qualified,project_manager,Project Director,86
+cont_026,Dr. Patricia Adams,patricia.adams@pharmaresearch.com,comp_020,Pharmaceutical Research,+1-555-0220,Hot Lead,research_leader,VP of Research & Development,84 

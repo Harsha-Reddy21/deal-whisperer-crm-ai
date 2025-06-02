@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, FileText, Users, TrendingUp, Calendar, CheckCircle, AlertCircle, Download, Eye } from 'lucide-react';
+import { Upload, FileText, Users, TrendingUp, Calendar, CheckCircle, AlertCircle, Download, Eye, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +58,15 @@ const DataImporter = () => {
       description: 'Import sales activities and follow-ups',
       sampleHeaders: ['title', 'type', 'description', 'due_date', 'priority', 'status'],
       table: 'activities'
+    },
+    {
+      id: 'companies',
+      label: 'Companies',
+      icon: Building2,
+      color: 'text-indigo-600',
+      description: 'Import company and organization data',
+      sampleHeaders: ['name', 'website', 'industry', 'size', 'phone', 'email', 'address', 'city', 'status'],
+      table: 'companies'
     }
   ];
 
@@ -150,6 +159,32 @@ const DataImporter = () => {
           else if (['priority', 'importance'].includes(normalizedHeader)) data.priority = value;
           else if (['status', 'activity_status'].includes(normalizedHeader)) data.status = value;
           break;
+          
+        case 'companies':
+          if (['name', 'company_name', 'organization'].includes(normalizedHeader)) data.name = value;
+          else if (['website', 'company_website', 'url'].includes(normalizedHeader)) data.website = value;
+          else if (['industry', 'sector', 'business_type'].includes(normalizedHeader)) data.industry = value;
+          else if (['size', 'company_size', 'employee_size'].includes(normalizedHeader)) data.size = value;
+          else if (['phone', 'phone_number', 'company_phone'].includes(normalizedHeader)) data.phone = value;
+          else if (['email', 'company_email', 'contact_email'].includes(normalizedHeader)) data.email = value;
+          else if (['address', 'street_address', 'location'].includes(normalizedHeader)) data.address = value;
+          else if (['city', 'company_city'].includes(normalizedHeader)) data.city = value;
+          else if (['state', 'province', 'region'].includes(normalizedHeader)) data.state = value;
+          else if (['country', 'nation'].includes(normalizedHeader)) data.country = value;
+          else if (['postal_code', 'zip_code', 'zip'].includes(normalizedHeader)) data.postal_code = value;
+          else if (['description', 'company_description', 'about'].includes(normalizedHeader)) data.description = value;
+          else if (['status', 'company_status', 'relationship'].includes(normalizedHeader)) data.status = value;
+          else if (['revenue', 'annual_revenue', 'yearly_revenue'].includes(normalizedHeader)) data.revenue = parseInt(value) || 0;
+          else if (['employees', 'employee_count', 'staff_count'].includes(normalizedHeader)) data.employees = parseInt(value) || 0;
+          else if (['founded_year', 'founded', 'established'].includes(normalizedHeader)) data.founded_year = parseInt(value) || 0;
+          else if (['linkedin_url', 'linkedin', 'linkedin_profile'].includes(normalizedHeader)) data.linkedin_url = value;
+          else if (['twitter_url', 'twitter', 'twitter_profile'].includes(normalizedHeader)) data.twitter_url = value;
+          else if (['facebook_url', 'facebook', 'facebook_profile'].includes(normalizedHeader)) data.facebook_url = value;
+          else if (['notes', 'company_notes', 'remarks'].includes(normalizedHeader)) data.notes = value;
+          else if (['score', 'company_score', 'rating'].includes(normalizedHeader)) data.score = parseInt(value) || 0;
+          else if (['last_contact', 'last_contacted'].includes(normalizedHeader)) data.last_contact = value;
+          else if (['next_follow_up', 'follow_up_date', 'next_contact'].includes(normalizedHeader)) data.next_follow_up = value;
+          break;
       }
     });
     
@@ -181,6 +216,9 @@ const DataImporter = () => {
           }
           if (activeTab === 'activities' && !mappedData.title) {
             throw new Error('Title is required for activities');
+          }
+          if (activeTab === 'companies' && !mappedData.name) {
+            throw new Error('Name is required for companies');
           }
           
           const { error } = await supabase
@@ -241,6 +279,11 @@ const DataImporter = () => {
         case 'description': return 'Follow up call';
         case 'due_date': return '2024-02-15';
         case 'priority': return 'High';
+        case 'website': return 'https://acme.com';
+        case 'industry': return 'Technology';
+        case 'size': return 'large';
+        case 'address': return '123 Business St';
+        case 'city': return 'San Francisco';
         default: return 'Sample Data';
       }
     }).join(',');
@@ -269,7 +312,7 @@ const DataImporter = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-100">
+            <TabsList className="grid w-full grid-cols-4 bg-slate-100">
               {importTypes.map((type) => (
                 <TabsTrigger key={type.id} value={type.id} className="flex items-center space-x-2">
                   <type.icon className={`w-4 h-4 ${type.color}`} />

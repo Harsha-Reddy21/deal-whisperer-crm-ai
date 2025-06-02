@@ -1,26 +1,31 @@
-subject,type,description,priority,status,due_date,company_name,contact_name
-Technical proposal presentation,meeting,Present enterprise software implementation proposal,high,pending,2024-02-15,TechFlow Solutions,Sarah Chen
-Manufacturing ERP demo,meeting,Demonstrate ERP system capabilities for manufacturing,high,pending,2024-02-12,Global Manufacturing Corp,Michael Rodriguez
-Healthcare AI consultation,call,Discuss AI platform requirements and use cases,medium,pending,2024-02-14,HealthCare Innovations,Amanda Foster
-Fintech app prototype review,meeting,Review mobile app prototypes and user experience,high,pending,2024-02-10,StartupVenture Inc,Emily Johnson
-Risk management system demo,meeting,Demonstrate risk management platform features,high,pending,2024-02-13,Financial Services Group,David Kim
-Educational platform assessment,call,Assess current platform and upgrade requirements,medium,pending,2024-02-16,EduTech Academy,Lisa Thompson
-Retail POS implementation planning,meeting,Plan POS system enhancement implementation,high,pending,2024-02-11,Retail Chain Solutions,Robert Martinez
-Digital transformation workshop,meeting,Conduct digital transformation strategy workshop,medium,pending,2024-02-17,Consulting Partners LLC,James Wilson
-Property management software demo,meeting,Demo property management system features,medium,pending,2024-02-18,Real Estate Dynamics,Maria Garcia
-Content management system review,meeting,Review CMS requirements and technical specifications,high,pending,2024-02-09,Media & Entertainment Co,Alex Thompson
-Smart farming IoT presentation,meeting,Present IoT platform for precision agriculture,medium,pending,2024-02-20,AgriTech Innovations,Rachel Kim
-Logistics optimization analysis,task,Analyze current logistics processes and optimization opportunities,high,pending,2024-02-14,Logistics Express,Mark Johnson
-Laboratory workflow assessment,meeting,Assess laboratory management system requirements,medium,pending,2024-02-12,BioTech Research Labs,Jennifer Lee
-Energy analytics platform demo,meeting,Demonstrate renewable energy analytics capabilities,high,pending,2024-02-19,Energy Solutions Corp,Tom Wilson
-E-commerce platform consultation,call,Discuss e-commerce platform redesign requirements,medium,pending,2024-02-08,Fashion Forward Brands,Jessica Brown
-Insurance claims automation demo,meeting,Demo automated claims processing system,high,pending,2024-02-21,Insurance Specialists,Kevin Davis
-Cloud migration planning session,meeting,Plan cloud infrastructure migration strategy,high,pending,2024-02-13,Cloud Computing Corp,Linda White
-Supply chain optimization review,meeting,Review supply chain management requirements,medium,pending,2024-02-22,Food & Beverage Co,Ryan Miller
-Transportation system integration,meeting,Discuss transportation management system integration,high,pending,2024-02-15,Transportation Systems,Nicole Taylor
-Pharmaceutical research platform demo,meeting,Demonstrate research platform capabilities,medium,pending,2024-02-23,Pharmaceutical Research,Dr. Patricia Adams
-CRM integration follow-up,call,Follow up on CRM integration requirements,medium,pending,2024-02-16,TechFlow Solutions,Carlos Rodriguez
-Quality control system presentation,meeting,Present manufacturing quality control solution,high,pending,2024-02-24,Global Manufacturing Corp,Susan Mitchell
-Medical device integration planning,meeting,Plan medical device integration strategy,medium,pending,2024-02-25,HealthCare Innovations,Dr. Andrew Chen
-Startup analytics dashboard setup,task,Set up analytics dashboard for startup client,low,pending,2024-02-26,StartupVenture Inc,Maya Patel
-Compliance system requirements gathering,meeting,Gather compliance management system requirements,high,pending,2024-02-27,Financial Services Group,Jonathan Smith 
+id,subject,type,description,priority,status,due_date,company_id,company_name,contact_id,contact_name,deal_id,lead_id
+act_001,Technical proposal presentation,meeting,Present enterprise software implementation proposal,high,pending,2024-02-15,comp_001,TechFlow Solutions,cont_002,Sarah Chen,deal_001,
+act_002,Manufacturing ERP demo,meeting,Demonstrate ERP system capabilities for manufacturing,high,pending,2024-02-12,comp_002,Global Manufacturing Corp,cont_004,Michael Rodriguez,deal_002,
+act_003,Healthcare AI consultation,call,Discuss AI platform requirements and use cases,medium,pending,2024-02-14,comp_003,HealthCare Innovations,cont_006,Amanda Foster,deal_003,
+act_004,Fintech app prototype review,meeting,Review mobile app prototypes and user experience,high,pending,2024-02-10,comp_004,StartupVenture Inc,cont_008,Emily Johnson,deal_004,
+act_005,Risk management system demo,meeting,Demonstrate risk management platform features,high,pending,2024-02-13,comp_005,Financial Services Group,cont_010,David Kim,deal_005,
+act_006,Educational platform assessment,call,Assess current platform and upgrade requirements,medium,pending,2024-02-16,comp_006,EduTech Academy,cont_012,Lisa Thompson,deal_006,
+act_007,Retail POS implementation planning,meeting,Plan POS system enhancement implementation,high,pending,2024-02-11,comp_007,Retail Chain Solutions,cont_013,Robert Martinez,deal_007,
+act_008,Digital transformation workshop,meeting,Conduct digital transformation strategy workshop,medium,pending,2024-02-17,comp_008,Consulting Partners LLC,cont_014,James Wilson,deal_008,
+act_009,Property management software demo,meeting,Demo property management system features,medium,pending,2024-02-18,comp_009,Real Estate Dynamics,cont_015,Maria Garcia,deal_009,
+act_010,Content management system review,meeting,Review CMS requirements and technical specifications,high,pending,2024-02-09,comp_010,Media & Entertainment Co,cont_016,Alex Thompson,deal_010,
+act_011,Smart farming IoT presentation,meeting,Present IoT platform for precision agriculture,medium,pending,2024-02-20,comp_011,AgriTech Innovations,cont_017,Rachel Kim,deal_011,
+act_012,Logistics optimization analysis,task,Analyze current logistics processes and optimization opportunities,high,pending,2024-02-14,comp_012,Logistics Express,cont_018,Mark Johnson,deal_012,
+act_013,Laboratory workflow assessment,meeting,Assess laboratory management system requirements,medium,pending,2024-02-12,comp_013,BioTech Research Labs,cont_019,Jennifer Lee,deal_013,
+act_014,Energy analytics platform demo,meeting,Demonstrate renewable energy analytics capabilities,high,pending,2024-02-19,comp_014,Energy Solutions Corp,cont_020,Tom Wilson,deal_014,
+act_015,E-commerce platform consultation,call,Discuss e-commerce platform redesign requirements,medium,pending,2024-02-08,comp_015,Fashion Forward Brands,cont_021,Jessica Brown,deal_015,
+act_016,Insurance claims automation demo,meeting,Demo automated claims processing system,high,pending,2024-02-21,comp_016,Insurance Specialists,cont_022,Kevin Davis,deal_016,
+act_017,Cloud migration planning session,meeting,Plan cloud infrastructure migration strategy,high,pending,2024-02-13,comp_017,Cloud Computing Corp,cont_023,Linda White,deal_017,
+act_018,Supply chain optimization review,meeting,Review supply chain management requirements,medium,pending,2024-02-22,comp_018,Food & Beverage Co,cont_024,Ryan Miller,deal_018,
+act_019,Transportation system integration,meeting,Discuss transportation management system integration,high,pending,2024-02-15,comp_019,Transportation Systems,cont_025,Nicole Taylor,deal_019,
+act_020,Pharmaceutical research platform demo,meeting,Demonstrate research platform capabilities,medium,pending,2024-02-23,comp_020,Pharmaceutical Research,cont_026,Dr. Patricia Adams,deal_020,
+act_021,Lead qualification call,call,Follow up on initial lead inquiry and qualify requirements,medium,pending,2024-02-16,comp_001,TechFlow Solutions,,Michael Chen,,lead_001
+act_022,Healthcare lead nurturing,email,Send healthcare AI case studies and schedule follow-up,low,pending,2024-02-17,comp_003,HealthCare Innovations,,Jennifer Adams,,lead_002
+act_023,Startup lead demo,meeting,Conduct product demo for startup lead,high,pending,2024-02-18,comp_004,StartupVenture Inc,,Robert Kim,,lead_003
+act_024,Real estate lead consultation,call,Discuss property management needs with lead,medium,pending,2024-02-19,comp_009,Real Estate Dynamics,,Sarah Wilson,,lead_004
+act_025,Media lead requirements gathering,meeting,Gather content management requirements from media lead,medium,pending,2024-02-20,comp_010,Media & Entertainment Co,,David Martinez,,lead_005
+act_026,CRM integration follow-up,call,Follow up on CRM integration requirements,medium,pending,2024-02-16,comp_001,TechFlow Solutions,cont_003,Carlos Rodriguez,deal_021,
+act_027,Quality control system presentation,meeting,Present manufacturing quality control solution,high,pending,2024-02-24,comp_002,Global Manufacturing Corp,cont_005,Susan Mitchell,deal_022,
+act_028,Medical device integration planning,meeting,Plan medical device integration strategy,medium,pending,2024-02-25,comp_003,HealthCare Innovations,cont_007,Dr. Andrew Chen,deal_023,
+act_029,Startup analytics dashboard setup,task,Set up analytics dashboard for startup client,low,pending,2024-02-26,comp_004,StartupVenture Inc,cont_009,Maya Patel,deal_024,
+act_030,Compliance system requirements gathering,meeting,Gather compliance management system requirements,high,pending,2024-02-27,comp_005,Financial Services Group,cont_011,Jonathan Smith,deal_025 

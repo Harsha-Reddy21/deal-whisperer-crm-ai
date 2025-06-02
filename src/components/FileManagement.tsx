@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileText, Upload, Download, Trash2, Image, FileVideo, Music, Archive, Plus, Database, Users, TrendingUp, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, Image, FileVideo, Music, Archive, Plus, Database, Users, TrendingUp, Calendar, CheckCircle, AlertCircle, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,7 +46,7 @@ const FileManagement = () => {
   const [activeTab, setActiveTab] = useState('files');
   
   // CSV Import states
-  const [importType, setImportType] = useState<'contacts' | 'leads' | 'deals' | 'activities'>('contacts');
+  const [importType, setImportType] = useState<'contacts' | 'leads' | 'deals' | 'activities' | 'companies'>('contacts');
   const [csvData, setCsvData] = useState<CSVData | null>(null);
   const [fileName, setFileName] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -57,6 +57,7 @@ const FileManagement = () => {
     { id: 'leads', label: 'Leads', icon: TrendingUp, color: 'text-green-600' },
     { id: 'deals', label: 'Deals/Pipeline', icon: Database, color: 'text-purple-600' },
     { id: 'activities', label: 'Activities', icon: Calendar, color: 'text-orange-600' },
+    { id: 'companies', label: 'Companies', icon: Building2, color: 'text-indigo-600' },
   ];
 
   // Fetch files
@@ -177,6 +178,32 @@ const FileManagement = () => {
           else if (['status', 'activity_status'].includes(normalizedHeader)) data.status = value;
           else if (['due_date', 'deadline', 'scheduled_date'].includes(normalizedHeader)) data.due_date = value;
           break;
+          
+        case 'companies':
+          if (['name', 'company_name', 'organization'].includes(normalizedHeader)) data.name = value;
+          else if (['website', 'company_website', 'url'].includes(normalizedHeader)) data.website = value;
+          else if (['industry', 'sector', 'business_type'].includes(normalizedHeader)) data.industry = value;
+          else if (['size', 'company_size', 'employee_size'].includes(normalizedHeader)) data.size = value;
+          else if (['phone', 'phone_number', 'company_phone'].includes(normalizedHeader)) data.phone = value;
+          else if (['email', 'company_email', 'contact_email'].includes(normalizedHeader)) data.email = value;
+          else if (['address', 'street_address', 'location'].includes(normalizedHeader)) data.address = value;
+          else if (['city', 'company_city'].includes(normalizedHeader)) data.city = value;
+          else if (['state', 'province', 'region'].includes(normalizedHeader)) data.state = value;
+          else if (['country', 'nation'].includes(normalizedHeader)) data.country = value;
+          else if (['postal_code', 'zip_code', 'zip'].includes(normalizedHeader)) data.postal_code = value;
+          else if (['description', 'company_description', 'about'].includes(normalizedHeader)) data.description = value;
+          else if (['status', 'company_status', 'relationship'].includes(normalizedHeader)) data.status = value;
+          else if (['revenue', 'annual_revenue', 'yearly_revenue'].includes(normalizedHeader)) data.revenue = parseInt(value) || 0;
+          else if (['employees', 'employee_count', 'staff_count'].includes(normalizedHeader)) data.employees = parseInt(value) || 0;
+          else if (['founded_year', 'founded', 'established'].includes(normalizedHeader)) data.founded_year = parseInt(value) || 0;
+          else if (['linkedin_url', 'linkedin', 'linkedin_profile'].includes(normalizedHeader)) data.linkedin_url = value;
+          else if (['twitter_url', 'twitter', 'twitter_profile'].includes(normalizedHeader)) data.twitter_url = value;
+          else if (['facebook_url', 'facebook', 'facebook_profile'].includes(normalizedHeader)) data.facebook_url = value;
+          else if (['notes', 'company_notes', 'remarks'].includes(normalizedHeader)) data.notes = value;
+          else if (['score', 'company_score', 'rating'].includes(normalizedHeader)) data.score = parseInt(value) || 0;
+          else if (['last_contact', 'last_contacted'].includes(normalizedHeader)) data.last_contact = value;
+          else if (['next_follow_up', 'follow_up_date', 'next_contact'].includes(normalizedHeader)) data.next_follow_up = value;
+          break;
       }
     });
     
@@ -249,6 +276,9 @@ const FileManagement = () => {
           if (importType === 'activities' && (!mappedData.subject || !mappedData.type)) {
             throw new Error('Subject and type are required for activities');
           }
+          if (importType === 'companies' && !mappedData.name) {
+            throw new Error('Name is required for companies');
+          }
 
           const { error } = await supabase
             .from(importType)
@@ -271,6 +301,7 @@ const FileManagement = () => {
         queryClient.invalidateQueries({ queryKey: ['leads'] });
         queryClient.invalidateQueries({ queryKey: ['deals'] });
         queryClient.invalidateQueries({ queryKey: ['activities'] });
+        queryClient.invalidateQueries({ queryKey: ['companies'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
         queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
         
@@ -296,7 +327,8 @@ const FileManagement = () => {
       contacts: 'name,email,company,phone,status,persona,title,score\nJohn Doe,john@example.com,Acme Corp,555-1234,Qualified,decision_maker,CEO,85',
       leads: 'name,email,company,phone,status,source,score\nJane Smith,jane@example.com,Tech Inc,555-5678,new,form,75',
       deals: 'title,company,value,stage,probability,contact_name,next_step\nBig Deal,Acme Corp,50000,Discovery,25,John Doe,Schedule demo',
-      activities: 'subject,type,description,priority,status,due_date\nFollow up call,call,Call to discuss proposal,high,pending,2024-01-15'
+      activities: 'subject,type,description,priority,status,due_date\nFollow up call,call,Call to discuss proposal,high,pending,2024-01-15',
+      companies: 'name,website,industry,size,phone,email,address,city,state,country,description,status,revenue,employees,founded_year,linkedin_url,notes,score\nAcme Corporation,https://acme.com,Technology,large,555-0123,contact@acme.com,123 Business St,San Francisco,CA,USA,Leading technology company,prospect,5000000,250,2010,https://linkedin.com/company/acme,Great potential client,85'
     };
 
     const csvContent = templates[type as keyof typeof templates];
