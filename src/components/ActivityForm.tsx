@@ -156,7 +156,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
       return;
     }
 
-    if (entityType === 'lead' && (!formData.lead_id || formData.lead_id === 'none')) {
+    if (entityType === 'lead' && (!formData.lead_id || formData.lead_id === 'none') && !initialLeadId) {
       toast({
         title: "Error",
         description: "Please select a lead",
@@ -177,7 +177,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
         status: formData.status,
         due_date: formData.due_date || null,
         contact_id: formData.contact_id === 'none' ? null : formData.contact_id || null,
-        lead_id: formData.lead_id === 'none' ? null : formData.lead_id || null,
+        lead_id: formData.lead_id === 'none' ? (initialLeadId || null) : formData.lead_id || null,
         deal_id: formData.deal_id === 'none' ? null : formData.deal_id || null
       };
 
@@ -265,33 +265,35 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Associated with</label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                type="button"
-                variant={entityType === 'contact' ? 'default' : 'outline'}
-                onClick={() => {
-                  setEntityType('contact');
-                  setFormData(prev => ({...prev, lead_id: 'none', contact_id: prev.contact_id}));
-                }}
-                className="w-full"
-              >
-                Contact
-              </Button>
-              <Button 
-                type="button"
-                variant={entityType === 'lead' ? 'default' : 'outline'}
-                onClick={() => {
-                  setEntityType('lead');
-                  setFormData(prev => ({...prev, contact_id: 'none', lead_id: prev.lead_id}));
-                }}
-                className="w-full"
-              >
-                Lead
-              </Button>
+          {!initialLeadId && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Associated with</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  type="button"
+                  variant={entityType === 'contact' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setEntityType('contact');
+                    setFormData(prev => ({...prev, lead_id: 'none', contact_id: prev.contact_id}));
+                  }}
+                  className="w-full"
+                >
+                  Contact
+                </Button>
+                <Button 
+                  type="button"
+                  variant={entityType === 'lead' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setEntityType('lead');
+                    setFormData(prev => ({...prev, contact_id: 'none', lead_id: prev.lead_id}));
+                  }}
+                  className="w-full"
+                >
+                  Lead
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
           {entityType === 'contact' ? (
             <div className="space-y-2">
@@ -316,22 +318,28 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
           ) : (
             <div className="space-y-2">
               <label className="text-sm font-medium">Lead</label>
-              <Select 
-                value={formData.lead_id} 
-                onValueChange={(value) => setFormData({ ...formData, lead_id: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lead" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {leads.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id}>
-                      {lead.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {initialLeadId ? (
+                <div className="border rounded p-2 bg-blue-50 text-blue-800">
+                  {leads.find(lead => lead.id === initialLeadId)?.name || 'Selected Lead'}
+                </div>
+              ) : (
+                <Select 
+                  value={formData.lead_id} 
+                  onValueChange={(value) => setFormData({ ...formData, lead_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lead" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {leads.map((lead) => (
+                      <SelectItem key={lead.id} value={lead.id}>
+                        {lead.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 

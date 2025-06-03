@@ -80,20 +80,20 @@ const LeadActivities = ({ leadId, userId, onAddActivity }: LeadActivitiesProps) 
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <span className="text-sm text-slate-600">
-            {activities.length} activities found
+          <span className="text-sm font-medium text-slate-600">
+            {activities.length} {activities.length === 1 ? 'activity' : 'activities'} found
           </span>
         </div>
-        <Button onClick={handleAddActivity}>
+        <Button onClick={handleAddActivity} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="w-4 h-4 mr-2" />
-          Add Activity
+          Add New Activity
         </Button>
       </div>
 
       {activities.length === 0 ? (
         <div className="p-8 text-center">
           <div className="text-slate-500 mb-4">No activities found for this lead</div>
-          <Button onClick={handleAddActivity}>
+          <Button onClick={handleAddActivity} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             Add First Activity
           </Button>

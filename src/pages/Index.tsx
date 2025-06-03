@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [selectedDeal, setSelectedDeal] = useState(null);
-  const [activeTab, setActiveTab] = useState('pipeline');
+  const [activeTab, setActiveTab] = useState('deals');
   const [showChatCRM, setShowChatCRM] = useState(false);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -227,7 +227,7 @@ const Index = () => {
             <div className="flex items-center space-x-3">
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                Live Pipeline
+                Live Deals
               </Badge>
               <div className="flex items-center space-x-2 px-3 py-2 bg-slate-100 rounded-lg">
                 <User className="w-4 h-4 text-slate-600" />
@@ -278,7 +278,7 @@ const Index = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="overflow-x-auto">
             <TabsList className="flex w-max bg-white/60 backdrop-blur-sm p-1 rounded-lg">
-              <TabsTrigger value="pipeline" className="whitespace-nowrap">Pipeline</TabsTrigger>
+              <TabsTrigger value="deals" className="whitespace-nowrap">Deals</TabsTrigger>
               <TabsTrigger value="contacts" className="whitespace-nowrap">Contacts</TabsTrigger>
               <TabsTrigger value="leads" className="whitespace-nowrap">Leads</TabsTrigger>
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
@@ -296,7 +296,7 @@ const Index = () => {
             </TabsList>
           </div>
 
-          <TabsContent value="pipeline" className="space-y-6">
+          <TabsContent value="deals" className="space-y-6">
             <DealsPipeline onSelectDeal={setSelectedDeal} />
           </TabsContent>
 

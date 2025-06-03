@@ -85,50 +85,10 @@ const LeadManagement = () => {
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   
-  // Function to fetch activities
-  const fetchActivities = async () => {
-    if (!user || !selectedLeadForActivities) {
-      setActivities([]);
-      return;
-    }
-    
-    setActivitiesLoading(true);
-    
-    try {
-      const { data, error } = await supabase
-        .from('activities')
-        .select('id, type, subject, description, status, priority, due_date, created_at')
-        .eq('lead_id', selectedLeadForActivities.id)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        toast({
-          title: "Error loading activities",
-          description: error.message,
-          variant: "destructive",
-        });
-        setActivities([]);
-      } else {
-        setActivities(data || []);
-      }
-    } catch (e) {
-      console.error("Failed to fetch activities:", e);
-      setActivities([]);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
-  
-  // Effect to fetch activities when lead changes
-  useEffect(() => {
-    if (selectedLeadForActivities && user) {
-      fetchActivities();
-    }
-  }, [selectedLeadForActivities, user]);
-  
-  // Alias for compatibility with existing code
-  const refetchActivities = fetchActivities;
+  // State for activity counts
+  const [activityCounts, setActivityCounts] = useState<{[key: string]: number}>({});
 
+  // Fetch leads data from Supabase
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads', user?.id],
     queryFn: async () => {
@@ -603,11 +563,13 @@ const LeadManagement = () => {
   const handleViewActivities = (lead: Lead) => {
     setSelectedLeadForActivities(lead);
     setShowActivitiesDialog(true);
-    refetchActivities();
   };
 
   // Function to handle adding an activity
-  const handleAddActivity = () => {
+  const handleAddActivity = (lead?: Lead) => {
+    if (lead) {
+      setSelectedLeadForActivities(lead);
+    }
     setShowActivityForm(true);
   };
 
@@ -622,6 +584,58 @@ const LeadManagement = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Add a function to load activity counts after leads are loaded
+  const loadActivityCounts = async () => {
+    if (!user || !leads || leads.length === 0) return;
+    
+    const counts: {[key: string]: number} = {};
+    
+    // Process in batches to avoid too many parallel requests
+    const batchSize = 5;
+    for (let i = 0; i < leads.length; i += batchSize) {
+      const batch = leads.slice(i, i + batchSize);
+      
+      // Run queries in parallel for this batch
+      const promises = batch.map(async (lead) => {
+        try {
+          const { count, error } = await supabase
+            .from('activities')
+            .select('id', { count: 'exact', head: true })
+            .eq('lead_id', lead.id);
+            
+          if (error) {
+            console.error(`Error loading count for lead ${lead.id}:`, error);
+            return { id: lead.id, count: 0 };
+          }
+          
+          return { id: lead.id, count: count || 0 };
+        } catch (err) {
+          console.error(`Failed to fetch count for lead ${lead.id}:`, err);
+          return { id: lead.id, count: 0 };
+        }
+      });
+      
+      const results = await Promise.all(promises);
+      results.forEach(result => {
+        counts[result.id] = result.count;
+      });
+    }
+    
+    setActivityCounts(counts);
+  };
+
+  // Load activity counts when leads change
+  useEffect(() => {
+    loadActivityCounts();
+  }, [leads, user]);
+
+  // Refresh activity counts after activities are updated
+  useEffect(() => {
+    if (selectedLeadForActivities) {
+      loadActivityCounts();
+    }
+  }, [activities]);
 
   if (isLoading) {
     return (
@@ -865,6 +879,22 @@ const LeadManagement = () => {
                               {lead.phone ? lead.phone : 'No phone'}
                             </div>
                           </div>
+                          
+                          {/* Add Activities count and button */}
+                          <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-100">
+                            <div className="flex items-center text-xs text-slate-500">
+                              <Activity className="h-3 w-3 mr-1" />
+                              Activities
+                            </div>
+                            <div 
+                              className="flex items-center cursor-pointer" 
+                              onClick={() => handleViewActivities(lead)}
+                            >
+                              <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-xs font-medium px-1.5">
+                                {activityCounts[lead.id] || 0}
+                              </span>
+                            </div>
+                          </div>
 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
@@ -1074,7 +1104,7 @@ const LeadManagement = () => {
         open={showActivityForm}
         onOpenChange={setShowActivityForm}
         onActivityCreated={() => {
-          refetchActivities();
+          refetch();
           setShowActivityForm(false);
         }}
         initialLeadId={selectedLeadForActivities?.id}

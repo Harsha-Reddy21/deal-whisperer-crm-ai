@@ -44,7 +44,7 @@ const ReportsDashboard = () => {
   });
 
   // Sample data for charts
-  const pipelineData = [
+  const dealsData = [
     { stage: 'Discovery', count: 8, value: 120000 },
     { stage: 'Proposal', count: 5, value: 85000 },
     { stage: 'Negotiation', count: 3, value: 75000 },
@@ -85,7 +85,8 @@ const ReportsDashboard = () => {
           <Tabs defaultValue="overview" className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+              <TabsTrigger value="deals">Deals</TabsTrigger>
+              <TabsTrigger value="contacts">Contacts</TabsTrigger>
               <TabsTrigger value="activities">Activities</TabsTrigger>
               <TabsTrigger value="forecasting">Forecasting</TabsTrigger>
             </TabsList>
@@ -173,11 +174,11 @@ const ReportsDashboard = () => {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pipeline by Stage</CardTitle>
+                    <CardTitle>Deals by Stage</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={pipelineData}>
+                      <BarChart data={dealsData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="stage" />
                         <YAxis />
@@ -190,15 +191,15 @@ const ReportsDashboard = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="pipeline" className="space-y-6">
+            <TabsContent value="deals" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pipeline Value by Stage</CardTitle>
+                    <CardTitle>Deal Value by Stage</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {pipelineData.map((stage, index) => (
+                      {dealsData.map((stage, index) => (
                         <div key={index} className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex justify-between mb-2">
@@ -219,7 +220,7 @@ const ReportsDashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={pipelineData} layout="horizontal">
+                      <BarChart data={dealsData} layout="horizontal">
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis dataKey="stage" type="category" />
@@ -230,6 +231,10 @@ const ReportsDashboard = () => {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="contacts" className="space-y-6">
+              {/* Contacts content */}
             </TabsContent>
 
             <TabsContent value="activities" className="space-y-6">

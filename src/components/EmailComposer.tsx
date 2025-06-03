@@ -149,81 +149,93 @@ const EmailComposer = ({
     mutationFn: async (emailData: typeof formData) => {
       // In a real implementation, this would integrate with an email service
       // For now, we'll just track the email in our database
-      const emailTrackingData = {
-        user_id: user?.id,
-        contact_id: contactId || contactDetails?.id,
-        deal_id: dealId,
-        lead_id: leadId,
-        email_id: `email_${Date.now()}`,
-        subject: emailData.subject,
-        body: emailData.body,
-        read_at: null,
-        sent_at: new Date().toISOString()
-      };
       
-      // Use type assertion to bypass TypeScript type checking
-      const { data, error } = await supabase
-        .from('email_tracking')
-        .insert(emailTrackingData as any)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Create an activity record based on the context
+      // First, check if the email_tracking table has the folder column
       try {
-        if (leadId) {
-          // For leads, create an activity with lead_id
-          await supabase
-            .from('activities')
-            .insert({
-              user_id: user?.id,
-              lead_id: leadId,  // Use lead_id for activities
-              deal_id: dealId,
-              type: 'email',
-              subject: `Email sent: ${emailData.subject}`,
-              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
-              status: 'done'
-            } as any);
-        } else if (contactId || contactDetails?.id) {
-          // For contacts, create an activity with contact_id
-          await supabase
-            .from('activities')
-            .insert({
-              user_id: user?.id,
-              contact_id: contactId || contactDetails?.id,
-              deal_id: dealId,
-              type: 'email',
-              subject: `Email sent: ${emailData.subject}`,
-              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
-              status: 'completed' // Use 'completed' status for consistency
-            });
-        } else if (dealId) {
-          // If only deal_id is present, try to get the contact_id from the deal
-          const { data: dealData } = await supabase
-            .from('deals')
-            .select('contact_id')
-            .eq('id', dealId)
-            .single();
-            
-          await supabase
-            .from('activities')
-            .insert({
-              user_id: user?.id,
-              contact_id: dealData?.contact_id,
-              deal_id: dealId,
-              type: 'email',
-              subject: `Email sent: ${emailData.subject}`,
-              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
-              status: 'completed'
-            });
-        }
-      } catch (activityError) {
-        console.error("Failed to create activity:", activityError);
-        // Continue with the function even if activity creation fails
-      }
+        // Use only the fields that definitely exist in the schema
+        const emailTrackingData = {
+          user_id: user?.id,
+          contact_id: contactId || contactDetails?.id || null,
+          deal_id: dealId || null,
+          email_id: `email_${Date.now()}`,
+          type: 'sent',
+          subject: emailData.subject,
+          body: emailData.body,
+          sent_at: new Date().toISOString()
+        };
+        
+        console.log('Sending email with data:', emailTrackingData);
+        
+        // Use type assertion to bypass TypeScript type checking
+        const { data, error } = await supabase
+          .from('email_tracking')
+          .insert(emailTrackingData as any)
+          .select()
+          .single();
 
-      return data;
+        if (error) {
+          console.error("Error saving email:", error);
+          throw new Error(`Failed to save email: ${error.message}`);
+        }
+
+        // Create an activity record based on the context
+        try {
+          if (leadId) {
+            // For leads, create an activity with lead_id
+            await supabase
+              .from('activities')
+              .insert({
+                user_id: user?.id,
+                lead_id: leadId,  // Use lead_id for activities
+                deal_id: dealId,
+                type: 'email',
+                subject: `Email sent: ${emailData.subject}`,
+                description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+                status: 'done'
+              } as any);
+          } else if (contactId || contactDetails?.id) {
+            // For contacts, create an activity with contact_id
+            await supabase
+              .from('activities')
+              .insert({
+                user_id: user?.id,
+                contact_id: contactId || contactDetails?.id,
+                deal_id: dealId,
+                type: 'email',
+                subject: `Email sent: ${emailData.subject}`,
+                description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+                status: 'completed' // Use 'completed' status for consistency
+              });
+          } else if (dealId) {
+            // If only deal_id is present, try to get the contact_id from the deal
+            const { data: dealData } = await supabase
+              .from('deals')
+              .select('contact_id')
+              .eq('id', dealId)
+              .single();
+            
+            await supabase
+              .from('activities')
+              .insert({
+                user_id: user?.id,
+                contact_id: dealData?.contact_id,
+                deal_id: dealId,
+                type: 'email',
+                subject: `Email sent: ${emailData.subject}`,
+                description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+                status: 'completed'
+              });
+          }
+        } catch (activityError) {
+          console.error("Failed to create activity:", activityError);
+          // Continue with the function even if activity creation fails
+        }
+
+        return data;
+      } catch (error) {
+        console.error("Error saving email:", error);
+        throw new Error(`Failed to save email: ${error.message}`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });

@@ -54,6 +54,8 @@ interface Email {
   message: string;
   deal_info: string;
   importance?: string;
+  folder: string;
+  type: string;
 }
 
 const EmailManager = () => {
@@ -223,7 +225,9 @@ const EmailManager = () => {
           lead_id: email.lead_id,
           contact_name: recipientName,
           message: email.body || '',
-          deal_info: email.deals ? `${email.deals.title} - ${email.deals.company}` : ''
+          deal_info: email.deals ? `${email.deals.title} - ${email.deals.company}` : '',
+          folder: email.folder,
+          type: email.type
         } as Email;
       });
     },
@@ -232,15 +236,15 @@ const EmailManager = () => {
 
   // Filter emails based on active view and search
   const filteredEmails = allEmailsData.filter(email => {
-    // Basic filtering - we'll use sent_at to distinguish sent emails
-    // All emails are considered "sent" for now since we don't have a type field
+    // Filter based on type (inbox or sent)
+    if (activeView === 'inbox' && email.type !== 'received') return false;
+    if (activeView === 'sent' && email.type !== 'sent') return false;
     
     // Filter by search query
     if (searchQuery === '') return true;
     const searchLower = searchQuery.toLowerCase();
     return (
       email.subject.toLowerCase().includes(searchLower) ||
-      email.recipient.toLowerCase().includes(searchLower) ||
       (email.contact_name && email.contact_name.toLowerCase().includes(searchLower))
     );
   });
@@ -272,34 +276,49 @@ const EmailManager = () => {
 
   const sendEmailMutation = useMutation({
     mutationFn: async (emailData: typeof formData) => {
-      // Track the email in our database with type assertion for new fields
-      const { data, error } = await supabase
-        .from('email_tracking')
-        .insert({
+      try {
+        // Use only fields that exist in the schema
+        const emailTrackingData = {
           user_id: user?.id,
           contact_id: emailData.contact_id || null,
-          email_id: `email_${Date.now()}`,
+          email_id: `email_${Date.now()}`, // This is required
           subject: emailData.subject,
+          body: emailData.message,
+          type: 'sent',
           sent_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        };
+        
+        console.log('Sending email with data:', emailTrackingData);
 
-      if (error) throw error;
+        // Track the email in our database with type assertion for new fields
+        const { data, error } = await supabase
+          .from('email_tracking')
+          .insert(emailTrackingData)
+          .select()
+          .single();
 
-      // Create an activity record
-      await supabase
-        .from('activities')
-        .insert({
-          user_id: user?.id,
-          contact_id: emailData.contact_id || null,
-          type: 'email',
-          subject: `Email sent: ${emailData.subject}`,
-          description: `Sent email to ${emailData.recipient}`,
-          status: 'completed'
-        });
+        if (error) {
+          console.error("Error sending email:", error);
+          throw new Error(`Failed to send email: ${error.message}`);
+        }
 
-      return data;
+        // Create an activity record
+        await supabase
+          .from('activities')
+          .insert({
+            user_id: user?.id,
+            contact_id: emailData.contact_id || null,
+            type: 'email',
+            subject: `Email sent: ${emailData.subject}`,
+            description: `Sent email to ${emailData.recipient}`,
+            status: 'completed'
+          });
+
+        return data;
+      } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
