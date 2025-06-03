@@ -725,7 +725,7 @@ const LeadManagement = () => {
         company: contact.company,
         phone: contact.phone || '',
         status: 'new',
-        source: 'linkedin',
+        source: 'import',
         score: contact.relevanceScore || 50,
         user_id: user?.id
       };

@@ -1515,7 +1515,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                     description: '',
                     stage: selectedDealForObjection.stage,
                     value: selectedDealForObjection.value,
-                    probability: selectedDealForObjection.probability,
                     activities: selectedDealActivities.map(activity => ({
                       type: activity.type,
                       subject: activity.subject,

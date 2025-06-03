@@ -18,7 +18,7 @@ export interface ObjectionHandlerProps {
       description: string;
       stage: string;
       value: number;
-      probability: number;
+      probability?: number;
       activities?: Array<{
         type: string;
         subject: string;

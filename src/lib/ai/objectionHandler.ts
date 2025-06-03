@@ -12,7 +12,7 @@ export interface ObjectionHandlerRequest {
     description: string;
     stage: string;
     value: number;
-    probability: number;
+    probability?: number; // Made optional since we removed probability feature
     activities?: Array<{
       type: string;
       subject: string;
@@ -55,8 +55,8 @@ ${request.dealInfo ? `
 Title: ${request.dealInfo.title || 'N/A'}
 Description: ${request.dealInfo.description || 'N/A'}
 Stage: ${request.dealInfo.stage || 'N/A'}
-Value: $${request.dealInfo.value?.toLocaleString() || 'N/A'}
-Probability: ${request.dealInfo.probability || 'N/A'}%
+Value: $${request.dealInfo.value?.toLocaleString() || 'N/A'}${request.dealInfo.probability ? `
+Probability: ${request.dealInfo.probability}%` : ''}
 ` : 'No deal information available'}
 
 ${request.dealInfo?.activities && request.dealInfo.activities.length > 0 
