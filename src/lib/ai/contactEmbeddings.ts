@@ -103,7 +103,7 @@ export class ContactEmbeddingService {
    * Generates an embedding vector using OpenAI API
    */
   async generateEmbedding(text: string) {
-    console.log(`[Embeddings] Generating embedding vector for text (${text.length} characters)`);
+    console.log(`[Embeddings] Generating embedding vector for text (${text} characters)`);
     try {
       const response = await openai.embeddings.create({
         model: "text-embedding-3-small",

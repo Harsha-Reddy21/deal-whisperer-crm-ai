@@ -10,6 +10,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { generateEmailContent, isOpenAIConfigured, EmailGenerationRequest } from '@/lib/openai';
+import { useContactEmbeddings } from '@/hooks/useContactEmbeddings';
+import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 
 interface EmailComposerProps {
   open: boolean;
@@ -33,6 +35,8 @@ const EmailComposer = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { handleActivityChanged: handleContactActivityChanged } = useContactEmbeddings();
+  const { handleActivityChanged: handleLeadActivityChanged } = useLeadEmbeddings();
   
   const [formData, setFormData] = useState({
     to: prefilledTo,
@@ -179,10 +183,11 @@ const EmailComposer = ({
         }
 
         // Create an activity record based on the context
+        let createdActivityId: string | null = null;
         try {
           if (leadId) {
             // For leads, create an activity with lead_id
-            await supabase
+            const { data: activityData, error: activityError } = await supabase
               .from('activities')
               .insert({
                 user_id: user?.id,
@@ -192,10 +197,17 @@ const EmailComposer = ({
                 subject: `Email sent: ${emailData.subject}`,
                 description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
                 status: 'done'
-              } as any);
+              } as any)
+              .select('id')
+              .single();
+              
+            if (!activityError && activityData) {
+              createdActivityId = activityData.id;
+              console.log(`[EmailComposer] Created email activity for lead, id: ${createdActivityId}`);
+            }
           } else if (contactId || contactDetails?.id) {
             // For contacts, create an activity with contact_id
-            await supabase
+            const { data: activityData, error: activityError } = await supabase
               .from('activities')
               .insert({
                 user_id: user?.id,
@@ -205,7 +217,14 @@ const EmailComposer = ({
                 subject: `Email sent: ${emailData.subject}`,
                 description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
                 status: 'completed' // Use 'completed' status for consistency
-              });
+              })
+              .select('id')
+              .single();
+              
+            if (!activityError && activityData) {
+              createdActivityId = activityData.id;
+              console.log(`[EmailComposer] Created email activity for contact, id: ${createdActivityId}`);
+            }
           } else if (dealId) {
             // If only deal_id is present, try to get the contact_id from the deal
             const { data: dealData } = await supabase
@@ -214,7 +233,7 @@ const EmailComposer = ({
               .eq('id', dealId)
               .single();
             
-            await supabase
+            const { data: activityData, error: activityError } = await supabase
               .from('activities')
               .insert({
                 user_id: user?.id,
@@ -224,7 +243,48 @@ const EmailComposer = ({
                 subject: `Email sent: ${emailData.subject}`,
                 description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
                 status: 'completed'
-              });
+              })
+              .select('id')
+              .single();
+              
+            if (!activityError && activityData) {
+              createdActivityId = activityData.id;
+              console.log(`[EmailComposer] Created email activity for deal, id: ${createdActivityId}`);
+              
+              // If we have a contact via the deal, update those embeddings
+              if (dealData?.contact_id && createdActivityId) {
+                try {
+                  console.log(`[EmailComposer] Updating contact embeddings for activity ${createdActivityId}`);
+                  await handleContactActivityChanged(createdActivityId);
+                } catch (embeddingError) {
+                  console.error('[EmailComposer] Error updating contact embeddings:', embeddingError);
+                  // Don't fail if embedding update fails
+                }
+              }
+            }
+          }
+          
+          // Update embeddings if an activity was created
+          if (createdActivityId) {
+            if (leadId) {
+              // Update lead embeddings
+              try {
+                console.log(`[EmailComposer] Updating lead embeddings for activity ${createdActivityId}`);
+                await handleLeadActivityChanged(createdActivityId);
+              } catch (embeddingError) {
+                console.error('[EmailComposer] Error updating lead embeddings:', embeddingError);
+                // Don't fail if embedding update fails
+              }
+            } else if (contactId || contactDetails?.id) {
+              // Update contact embeddings
+              try {
+                console.log(`[EmailComposer] Updating contact embeddings for activity ${createdActivityId}`);
+                await handleContactActivityChanged(createdActivityId);
+              } catch (embeddingError) {
+                console.error('[EmailComposer] Error updating contact embeddings:', embeddingError);
+                // Don't fail if embedding update fails
+              }
+            }
           }
         } catch (activityError) {
           console.error("Failed to create activity:", activityError);
