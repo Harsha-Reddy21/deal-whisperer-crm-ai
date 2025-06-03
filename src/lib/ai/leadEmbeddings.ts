@@ -132,7 +132,7 @@ export class LeadEmbeddingService {
       // 2. Compose the text for embedding
       console.log(`[Embeddings] Step 2: Composing text for embedding`);
       const embeddingText = this.composeEmbeddingText(lead, activities);
-      
+      console.log('embeddinjsdfjhaskdfjasgText', embeddingText);
       // 3. Generate the embedding vector
       console.log(`[Embeddings] Step 3: Generating embedding vector`);
       const embeddingVector = await this.generateEmbedding(embeddingText);
@@ -142,8 +142,9 @@ export class LeadEmbeddingService {
       const { error } = await supabase
         .from('leads')
         .update({ 
-          embedding: embeddingVector,
-          embedding_updated_at: new Date().toISOString()
+            embedding_content: embeddingText,
+            embedding: embeddingVector,
+            embedding_updated_at: new Date().toISOString()
         })
         .eq('id', leadId);
       

@@ -103,4 +103,66 @@ After applying the fixes, you can verify them by:
 
 ## Future Migrations
 
-The main migration file `20231231000000_setup_vector_search.sql` has been updated to use the fixed function definitions, so future deployments will include these fixes automatically. 
+The main migration file `20231231000000_setup_vector_search.sql` has been updated to use the fixed function definitions, so future deployments will include these fixes automatically.
+
+# Semantic Search Function Enhancements
+
+This directory contains SQL functions for the Deal Whisperer CRM's semantic search functionality.
+
+## Recent Updates
+
+### Embedding Content Enhancement
+
+We've enhanced the semantic search functions to include the full embedding content in search results, which provides more context for the LLM to generate better responses:
+
+1. **What Changed**:
+   - Modified `search_similar_deals`, `search_similar_contacts`, and `search_similar_leads` functions
+   - Added `embedding_content` column to the result sets
+   - Updated TypeScript code to include this content in the LLM context
+
+2. **Benefits**:
+   - LLM receives full contextual information about each entity
+   - Includes activities, notes, and related entity data
+   - Provides more complete information for answering user queries
+   - No additional database calls needed - content is returned with search results
+
+## How to Apply
+
+To apply the updated functions:
+
+1. Run the SQL script directly:
+   ```bash
+   psql $SUPABASE_DB_URL -f fix_search_with_content.sql
+   ```
+
+2. Or use the provided script:
+   ```bash
+   cd scripts
+   ./apply_embedding_content_fix.sh
+   ```
+
+## Function Details
+
+Each search function now returns the following:
+
+### `search_similar_deals`
+Returns deal matches with their full content, including:
+- Basic deal information (title, company, stage, value)
+- Related activities
+- Notes
+- Contact information
+
+### `search_similar_contacts`
+Returns contact matches with their full content, including:
+- Contact details (name, email, phone)
+- Company and role information
+- Related deals
+- Activities history
+- Persona information
+
+### `search_similar_leads`
+Returns lead matches with their full content, including:
+- Lead information (name, company, status)
+- Source information
+- Activities
+- Score and other metadata 

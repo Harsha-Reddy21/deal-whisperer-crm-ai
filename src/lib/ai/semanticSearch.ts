@@ -28,6 +28,7 @@ export interface SemanticSearchResult {
   email?: string;
   source?: string;
   score?: number;
+  embeddingContent?: string;
 }
 
 export interface SemanticSearchResponse {
@@ -106,7 +107,8 @@ export class SemanticSearchService {
         company: deal.company,
         stage: deal.stage,
         value: deal.value,
-        similarity: deal.similarity
+        similarity: deal.similarity,
+        embeddingContent: deal.embedding_content
       }));
     } catch (error) {
       console.error('❌ [Semantic Search] Error searching deals:', error);
@@ -152,12 +154,13 @@ export class SemanticSearchService {
         id: contact.id,
         type: 'contact',
         name: contact.name,
-        title: contact.title,
         company: contact.company,
+        title: contact.title,
         email: contact.email,
         status: contact.status,
         score: contact.score,
-        similarity: contact.similarity
+        similarity: contact.similarity,
+        embeddingContent: contact.embedding_content
       }));
     } catch (error) {
       console.error('❌ [Semantic Search] Error searching contacts:', error);
@@ -208,7 +211,8 @@ export class SemanticSearchService {
         source: lead.source,
         status: lead.status,
         score: lead.score,
-        similarity: lead.similarity
+        similarity: lead.similarity,
+        embeddingContent: lead.embedding_content
       }));
     } catch (error) {
       console.error('❌ [Semantic Search] Error searching leads:', error);
@@ -356,11 +360,21 @@ export class SemanticSearchService {
       leadResults.slice(0, 10).forEach((lead, index) => {
         formattedResults += `${index + 1}. ${lead.name} | Company: ${lead.company || 'N/A'} | Source: ${lead.source || 'N/A'} | Status: ${lead.status || 'N/A'} | Score: ${lead.score || 'N/A'} | Relevance: ${Math.round(lead.similarity * 100)}%\n`;
       });
+      formattedResults += '\n';
     }
 
-    // Add note about similarity scores for transparency
-    formattedResults += `\nNote: Relevance scores indicate how closely each item matches the query semantically, with higher percentages being better matches.\n`;
-    console.log('formattedResults', formattedResults);
+    // Add full content section with embedding content for the LLM
+    formattedResults += `FULL CONTENT WITH ACTIVITIES:\n\n`;
+    
+    // Include embedding content for all results to provide context to the LLM
+    searchResponse.results.forEach((result) => {
+      if (result.embeddingContent) {
+        formattedResults += `--- ${result.type.toUpperCase()}: ${result.name || result.title} ---\n`;
+        formattedResults += result.embeddingContent;
+        formattedResults += '\n\n';
+      }
+    });
+
     console.log(`✅ [Semantic Search] Successfully formatted search results for AI context (${formattedResults.length} characters)`);
     return formattedResults;
   }
