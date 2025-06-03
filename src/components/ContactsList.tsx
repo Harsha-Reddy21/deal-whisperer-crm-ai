@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc, Edit, Trash2, Linkedin, Globe, Star, TrendingUp, Building2, MapPin, GraduationCap, Briefcase } from 'lucide-react';
+import { Users, Search, MessageSquare, Calendar, Mail, Plus, ArrowUpDown, Filter, SortAsc, SortDesc, Edit, Trash2, Linkedin, Globe, Star, TrendingUp, Building2, MapPin, GraduationCap, Briefcase, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import ContactForm from './ContactForm';
 import { searchLinkedInContacts, type LinkedInSearchResponse, type LinkedInContact } from '@/lib/ai';
+import ContactDetail from './ContactDetail';
 
 interface Contact {
   id: string;
@@ -68,6 +69,10 @@ const ContactsList = () => {
     projectDescription: '',
     maxResults: 5
   });
+
+  // Inside the ContactsList component, add state for selected contact
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [showContactDetail, setShowContactDetail] = useState(false);
 
   const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts', user?.id],
@@ -531,6 +536,12 @@ const ContactsList = () => {
     return 'text-red-600';
   };
 
+  // Add a function to handle viewing a contact
+  const handleViewContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setShowContactDetail(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -558,13 +569,6 @@ const ContactsList = () => {
               </CardDescription>
             </div>
             <div className="flex items-center space-x-3">
-              <Button 
-                onClick={() => setShowLinkedInDialog(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
-              >
-                <Linkedin className="w-4 h-4 mr-2" />
-                Get from LinkedIn
-              </Button>
               <Button 
                 onClick={() => refetch()}
                 variant="outline"
@@ -724,12 +728,13 @@ const ContactsList = () => {
                               </Badge>
                             </div>
                             <div className="flex items-center space-x-2">
+                              <Button size="sm" variant="outline" onClick={() => handleViewContact(contact)}>
+                                <User className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
                               <Button size="sm" variant="outline">
                                 <MessageSquare className="w-4 h-4 mr-1" />
                                 Message
-                              </Button>
-                              <Button size="sm" variant="outline" className="hover:bg-purple-50">
-                                View Persona
                               </Button>
                               <Button 
                                 size="sm" 
@@ -1195,6 +1200,18 @@ const ContactsList = () => {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Detail Dialog */}
+      <Dialog open={showContactDetail} onOpenChange={setShowContactDetail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {selectedContact && (
+            <ContactDetail 
+              contactId={selectedContact.id} 
+              onClose={() => setShowContactDetail(false)} 
+            />
           )}
         </DialogContent>
       </Dialog>

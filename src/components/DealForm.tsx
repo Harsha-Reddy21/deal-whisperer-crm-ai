@@ -29,7 +29,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
     contact_name: '',
     next_step: '',
     probability: '50',
-    outcome: 'in_progress'
+    deal_status: 'in_progress'
   });
 
   // Fetch contacts for dropdown
@@ -113,8 +113,8 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
           contact_id: formData.contact_id,
           contact_name: formData.contact_name,
           next_step: formData.next_step,
-          probability: parseInt(formData.probability) || 50,
-          outcome: formData.outcome
+          probability: formData.deal_status === 'in_progress' ? (parseInt(formData.probability) || 50) : null,
+          deal_status: formData.deal_status
         });
 
       if (error) throw error;
@@ -134,7 +134,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
         contact_name: '',
         next_step: '',
         probability: '50',
-        outcome: 'in_progress'
+        deal_status: 'in_progress'
       });
 
       onDealCreated();
@@ -227,17 +227,19 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="probability">Probability (%)</Label>
-              <Input
-                id="probability"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.probability}
-                onChange={(e) => handleChange('probability', e.target.value)}
-              />
-            </div>
+            {formData.deal_status === 'in_progress' && (
+              <div className="space-y-2">
+                <Label htmlFor="probability">Probability (%)</Label>
+                <Input
+                  id="probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.probability}
+                  onChange={(e) => handleChange('probability', e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -257,8 +259,8 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="outcome">Outcome</Label>
-              <Select value={formData.outcome} onValueChange={(value) => handleChange('outcome', value)}>
+              <Label htmlFor="deal_status">Deal Status</Label>
+              <Select value={formData.deal_status} onValueChange={(value) => handleChange('deal_status', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -49,7 +49,7 @@ const ActivitiesManager = () => {
     type: 'call',
     description: '',
     priority: 'medium',
-    status: 'pending',
+    status: 'in_progress',
     due_date: ''
   });
 
@@ -82,7 +82,7 @@ const ActivitiesManager = () => {
         type: activity.type || 'call',
         description: activity.description || '',
         priority: activity.priority || 'medium',
-        status: activity.status || 'pending',
+        status: activity.status || 'in_progress',
         due_date: activity.due_date || '',
         created_at: activity.created_at,
         contact_name: activity.contacts?.name
@@ -162,7 +162,7 @@ const ActivitiesManager = () => {
             bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
             break;
           case 'status':
-            const statusOrder = { 'completed': 1, 'pending': 2, 'cancelled': 3 };
+            const statusOrder = { 'done': 1, 'in_progress': 2, 'cancelled': 3 };
             aValue = statusOrder[a.status as keyof typeof statusOrder] || 0;
             bValue = statusOrder[b.status as keyof typeof statusOrder] || 0;
             break;
@@ -298,7 +298,7 @@ const ActivitiesManager = () => {
     try {
       const { error } = await supabase
         .from('activities')
-        .update({ status: 'completed' })
+        .update({ status: 'done' })
         .eq('id', activity.id)
         .eq('user_id', user.id);
 
@@ -352,8 +352,8 @@ const ActivitiesManager = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'done': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -366,10 +366,10 @@ const ActivitiesManager = () => {
 
   // Calculate activity metrics
   const totalActivities = activities.length;
-  const pendingActivities = activities.filter(activity => activity.status === 'pending').length;
-  const completedActivities = activities.filter(activity => activity.status === 'completed').length;
+  const inProgressActivities = activities.filter(activity => activity.status === 'in_progress').length;
+  const doneActivities = activities.filter(activity => activity.status === 'done').length;
   const overdueActivities = activities.filter(activity => 
-    activity.status === 'pending' && isOverdue(activity.due_date)
+    activity.status === 'in_progress' && isOverdue(activity.due_date)
   ).length;
 
   if (isLoading) {
@@ -401,11 +401,11 @@ const ActivitiesManager = () => {
 
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">In Progress</CardTitle>
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{pendingActivities}</div>
+            <div className="text-2xl font-bold text-slate-900">{inProgressActivities}</div>
             <p className="text-xs text-slate-600">Need attention</p>
           </CardContent>
         </Card>
@@ -416,7 +416,7 @@ const ActivitiesManager = () => {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{completedActivities}</div>
+            <div className="text-2xl font-bold text-slate-900">{doneActivities}</div>
             <p className="text-xs text-slate-600">Finished tasks</p>
           </CardContent>
         </Card>
@@ -439,10 +439,10 @@ const ActivitiesManager = () => {
             <div>
               <CardTitle className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                Activity Management
+                Activities
               </CardTitle>
               <CardDescription>
-                Track calls, emails, meetings, and tasks
+                Track calls, meetings, tasks, and all client interactions
               </CardDescription>
             </div>
             <Button onClick={() => setShowActivityForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
@@ -457,8 +457,8 @@ const ActivitiesManager = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="all">All ({totalActivities})</TabsTrigger>
-                <TabsTrigger value="pending">Pending ({pendingActivities})</TabsTrigger>
-                <TabsTrigger value="completed">Completed ({completedActivities})</TabsTrigger>
+                <TabsTrigger value="in_progress">In Progress ({inProgressActivities})</TabsTrigger>
+                <TabsTrigger value="done">Completed ({doneActivities})</TabsTrigger>
                 <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
               </TabsList>
 
@@ -624,7 +624,7 @@ const ActivitiesManager = () => {
                                       </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                      {activity.status === 'pending' && (
+                                      {activity.status === 'in_progress' && (
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
@@ -731,8 +731,8 @@ const ActivitiesManager = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="done">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>

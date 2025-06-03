@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Building2, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Globe, Edit, Trash2, MapPin, Users, DollarSign, Calendar, ExternalLink, Brain, Sparkles, Zap, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Globe, Edit, Trash2, MapPin, Users, DollarSign, Calendar, ExternalLink, Brain, Sparkles, Zap, CheckCircle, AlertCircle, User, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +51,8 @@ interface Company {
   last_contact: string;
   next_follow_up: string;
   created_at: string;
+  leads_count: number;
+  contacts_count: number;
 }
 
 type SortField = 'name' | 'industry' | 'size' | 'status' | 'score' | 'revenue' | 'employees' | 'created_at';
@@ -103,33 +105,109 @@ const CompaniesManager = () => {
         return [];
       }
 
-      return data.map(company => ({
-        id: company.id,
-        name: company.name,
-        website: company.website || '',
-        industry: company.industry || '',
-        size: company.size || '',
-        phone: company.phone || '',
-        email: company.email || '',
-        address: company.address || '',
-        city: company.city || '',
-        state: company.state || '',
-        country: company.country || '',
-        postal_code: company.postal_code || '',
-        description: company.description || '',
-        status: company.status || 'prospect',
-        revenue: company.revenue || 0,
-        employees: company.employees || 0,
-        founded_year: company.founded_year || 0,
-        linkedin_url: company.linkedin_url || '',
-        twitter_url: company.twitter_url || '',
-        facebook_url: company.facebook_url || '',
-        notes: company.notes || '',
-        score: company.score || 0,
-        last_contact: company.last_contact || '',
-        next_follow_up: company.next_follow_up || '',
-        created_at: company.created_at
+      const companiesWithCounts = await Promise.all(data.map(async (company) => {
+        let leads_count = 0;
+        try {
+          // First try to count by company_id (direct relationship)
+          const { count: leadsCountById, error: leadsErrorById } = await supabase
+            .from('leads')
+            .select('id', { count: 'exact', head: true })
+            .eq('company_id', company.id);
+          
+          // Then try to count by company name (indirect relationship)
+          const { count: leadsCountByName, error: leadsErrorByName } = await supabase
+            .from('leads')
+            .select('id', { count: 'exact', head: true })
+            .eq('company', company.name)
+            .eq('user_id', user.id);
+          
+          if (!leadsErrorById && !leadsErrorByName) {
+            leads_count = (leadsCountById || 0) + (leadsCountByName || 0);
+            
+            // Deduplicate if there's a chance of overlap
+            if (leadsCountById > 0 && leadsCountByName > 0) {
+              const { count: duplicateCount, error: duplicateError } = await supabase
+                .from('leads')
+                .select('id', { count: 'exact', head: true })
+                .eq('company_id', company.id)
+                .eq('company', company.name);
+                
+              if (!duplicateError && duplicateCount) {
+                leads_count -= duplicateCount;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching leads count:', e);
+        }
+
+        let contacts_count = 0;
+        try {
+          // First try to count by company_id (direct relationship)
+          const { count: contactsCountById, error: contactsErrorById } = await supabase
+            .from('contacts')
+            .select('id', { count: 'exact', head: true })
+            .eq('company_id', company.id);
+          
+          // Then try to count by company name (indirect relationship)
+          const { count: contactsCountByName, error: contactsErrorByName } = await supabase
+            .from('contacts')
+            .select('id', { count: 'exact', head: true })
+            .eq('company', company.name)
+            .eq('user_id', user.id);
+          
+          if (!contactsErrorById && !contactsErrorByName) {
+            contacts_count = (contactsCountById || 0) + (contactsCountByName || 0);
+            
+            // Deduplicate if there's a chance of overlap
+            if (contactsCountById > 0 && contactsCountByName > 0) {
+              const { count: duplicateCount, error: duplicateError } = await supabase
+                .from('contacts')
+                .select('id', { count: 'exact', head: true })
+                .eq('company_id', company.id)
+                .eq('company', company.name);
+                
+              if (!duplicateError && duplicateCount) {
+                contacts_count -= duplicateCount;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching contacts count:', e);
+        }
+
+        return {
+          id: company.id,
+          name: company.name,
+          website: company.website || '',
+          industry: company.industry || '',
+          size: company.size || '',
+          phone: company.phone || '',
+          email: company.email || '',
+          address: company.address || '',
+          city: company.city || '',
+          state: company.state || '',
+          country: company.country || '',
+          postal_code: company.postal_code || '',
+          description: company.description || '',
+          status: company.status || 'prospect',
+          revenue: company.revenue || 0,
+          employees: company.employees || 0,
+          founded_year: company.founded_year || 0,
+          linkedin_url: company.linkedin_url || '',
+          twitter_url: company.twitter_url || '',
+          facebook_url: company.facebook_url || '',
+          notes: company.notes || '',
+          score: company.score || 0,
+          last_contact: company.last_contact || '',
+          next_follow_up: company.next_follow_up || '',
+          created_at: company.created_at,
+          leads_count,
+          contacts_count
+        };
       }));
+
+      return companiesWithCounts;
     },
     enabled: !!user,
   });
@@ -755,6 +833,14 @@ const CompaniesManager = () => {
                               {formatRevenue(company.revenue)} revenue
                             </div>
                           )}
+                          <div className="flex items-center gap-1">
+                            <User className="w-4 h-4" />
+                            {company.contacts_count} contacts
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Target className="w-4 h-4" />
+                            {company.leads_count} leads
+                          </div>
                         </div>
 
                         {company.description && (

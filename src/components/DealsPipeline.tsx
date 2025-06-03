@@ -28,7 +28,8 @@ interface Deal {
   last_activity: string;
   next_step: string;
   created_at: string;
-  outcome: string;
+  deal_status: string;
+  activities_count?: number;
 }
 
 interface Activity {
@@ -54,6 +55,20 @@ interface DealActivitiesCount {
   [dealId: string]: number;
 }
 
+interface SimilarDeal {
+  id: string;
+  title: string;
+  value: number;
+  stage: string;
+  probability: number;
+  similarity: number;
+  deal_status: string;
+  company?: string;
+  similarity_score?: number;
+  similarity_reasons?: string[];
+  key_differences?: string[];
+}
+
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -72,9 +87,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     title: '',
     company: '',
     value: '',
-    stage: 'Discovery',
+    stage: '',
     probability: '',
-    outcome: 'in_progress'
+    deal_status: ''
   });
 
   // AI Embedding state
@@ -127,7 +142,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
         next_step: deal.next_step || 'Follow up required',
         created_at: deal.created_at,
-        outcome: deal.outcome || 'in_progress'
+        deal_status: deal.deal_status || deal.outcome || 'in_progress'
       }));
 
       // Fetch activity counts for all deals
@@ -211,7 +226,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
     // Outcome filter
     if (outcomeFilter !== 'all') {
-      filtered = filtered.filter(deal => deal.outcome === outcomeFilter);
+      filtered = filtered.filter(deal => deal.deal_status === outcomeFilter);
     }
 
     // Value filter
@@ -295,11 +310,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setEditingDeal(deal);
     setEditForm({
       title: deal.title,
-      company: deal.company,
-      value: deal.value.toString(),
-      stage: deal.stage,
-      probability: deal.probability.toString(),
-      outcome: deal.outcome
+      company: deal.company || '',
+      value: deal.value?.toString() || '',
+      stage: deal.stage || 'Discovery',
+      probability: deal.probability?.toString() || '50',
+      deal_status: deal.deal_status || 'in_progress'
     });
     
     // Fetch activities for this deal
@@ -335,8 +350,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           company: editForm.company.trim(),
           value: Number(editForm.value),
           stage: editForm.stage,
-          probability: Number(editForm.probability) || 0,
-          outcome: editForm.outcome
+          probability: editForm.deal_status === 'in_progress' ? (Number(editForm.probability) || 0) : null,
+          deal_status: editForm.deal_status
         })
         .eq('id', editingDeal.id)
         .eq('user_id', user.id);
@@ -529,10 +544,10 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const averageDealSize = deals.length > 0 ? totalValue / deals.length : 0;
   
   // Calculate outcome metrics
-  const wonDeals = deals.filter(deal => deal.outcome === 'won').length;
-  const lostDeals = deals.filter(deal => deal.outcome === 'lost').length;
-  const inProgressDeals = deals.filter(deal => deal.outcome === 'in_progress').length;
-  const wonValue = deals.filter(deal => deal.outcome === 'won').reduce((sum, deal) => sum + deal.value, 0);
+  const wonDeals = deals.filter(deal => deal.deal_status === 'won').length;
+  const lostDeals = deals.filter(deal => deal.deal_status === 'lost').length;
+  const inProgressDeals = deals.filter(deal => deal.deal_status === 'in_progress').length;
+  const wonValue = deals.filter(deal => deal.deal_status === 'won').reduce((sum, deal) => sum + deal.value, 0);
 
   // Fetch activities for a deal
   const fetchDealActivities = async (dealId: string) => {
@@ -808,8 +823,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 <Badge className={getStageColor(deal.stage)}>
                                   {deal.stage}
                                 </Badge>
-                                <Badge className={`${getOutcomeColor(deal.outcome)} border`}>
-                                  {getOutcomeIcon(deal.outcome)} {deal.outcome === 'in_progress' ? 'In Progress' : deal.outcome.charAt(0).toUpperCase() + deal.outcome.slice(1)}
+                                <Badge className={`${getOutcomeColor(deal.deal_status)} border`}>
+                                  {getOutcomeIcon(deal.deal_status)} {deal.deal_status === 'in_progress' ? 'In Progress' : deal.deal_status.charAt(0).toUpperCase() + deal.deal_status.slice(1)}
                                 </Badge>
                                 <span className="text-lg font-bold text-slate-900">
                                   ${deal.value.toLocaleString()}
@@ -836,10 +851,19 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm text-slate-600">Close Probability:</span>
-                                  <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
-                                    {deal.probability}%
-                                  </span>
-                                  <Progress value={deal.probability} className="w-20" />
+                                  {deal.deal_status === 'in_progress' && (
+                                    <>
+                                      <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
+                                        {deal.probability}%
+                                      </span>
+                                      <Progress value={deal.probability} className="w-20" />
+                                    </>
+                                  )}
+                                  {deal.deal_status !== 'in_progress' && (
+                                    <Badge variant="outline" className="text-blue-600">
+                                      Probability not available
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm text-slate-600">Activities:</span>
@@ -951,19 +975,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">Probability (%)</label>
-              <Input
-                value={editForm.probability}
-                onChange={(e) => setEditForm({ ...editForm, probability: e.target.value })}
-                placeholder="Close probability"
-                type="number"
-                min="0"
-                max="100"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Outcome</label>
-              <Select value={editForm.outcome} onValueChange={(value) => setEditForm({ ...editForm, outcome: value })}>
+              <label className="text-sm font-medium">Deal Status</label>
+              <Select value={editForm.deal_status} onValueChange={(value) => setEditForm({ ...editForm, deal_status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -974,6 +987,19 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 </SelectContent>
               </Select>
             </div>
+            {editForm.deal_status === 'in_progress' && (
+              <div>
+                <label className="text-sm font-medium">Probability (%)</label>
+                <Input
+                  value={editForm.probability}
+                  onChange={(e) => setEditForm({ ...editForm, probability: e.target.value })}
+                  placeholder="Close probability"
+                  type="number"
+                  min="0"
+                  max="100"
+                />
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setEditingDeal(null)}>
                 Cancel
@@ -1150,11 +1176,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                   <div className="flex items-center space-x-2 mb-1">
                                     <h4 className="font-medium text-slate-900">{similarDeal.title}</h4>
                                     <Badge className={`text-xs ${
-                                      similarDeal.outcome === 'won' ? 'bg-green-100 text-green-800' :
-                                      similarDeal.outcome === 'lost' ? 'bg-red-100 text-red-800' :
+                                      similarDeal.deal_status === 'won' ? 'bg-green-100 text-green-800' :
+                                      similarDeal.deal_status === 'lost' ? 'bg-red-100 text-red-800' :
                                       'bg-blue-100 text-blue-800'
                                     }`}>
-                                      {similarDeal.outcome}
+                                      {similarDeal.deal_status}
                                     </Badge>
                                   </div>
                                   <p className="text-sm text-slate-600">{similarDeal.company} • {similarDeal.stage}</p>
