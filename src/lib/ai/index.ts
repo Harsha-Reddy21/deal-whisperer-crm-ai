@@ -66,6 +66,13 @@ export type {
   CRMDataContext 
 } from './crmDataAnalyzer';
 
+// Export semantic search types
+export type {
+  SemanticSearchOptions,
+  SemanticSearchResult,
+  SemanticSearchResponse
+} from './semanticSearch';
+
 // Export configuration utilities
 export {
   getOpenAIConfig,
@@ -116,6 +123,9 @@ export { researchCompanyInfo, generateCompanies } from './companyResearcher';
 // CRM data analysis
 export { fetchCRMData, formatCRMDataForAI, analyzeDataTrends } from './crmDataAnalyzer';
 
+// Semantic search
+export { semanticSearchService, SemanticSearchService } from './semanticSearch';
+
 // Smart Lead Analyzer
 export * from './smartLeadAnalyzer';
 
@@ -134,6 +144,7 @@ export * from './dealSimilarityAnalyzer';
 // Vector Embeddings and Semantic Search
 export * from './embeddingService';
 export * from './dealEmbeddingManager';
+export * from './semanticSearch';
 
 // Lead embeddings service
 export { leadEmbeddingService, LeadEmbeddingService } from './leadEmbeddings';

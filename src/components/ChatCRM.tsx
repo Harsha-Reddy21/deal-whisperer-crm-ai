@@ -34,8 +34,10 @@ import {
   fetchCRMData,
   formatCRMDataForAI,
   analyzeDataTrends,
+  semanticSearchService,
   type OpenAIMessage,
-  type CRMDataContext
+  type CRMDataContext,
+  type SemanticSearchResponse
 } from '@/lib/ai';
 
 // Type declarations for Speech Recognition API
@@ -104,6 +106,9 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [crmDataContext, setCrmDataContext] = useState<CRMDataContext | null>(null);
   const [isLoadingCRMData, setIsLoadingCRMData] = useState(false);
+  
+  // Add state for semantic search results
+  const [lastSearchResults, setLastSearchResults] = useState<SemanticSearchResponse | null>(null);
   
   // Voice assistant state
   const [isListening, setIsListening] = useState(false);
@@ -269,6 +274,59 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
     }
   }, [open, initialMessage]);
 
+  // Perform semantic search based on the user message
+  const performSemanticSearch = async (query: string) => {
+    if (!user || !query.trim()) return null;
+    
+    try {
+      console.log('[Semantic Search] Performing search for query:', query);
+      
+      const searchResponse = await semanticSearchService.semanticSearch({
+        query,
+        userId: user.id,
+        maxResults: 5,
+        similarityThreshold: 0.5
+      });
+      
+      console.log('[Semantic Search] Results:', searchResponse);
+      setLastSearchResults(searchResponse);
+      return searchResponse;
+    } catch (error) {
+      console.error('[Semantic Search] Error performing semantic search:', error);
+      return null;
+    }
+  };
+
+  // Format the system message with CRM data and semantic search results
+  const formatSystemMessage = (query: string, searchResults: SemanticSearchResponse | null) => {
+    let systemContent = `You are an expert CRM AI assistant for Deal Whisperer CRM. You have access to comprehensive real-time data from the user's CRM system.
+
+${crmDataContext ? formatCRMDataForAI(crmDataContext) : 'No CRM data available at the moment.'}`;
+
+    // Add semantic search results if available
+    if (searchResults && searchResults.results.length > 0) {
+      systemContent += `\n\n${semanticSearchService.formatResultsForAI(searchResults)}`;
+    }
+
+    // Add role and guidelines
+    systemContent += `\n\nYour role:
+- Provide data-driven insights and recommendations
+- Answer questions about deals, contacts, companies, leads, activities, emails, files, transcripts, and all CRM data
+- Help with sales strategy and customer relationship management
+- Offer actionable advice based on the actual data
+- Be conversational but professional
+- Always reference specific data when making recommendations
+
+Guidelines:
+- Use the real data provided to give specific, actionable insights
+- When discussing performance, cite actual numbers from the data
+- Suggest concrete next steps based on the data patterns
+- Be helpful and proactive in identifying opportunities and risks
+- Keep responses focused and valuable for sales and CRM management`;
+
+    return systemContent;
+  };
+
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
       if (!user || !currentSession) throw new Error('No active session');
@@ -289,27 +347,13 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
 
       setCurrentSession(updatedSession);
 
+      // Perform semantic search based on the user message
+      const searchResults = await performSemanticSearch(message);
+
       // Prepare messages for OpenAI
       const systemMessage: OpenAIMessage = {
         role: "system",
-        content: `You are an expert CRM AI assistant for Deal Whisperer CRM. You have access to comprehensive real-time data from the user's CRM system.
-
-${crmDataContext ? formatCRMDataForAI(crmDataContext) : 'No CRM data available at the moment.'}
-
-Your role:
-- Provide data-driven insights and recommendations
-- Answer questions about deals, contacts, companies, leads, activities, emails, files, transcripts, and all CRM data
-- Help with sales strategy and customer relationship management
-- Offer actionable advice based on the actual data
-- Be conversational but professional
-- Always reference specific data when making recommendations
-
-Guidelines:
-- Use the real data provided to give specific, actionable insights
-- When discussing performance, cite actual numbers from the data
-- Suggest concrete next steps based on the data patterns
-- Be helpful and proactive in identifying opportunities and risks
-- Keep responses focused and valuable for sales and CRM management`
+        content: formatSystemMessage(message, searchResults)
       };
 
       const conversationMessages: OpenAIMessage[] = [

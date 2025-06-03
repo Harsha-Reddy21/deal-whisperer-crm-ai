@@ -1,68 +1,80 @@
-Follow the sample record:
+Perfect — since you already have deals, contacts, and leads tables, and each includes data + precomputed embeddings, we can now build a hybrid search system that works like this:
 
-1.
-lead_data:
-{
-  "id": "lead_123",
-  "name": "Alice Johnson",
-  "email": "alice@greentech.io",
-  "company": "GreenTech Innovations",
-  "phone": "+1-555-123-4567",
-  "status": "Qualified",
-  "lead_source": "Webinar",
-  "score": 78,
-  "created_at": "2025-05-15",
-  "owner": "Michael Scott",
-  "notes": "Very interested in our sustainability tools. Wants to see a demo."
-}
+✅ Goal: Hybrid Search Across Deals, Contacts, Leads (+ their Activities)
+You already have:
+deals, contacts, leads: each with metadata + precomputed embeddings
 
-activities:
+activities: linked to each of the above entities
 
-[
-  {
-    "type": "Email",
-    "date": "2025-05-16",
-    "content": "Sent welcome email with product overview and demo request link."
-  },
-  {
-    "type": "Call",
-    "date": "2025-05-18",
-    "content": "Discussed use case. Alice mentioned her team is evaluating eco-certification tools."
-  },
-  {
-    "type": "Meeting",
-    "date": "2025-05-20",
-    "content": "Demo scheduled. Alice and her CTO will attend."
-  }
-]
+Embeddings stored either in the same table or in a separate vector index (e.g. pgvector column)
 
+🧠 Step-by-Step: Hybrid Search Flow
+Step 1: Prepare Unified Embedding Entries (Already Done)
+Each entry in deals, contacts, leads should have:
 
-3. compose the embedding text:
-Lead: Alice Johnson
-Company: GreenTech Innovations
-Email: alice@greentech.io
-Phone: +1-555-123-4567
-Lead Source: Webinar
-Status: Qualified
-Score: 78
-Owner: Michael Scott
-Created At: May 15, 2025
-Notes: Very interested in our sustainability tools. Wants to see a demo.
+A column embedding (vector)
 
-Activities:
-- [2025-05-16] Email: Sent welcome email with product overview and demo request link.
-- [2025-05-18] Call: Discussed use case. Alice mentioned her team is evaluating eco-certification tools.
-- [2025-05-20] Meeting: Demo scheduled. Alice and her CTO will attend.
+A type field (deal, contact, lead) if all records are in one table or index
 
+Optionally: a combined_text field containing title + description + activities
 
-4. embedd the text:
-import openai
+Step 2: User Inputs a Natural Language Query
+Example:
 
-response = openai.embeddings.create(
+"Show me all leads from last month who had a call about pricing."
+
+Step 3: Convert Query to an Embedding
+python
+Copy
+Edit
+query = "Show me all leads from last month who had a call about pricing."
+
+query_embedding = openai.embeddings.create(
     model="text-embedding-3-small",
-    input=lead_text  # from above
-)
-embedding_vector = response.data[0].embedding
+    input=query
+)["data"][0]["embedding"]
+Step 4: Run Vector Search + Filter
+Use pgvector (PostgreSQL) or Pinecone or another vector DB to search.
 
+Example using pgvector in SQL:
 
-4. add to database
+sql
+Copy
+Edit
+SELECT id, type, name, description
+FROM entities
+WHERE type = 'lead'
+  AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY embedding <-> '[your_query_embedding]'
+LIMIT 10;
+If your schema is not unified, run 3 queries (one for each table) and merge results.
+
+Step 5: (Optional) Add Keyword Filtering
+If you want extra precision, do fuzzy match or full-text search on combined_text:
+
+sql
+Copy
+Edit
+AND combined_text ILIKE '%pricing%'
+Or use Postgres full-text search:
+
+sql
+Copy
+Edit
+AND to_tsvector('english', combined_text) @@ plainto_tsquery('pricing')
+📦 Recommended Table Schema
+If you're storing everything in one hybrid index:
+
+sql
+Copy
+Edit
+CREATE TABLE entities (
+  id UUID PRIMARY KEY,
+  type TEXT CHECK (type IN ('deal', 'contact', 'lead')),
+  name TEXT,
+  description TEXT,
+  combined_text TEXT,
+  embedding VECTOR(1536), -- or whatever your model outputs
+  created_at TIMESTAMP,
+  metadata JSONB
+);
