@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User, Target, Plus } from 'lucide-react';
 import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 import { useContactEmbeddings } from '@/hooks/useContactEmbeddings';
+import { useDealEmbeddings } from '@/hooks/useDealEmbeddings';
 
 interface ActivityFormProps {
   open: boolean;
@@ -27,6 +28,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
   const { toast } = useToast();
   const { handleActivityChanged: handleLeadActivityChanged } = useLeadEmbeddings();
   const { handleActivityChanged: handleContactActivityChanged } = useContactEmbeddings();
+  const { handleActivityChanged: handleDealActivityChanged } = useDealEmbeddings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type: 'call',
@@ -195,12 +197,12 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
       const { data: newActivity, error } = await supabase
         .from('activities')
         .insert(activityData)
-        .select('id, lead_id, contact_id')
+        .select('id, lead_id, contact_id, deal_id')
         .single();
 
       if (error) throw error;
 
-      // Handle embeddings updates for both leads and contacts if associated
+      // Handle embeddings updates for leads, contacts, and deals if associated
       let embeddingsUpdated = false;
 
       // Update embeddings for the associated lead if exists
@@ -229,8 +231,21 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
         }
       }
       
+      // Update embeddings for the associated deal if exists
+      if (newActivity?.id && newActivity?.deal_id) {
+        console.log(`[ActivityForm] Activity created with ID: ${newActivity.id} for deal: ${newActivity.deal_id}, updating deal embeddings...`);
+        try {
+          await handleDealActivityChanged(newActivity.id);
+          console.log(`[ActivityForm] Deal embeddings update triggered for activity ${newActivity.id}`);
+          embeddingsUpdated = true;
+        } catch (embeddingError) {
+          console.error('[ActivityForm] Error updating deal embeddings after activity creation:', embeddingError);
+          // Don't fail the overall operation if embedding update fails
+        }
+      }
+      
       if (!embeddingsUpdated) {
-        console.log('[ActivityForm] Activity created but no related lead or contact found, skipping embeddings update');
+        console.log('[ActivityForm] Activity created but no related lead, contact, or deal found, skipping embeddings update');
       }
 
       toast({

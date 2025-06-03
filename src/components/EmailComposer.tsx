@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateEmailContent, isOpenAIConfigured, EmailGenerationRequest } from '@/lib/openai';
 import { useContactEmbeddings } from '@/hooks/useContactEmbeddings';
 import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
+import { useDealEmbeddings } from '@/hooks/useDealEmbeddings';
 
 interface EmailComposerProps {
   open: boolean;
@@ -37,6 +38,7 @@ const EmailComposer = ({
   const queryClient = useQueryClient();
   const { handleActivityChanged: handleContactActivityChanged } = useContactEmbeddings();
   const { handleActivityChanged: handleLeadActivityChanged } = useLeadEmbeddings();
+  const { handleActivityChanged: handleDealActivityChanged } = useDealEmbeddings();
   
   const [formData, setFormData] = useState({
     to: prefilledTo,
@@ -185,6 +187,8 @@ const EmailComposer = ({
         // Create an activity record based on the context
         let createdActivityId: string | null = null;
         try {
+          let dealEmbeddingsUpdated = false;
+          
           if (leadId) {
             // For leads, create an activity with lead_id
             const { data: activityData, error: activityError } = await supabase
@@ -261,6 +265,17 @@ const EmailComposer = ({
                   // Don't fail if embedding update fails
                 }
               }
+              
+              // Update deal embeddings directly
+              try {
+                console.log(`[EmailComposer] Updating deal embeddings for activity ${createdActivityId}`);
+                await handleDealActivityChanged(createdActivityId);
+                console.log(`[EmailComposer] Deal embeddings update triggered for activity ${createdActivityId}`);
+                dealEmbeddingsUpdated = true; // Mark as updated
+              } catch (embeddingError) {
+                console.error('[EmailComposer] Error updating deal embeddings:', embeddingError);
+                // Don't fail if embedding update fails
+              }
             }
           }
           
@@ -282,6 +297,18 @@ const EmailComposer = ({
                 await handleContactActivityChanged(createdActivityId);
               } catch (embeddingError) {
                 console.error('[EmailComposer] Error updating contact embeddings:', embeddingError);
+                // Don't fail if embedding update fails
+              }
+            }
+            
+            // Always update deal embeddings if there's a deal ID, regardless of contact or lead
+            if (dealId && !dealEmbeddingsUpdated) { // Only update if not already done
+              try {
+                console.log(`[EmailComposer] Updating deal embeddings for activity ${createdActivityId}`);
+                await handleDealActivityChanged(createdActivityId);
+                console.log(`[EmailComposer] Deal embeddings update triggered for activity ${createdActivityId}`);
+              } catch (embeddingError) {
+                console.error('[EmailComposer] Error updating deal embeddings:', embeddingError);
                 // Don't fail if embedding update fails
               }
             }

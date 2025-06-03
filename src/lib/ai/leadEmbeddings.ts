@@ -142,7 +142,7 @@ export class LeadEmbeddingService {
       const { error } = await supabase
         .from('leads')
         .update({ 
-          combined_content_vector: embeddingVector,
+          embedding: embeddingVector,
           embedding_updated_at: new Date().toISOString()
         })
         .eq('id', leadId);

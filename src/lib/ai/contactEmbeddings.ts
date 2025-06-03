@@ -142,7 +142,7 @@ export class ContactEmbeddingService {
         .from('contacts')
         .update({ 
           persona_vector: embeddingVector,
-          notes_vector: embeddingVector, // Also update notes vector with the same embedding
+            embedding: embeddingVector, // Also update notes vector with the same embedding
           embedding_updated_at: new Date().toISOString()
         })
         .eq('id', contactId);

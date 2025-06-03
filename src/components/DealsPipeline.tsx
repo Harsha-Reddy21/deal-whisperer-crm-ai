@@ -11,7 +11,7 @@ import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Se
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DealForm from './DealForm';
 import SemanticSearchDialog from './SemanticSearchDialog';
 import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilarityResponse } from '@/lib/ai';
@@ -20,6 +20,7 @@ import EmailComposer from './EmailComposer';
 import ObjectionHandler from './ObjectionHandler';
 import { analyzeClosedDealsForCoaching } from '@/lib/ai/dealCoach';
 import { type DealCoachRecommendation } from '@/lib/ai/types';
+import { useDealEmbeddings } from '@/hooks/useDealEmbeddings';
 
 interface Deal {
   id: string;
@@ -76,6 +77,8 @@ interface SimilarDeal {
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { handleDealUpdated } = useDealEmbeddings();
   const [searchTerm, setSearchTerm] = useState('');
   const [showDealForm, setShowDealForm] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
@@ -350,11 +353,22 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
       if (error) throw error;
 
+      // Update the deal embeddings
+      console.log(`[DealsPipeline] Deal updated with ID: ${editingDeal.id}, now updating embeddings...`);
+      try {
+        await handleDealUpdated(editingDeal.id);
+        console.log(`[DealsPipeline] Embeddings update triggered for deal ${editingDeal.id}`);
+      } catch (embeddingError) {
+        console.error('[DealsPipeline] Error updating deal embeddings after edit:', embeddingError);
+        // Don't fail the operation if embedding update fails
+      }
+
       toast({
         title: "Deal updated!",
         description: "Deal information has been saved.",
       });
 
+      console.log('[DealsPipeline] Deal update process completed successfully');
       setEditingDeal(null);
       refetch();
     } catch (error: any) {

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
+import { useDealEmbeddings } from '@/hooks/useDealEmbeddings';
 
 interface DealFormProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface DealFormProps {
 const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { handleDealCreated } = useDealEmbeddings();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -101,7 +103,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
       }
 
       // Now create the deal
-      const { error } = await supabase
+      const { data: newDeal, error } = await supabase
         .from('deals')
         .insert({
           user_id: user.id,
@@ -113,14 +115,30 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
           contact_name: formData.contact_name,
           next_step: formData.next_step,
           outcome: formData.deal_status
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Generate embeddings for the new deal
+      if (newDeal?.id) {
+        console.log(`[DealForm] Deal created with ID: ${newDeal.id}, now generating embeddings...`);
+        try {
+          await handleDealCreated(newDeal.id);
+          console.log(`[DealForm] Embeddings generation triggered for deal ${newDeal.id}`);
+        } catch (embeddingError) {
+          console.error('[DealForm] Error generating deal embedding:', embeddingError);
+          // Don't fail the operation if embedding generation fails
+        }
+      }
 
       toast({
         title: "Deal created!",
         description: "Your new deal has been added to the pipeline.",
       });
+
+      console.log('[DealForm] Deal creation process completed successfully');
 
       // Reset form
       setFormData({
