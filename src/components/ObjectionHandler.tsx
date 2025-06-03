@@ -4,10 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Lightbulb, Copy, ThumbsUp, Check, AlertCircle } from 'lucide-react';
-import { generateObjectionSuggestions, ObjectionSuggestion, isOpenAIConfigured } from '@/lib/openai';
+import { generateObjectionSuggestions, type ObjectionHandlerResponse } from '@/lib/ai/objectionHandler';
+import { isOpenAIConfigured } from '@/lib/ai/config';
+import { type ObjectionSuggestion } from '@/lib/ai/types';
 
-const ObjectionHandler = () => {
-  const [objection, setObjection] = useState('');
+export interface ObjectionHandlerProps {
+  dealInfo?: {
+    dealId: string;
+    userId: string;
+    objection: string;
+    dealInfo?: {
+      title: string;
+      description: string;
+      stage: string;
+      value: number;
+      probability: number;
+      activities?: Array<{
+        type: string;
+        subject: string;
+        description: string;
+        date: string;
+      }>;
+    };
+  };
+}
+
+const ObjectionHandler = ({ dealInfo }: ObjectionHandlerProps) => {
+  const [objection, setObjection] = useState(dealInfo?.objection || '');
   const [suggestions, setSuggestions] = useState<ObjectionSuggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -20,8 +43,23 @@ const ObjectionHandler = () => {
     setError(null);
     
     try {
-      const aiSuggestions = await generateObjectionSuggestions(objection);
-      setSuggestions(aiSuggestions);
+      // Use deal info if available, otherwise just analyze the objection text
+      let aiSuggestions;
+      if (dealInfo) {
+        aiSuggestions = await generateObjectionSuggestions({
+          ...dealInfo,
+          objection: objection
+        });
+        setSuggestions(aiSuggestions.suggestions);
+      } else {
+        // Fallback to simple analysis
+        const fallbackResponse = await generateObjectionSuggestions({
+          dealId: '',
+          userId: '',
+          objection: objection
+        });
+        setSuggestions(fallbackResponse.suggestions);
+      }
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate AI suggestions. Please check that your OpenAI API key is configured in your .env file.');
@@ -67,6 +105,14 @@ const ObjectionHandler = () => {
           </CardTitle>
           <CardDescription>
             Paste any customer objection and get AI-generated response strategies
+            {dealInfo?.dealInfo && (
+              <div className="mt-2 text-xs font-medium">
+                Using context from deal: {dealInfo.dealInfo.title}
+                {dealInfo.dealInfo.activities && dealInfo.dealInfo.activities.length > 0 && (
+                  <span> ({dealInfo.dealInfo.activities.length} activities)</span>
+                )}
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

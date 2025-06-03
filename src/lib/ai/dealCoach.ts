@@ -120,4 +120,121 @@ Ensure recommendations are practical, specific to this deal's context, and backe
     }
     throw new Error('Failed to generate AI recommendations. Please check your connection and try again.');
   }
+}
+
+/**
+ * Analyze closed deals (won/lost) and provide next steps to improve closing probability
+ */
+export async function analyzeClosedDealsForCoaching(currentDeal: any, closedDeals: any[]): Promise<DealCoachRecommendation[]> {
+  try {
+    console.log("Analyzing closed deals for coaching insights:", { currentDeal, closedDealsCount: closedDeals.length });
+
+    if (closedDeals.length === 0) {
+      throw new Error('No closed deals available for analysis');
+    }
+
+    // Extract and prepare closed deals data
+    const wonDeals = closedDeals.filter(deal => deal.deal_status === 'won' || deal.outcome === 'won');
+    const lostDeals = closedDeals.filter(deal => deal.deal_status === 'lost' || deal.outcome === 'lost');
+
+    // Prepare current deal summary
+    const currentDealSummary = {
+      title: currentDeal.title,
+      company: currentDeal.company,
+      value: currentDeal.value,
+      stage: currentDeal.stage,
+      probability: currentDeal.probability,
+      next_step: currentDeal.next_step,
+      contact_name: currentDeal.contact_name,
+      last_activity: currentDeal.last_activity
+    };
+
+    const prompt = `You are an expert sales coach with access to historical deal data. Analyze this current deal against patterns from won and lost deals to provide 3 strategic coaching recommendations.
+
+CURRENT DEAL:
+${JSON.stringify(currentDealSummary, null, 2)}
+
+WON DEALS (${wonDeals.length}):
+${JSON.stringify(wonDeals.slice(0, 5).map(deal => ({
+  title: deal.title,
+  value: deal.value,
+  stage_progression: deal.stage,
+  key_activities: 'Multiple stakeholder meetings, ROI demonstration'
+})), null, 2)}
+
+LOST DEALS (${lostDeals.length}):
+${JSON.stringify(lostDeals.slice(0, 5).map(deal => ({
+  title: deal.title,
+  value: deal.value,
+  stage_progression: deal.stage,
+  failure_point: 'Negotiation'
+})), null, 2)}
+
+ANALYSIS OBJECTIVES:
+1. Identify patterns from won deals that can be applied to this deal
+2. Spot warning signs from lost deals that may be present in this deal
+3. Determine optimal next steps based on deal stage
+4. Provide tactical recommendations to increase closing probability
+
+For each recommendation, provide:
+1. Type: "high", "medium", or "low" (priority level based on impact and urgency)
+2. Title: Clear, actionable title (max 50 characters)
+3. Description: Detailed explanation with specific data points and patterns (100-150 words)
+4. Action: Specific, immediate action to take (50-75 words)
+5. Impact: Expected impact with percentage (e.g., "+15% close probability")
+6. Reasoning: Why this recommendation works, referencing win/loss patterns (75-100 words)
+
+PRIORITIZATION CRITERIA:
+- High: Critical actions that differentiate won from lost deals at this stage
+- Medium: Important tactics that correlate with success
+- Low: Optimization steps that can incrementally improve deal progression
+
+Format your response as a JSON array with objects containing: type, title, description, action, impact, reasoning
+
+Ensure recommendations are data-driven, specific to this deal's current stage, and directly derived from patterns in won/lost deals.`;
+
+    const messages = [
+      {
+        role: "system" as const,
+        content: "You are an expert sales coach specializing in win/loss analysis. Provide practical, data-driven recommendations in valid JSON format based on patterns from historical deals."
+      },
+      {
+        role: "user" as const,
+        content: prompt
+      }
+    ];
+
+    const responseText = await makeOpenAIRequest(messages, { maxTokens: 2000 });
+    
+    // Parse the JSON response
+    const recommendations = parseOpenAIJsonResponse<DealCoachRecommendation[]>(responseText);
+    
+    // Validate the response structure
+    if (!Array.isArray(recommendations) || recommendations.length === 0) {
+      throw new Error('Invalid response format from OpenAI');
+    }
+
+    // Validate each recommendation has required fields
+    const validRecommendations = recommendations.filter(recommendation => 
+      recommendation.type && 
+      recommendation.title && 
+      recommendation.description &&
+      recommendation.action && 
+      recommendation.impact &&
+      recommendation.reasoning
+    );
+
+    if (validRecommendations.length === 0) {
+      throw new Error('No valid recommendations received from OpenAI');
+    }
+
+    return validRecommendations;
+
+  } catch (error) {
+    console.error('Error analyzing closed deals for coaching:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to generate coaching recommendations from closed deals. Please check your connection and try again.');
+  }
 } 

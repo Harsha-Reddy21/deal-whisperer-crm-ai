@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, Zap, Brain, Sparkles, TrendingDown, AlertTriangle, CheckCircle, Phone, Mail, Users, FileText } from 'lucide-react';
+import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, Zap, Brain, Sparkles, TrendingDown, AlertTriangle, CheckCircle, Phone, Mail, Users, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,9 @@ import SemanticSearchDialog from './SemanticSearchDialog';
 import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilarityResponse } from '@/lib/ai';
 import ActivityForm from './ActivityForm';
 import EmailComposer from './EmailComposer';
+import ObjectionHandler from './ObjectionHandler';
+import { analyzeClosedDealsForCoaching } from '@/lib/ai/dealCoach';
+import { type DealCoachRecommendation } from '@/lib/ai/types';
 
 interface Deal {
   id: string;
@@ -32,6 +35,7 @@ interface Deal {
   deal_status: string;
   contact_id?: string;
   activities_count?: number;
+  outcome?: string;
 }
 
 interface Activity {
@@ -69,6 +73,7 @@ interface SimilarDeal {
   similarity_score?: number;
   similarity_reasons?: string[];
   key_differences?: string[];
+  outcome?: string;
 }
 
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
@@ -117,6 +122,20 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [selectedDealForEmail, setSelectedDealForEmail] = useState<Deal | null>(null);
 
+  // Add these new states
+  const [showObjectionHandler, setShowObjectionHandler] = useState(false);
+  const [selectedDealForObjection, setSelectedDealForObjection] = useState<Deal | null>(null);
+  const [showClosingProbability, setShowClosingProbability] = useState(false);
+  const [closingProbabilityResult, setClosingProbabilityResult] = useState<number | null>(null);
+  const [isCalculatingProbability, setIsCalculatingProbability] = useState(false);
+
+  // Add state for Deal Coach
+  const [showDealCoach, setShowDealCoach] = useState(false);
+  const [selectedDealForCoaching, setSelectedDealForCoaching] = useState<Deal | null>(null);
+  const [coachingRecommendations, setCoachingRecommendations] = useState<DealCoachRecommendation[]>([]);
+  const [isLoadingCoachingData, setIsLoadingCoachingData] = useState(false);
+  const [coachingError, setCoachingError] = useState<string | null>(null);
+
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
     queryFn: async () => {
@@ -149,7 +168,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         next_step: deal.next_step || 'Follow up required',
         created_at: deal.created_at,
         deal_status: deal.deal_status || deal.outcome || 'in_progress',
-        contact_id: deal.contact_id
+        contact_id: deal.contact_id,
+        outcome: deal.outcome
       }));
 
       // Fetch activity counts for all deals
@@ -551,9 +571,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const averageDealSize = deals.length > 0 ? totalValue / deals.length : 0;
   
   // Calculate outcome metrics
-  const wonDeals = deals.filter(deal => deal.deal_status === 'won').length;
-  const lostDeals = deals.filter(deal => deal.deal_status === 'lost').length;
-  const inProgressDeals = deals.filter(deal => deal.deal_status === 'in_progress').length;
+  const wonDeals = deals.filter(deal => deal.outcome === 'won').length;
+  const lostDeals = deals.filter(deal => deal.outcome === 'lost').length;
+  const inProgressDeals = deals.filter(deal => deal.outcome === 'in_progress' || !deal.outcome).length;
   const wonValue = deals.filter(deal => deal.deal_status === 'won').reduce((sum, deal) => sum + deal.value, 0);
 
   // Fetch activities for a deal
@@ -629,6 +649,117 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const handleSendEmail = (deal: Deal) => {
     setSelectedDealForEmail(deal);
     setShowEmailComposer(true);
+  };
+
+  // Add this function to handle customer objection
+  const handleCustomerObjection = async (deal: Deal) => {
+    // First, fetch activities for this deal
+    const { data } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('deal_id', deal.id)
+      .eq('user_id', user?.id);
+    
+    // Map the returned data to match the Activity type
+    const activities: Activity[] = (data || []).map(a => ({
+      id: a.id,
+      type: a.type,
+      subject: a.subject,
+      description: a.description || '',
+      status: a.status,
+      priority: a.priority,
+      due_date: a.due_date,
+      contact_name: a.contact_name || '',
+      created_at: a.created_at
+    }));
+    
+    setSelectedDealActivities(activities);
+    setSelectedDealForObjection(deal);
+    setShowObjectionHandler(true);
+  };
+
+  // Add this function to calculate closing probability
+  const handleGetClosingProbability = async (deal: Deal) => {
+    setIsCalculatingProbability(true);
+    try {
+      // Fetch activities and deal details for analysis
+      const { data: activities } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('deal_id', deal.id)
+        .eq('user_id', user?.id);
+      
+      const dealDetails = {
+        id: deal.id,
+        title: deal.title,
+        company: deal.company,
+        value: deal.value,
+        stage: deal.stage,
+        contact_name: deal.contact_name,
+        activities: (activities || []).map(a => ({
+          type: a.type,
+          subject: a.subject,
+          description: a.description || '',
+          date: new Date(a.created_at).toLocaleDateString()
+        }))
+      };
+      
+      // Get calculated probability using OpenAI
+      const { data, error } = await supabase.functions.invoke('calculate-closing-probability', {
+        body: { deal: dealDetails }
+      });
+      
+      if (error) throw error;
+      
+      // Update state with the result
+      setClosingProbabilityResult(data.probability);
+      setShowClosingProbability(true);
+    } catch (error) {
+      console.error('Error calculating probability:', error);
+      toast({
+        title: "Error calculating probability",
+        description: "There was an error calculating the closing probability. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCalculatingProbability(false);
+    }
+  };
+
+  // Add function to handle Deal Coach button click
+  const handleDealCoach = async (deal: Deal) => {
+    setSelectedDealForCoaching(deal);
+    setShowDealCoach(true);
+    setCoachingRecommendations([]);
+    setCoachingError(null);
+    setIsLoadingCoachingData(true);
+    
+    try {
+      // Fetch closed deals for analysis
+      const { data: closedDeals, error } = await supabase
+        .from('deals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .or('outcome.eq.won,outcome.eq.lost');
+      
+      if (error) throw error;
+      
+      if (!closedDeals || closedDeals.length === 0) {
+        setCoachingError('No closed deals available for analysis. Close some deals (won/lost) first to get coaching recommendations.');
+        setIsLoadingCoachingData(false);
+        return;
+      }
+      
+      // Get coaching recommendations based on closed deals
+      const recommendations = await analyzeClosedDealsForCoaching(deal, closedDeals);
+      setCoachingRecommendations(recommendations);
+      
+    } catch (error) {
+      console.error('Error getting deal coaching:', error);
+      setCoachingError(error instanceof Error ? error.message : 'Failed to generate coaching recommendations');
+    } finally {
+      setIsLoadingCoachingData(false);
+    }
   };
 
   if (isLoading) {
@@ -912,6 +1043,33 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 >
                                   <Mail className="w-4 h-4 mr-1" />
                                   Email
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCustomerObjection(deal)}
+                                  className="hover:bg-amber-50 text-amber-600 border-amber-200"
+                                >
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  Objection
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleGetClosingProbability(deal)}
+                                  className="hover:bg-purple-50 text-purple-600 border-purple-200"
+                                >
+                                  <Target className="w-4 h-4 mr-1" />
+                                  Get Probability
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDealCoach(deal)}
+                                  className="hover:bg-violet-50 text-violet-600 border-violet-200"
+                                >
+                                  <Brain className="w-4 h-4 mr-1" />
+                                  Deal Coach
                                 </Button>
                                 <Button
                                   size="sm" 
@@ -1489,6 +1647,196 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
               contactId={selectedDealForEmail.contact_id}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Objection Handler Dialog */}
+      <Dialog open={showObjectionHandler} onOpenChange={setShowObjectionHandler}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Handle Customer Objection</DialogTitle>
+            <DialogDescription>
+              {selectedDealForObjection && (
+                <span>Deal: {selectedDealForObjection.title} - {selectedDealForObjection.company}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedDealForObjection && (
+            <div className="mt-4">
+              <ObjectionHandler 
+                dealInfo={{
+                  dealId: selectedDealForObjection.id,
+                  userId: user?.id || '',
+                  objection: '',
+                  dealInfo: {
+                    title: selectedDealForObjection.title,
+                    description: '',
+                    stage: selectedDealForObjection.stage,
+                    value: selectedDealForObjection.value,
+                    probability: selectedDealForObjection.probability,
+                    activities: selectedDealActivities.map(activity => ({
+                      type: activity.type,
+                      subject: activity.subject,
+                      description: activity.description || '',
+                      date: new Date(activity.created_at).toLocaleDateString()
+                    }))
+                  }
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Closing Probability Dialog */}
+      <Dialog open={showClosingProbability} onOpenChange={setShowClosingProbability}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Deal Closing Probability</DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-6 flex flex-col items-center justify-center">
+            {closingProbabilityResult !== null && (
+              <>
+                <div className="w-36 h-36 rounded-full border-8 border-primary flex items-center justify-center mb-4 relative">
+                  <span className="text-3xl font-bold">{Math.round(closingProbabilityResult)}%</span>
+                  <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
+                    <circle 
+                      cx="50" cy="50" r="45" fill="none" 
+                      stroke="#f0f0f0" strokeWidth="8"
+                    />
+                    <circle 
+                      cx="50" cy="50" r="45" fill="none" 
+                      stroke="currentColor" strokeWidth="8"
+                      strokeDasharray="283"
+                      strokeDashoffset={283 - (283 * closingProbabilityResult / 100)}
+                      className="text-primary"
+                      transform="rotate(-90 50 50)"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-center mb-2">
+                  {closingProbabilityResult >= 80 ? 'Very High Probability' :
+                   closingProbabilityResult >= 60 ? 'High Probability' :
+                   closingProbabilityResult >= 40 ? 'Medium Probability' :
+                   closingProbabilityResult >= 20 ? 'Low Probability' : 'Very Low Probability'}
+                </h3>
+                <p className="text-sm text-slate-500 text-center">
+                  This probability is calculated based on deal data, activities, and historical patterns.
+                  The accuracy improves with more data available.
+                </p>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deal Coach Dialog */}
+      <Dialog open={showDealCoach} onOpenChange={setShowDealCoach}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Brain className="w-5 h-5 mr-2 text-violet-600" />
+              Deal Coach
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDealForCoaching && (
+                <span>AI coaching recommendations for {selectedDealForCoaching.title} based on analysis of closed deals</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isLoadingCoachingData && (
+              <div className="flex flex-col items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <p className="text-slate-600">Analyzing closed deal patterns and generating recommendations...</p>
+              </div>
+            )}
+            
+            {coachingError && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-md">
+                <p className="font-medium">Error generating coaching recommendations</p>
+                <p className="text-sm mt-1">{coachingError}</p>
+              </div>
+            )}
+            
+            {coachingRecommendations.length > 0 && !isLoadingCoachingData && (
+              <div className="space-y-6">
+                {selectedDealForCoaching && (
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-lg text-slate-900">Deal Summary</h3>
+                    <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                      <div>
+                        <p><span className="font-medium">Title:</span> {selectedDealForCoaching.title}</p>
+                        <p><span className="font-medium">Company:</span> {selectedDealForCoaching.company}</p>
+                        <p><span className="font-medium">Stage:</span> {selectedDealForCoaching.stage}</p>
+                      </div>
+                      <div>
+                        <p><span className="font-medium">Value:</span> ${selectedDealForCoaching.value.toLocaleString()}</p>
+                        <p><span className="font-medium">Probability:</span> {selectedDealForCoaching.probability}%</p>
+                        <p><span className="font-medium">Contact:</span> {selectedDealForCoaching.contact_name || 'No contact'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                  <h3 className="font-medium text-lg text-slate-900 mb-4">Coaching Recommendations</h3>
+                  <div className="space-y-4">
+                    {coachingRecommendations.map((recommendation, index) => {
+                      const getPriorityColor = (type: string) => {
+                        switch (type) {
+                          case 'high': return 'bg-red-50 border-red-200 text-red-700';
+                          case 'medium': return 'bg-yellow-50 border-yellow-200 text-yellow-700';
+                          case 'low': return 'bg-green-50 border-green-200 text-green-700';
+                          default: return 'bg-slate-50 border-slate-200 text-slate-700';
+                        }
+                      };
+                      
+                      return (
+                        <Card key={index} className={`border ${getPriorityColor(recommendation.type)}`}>
+                          <CardContent className="p-5">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold text-lg">{recommendation.title}</h4>
+                                <Badge className={`
+                                  ${recommendation.type === 'high' ? 'bg-red-100 text-red-800' : 
+                                   recommendation.type === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                   'bg-green-100 text-green-800'}
+                                `}>
+                                  {recommendation.type.toUpperCase()} Priority
+                                </Badge>
+                              </div>
+                              
+                              <p className="text-sm text-slate-700">{recommendation.description}</p>
+                              
+                              <div className="bg-white p-3 rounded-md border border-slate-200">
+                                <h5 className="font-medium text-sm mb-1">Recommended Action:</h5>
+                                <p className="text-sm">{recommendation.action}</p>
+                              </div>
+                              
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">
+                                  Expected Impact: {recommendation.impact}
+                                </div>
+                              </div>
+                              
+                              <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
+                                <h5 className="font-medium text-sm mb-1">Why This Works:</h5>
+                                <p className="text-sm">{recommendation.reasoning}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

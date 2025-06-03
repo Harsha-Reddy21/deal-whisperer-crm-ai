@@ -4,6 +4,32 @@ import type { CustomerPersona } from './types';
 import { makeOpenAIRequest, parseOpenAIJsonResponse } from './config';
 
 /**
+ * Interface for lead persona generation request
+ */
+export interface LeadPersonaRequest {
+  lead: {
+    name: string;
+    email: string;
+    company: string;
+    status: string;
+    source: string;
+    score: number;
+  };
+  activities: Array<{
+    type: string;
+    subject: string;
+    description: string;
+    status: string;
+    created_at: string;
+  }>;
+  deals?: Array<{
+    title: string;
+    value: number;
+    stage: string;
+  }>;
+}
+
+/**
  * Generate customer persona from contact information
  */
 export async function generateCustomerPersona(contact: any): Promise<CustomerPersona> {
@@ -66,14 +92,15 @@ Base your analysis on the contact information provided and common behavioral pat
 /**
  * Generate lead persona with enhanced analysis for leads with interaction data
  */
-export async function generateLeadPersona(lead: any): Promise<CustomerPersona> {
+export async function generateLeadPersona(data: LeadPersonaRequest): Promise<CustomerPersona> {
   try {
-    console.log("Generating lead persona for:", lead);
+    console.log("Generating lead persona for:", data);
+
+    const { lead, activities, deals = [] } = data;
 
     // Check if we have sufficient data for persona generation
-    const hasBasicInfo = lead.name && (lead.company || lead.email || lead.phone);
-    const hasInteractionData = (lead.activities && lead.activities.length > 0) || 
-                              (lead.deals && lead.deals.length > 0);
+    const hasBasicInfo = lead.name && (lead.company || lead.email);
+    const hasInteractionData = activities.length > 0 || deals.length > 0;
     
     if (!hasBasicInfo) {
       throw new Error('Insufficient lead information. Please add more details about the lead.');
@@ -88,7 +115,6 @@ export async function generateLeadPersona(lead: any): Promise<CustomerPersona> {
 Name: ${lead.name}
 Company: ${lead.company || 'Not specified'}
 Email: ${lead.email || 'Not provided'}
-Phone: ${lead.phone || 'Not provided'}
 Status: ${lead.status || 'new'}
 Source: ${lead.source || 'unknown'}
 Lead Score: ${lead.score || 0}
@@ -123,17 +149,16 @@ LEAD INFORMATION:
 Name: ${lead.name}
 Company: ${lead.company || 'Not specified'}
 Email: ${lead.email || 'Not provided'}
-Phone: ${lead.phone || 'Not provided'}
 Status: ${lead.status || 'new'}
 Source: ${lead.source || 'unknown'}
 Lead Score: ${lead.score || 0}
 
 INTERACTION HISTORY:
-Activities: ${lead.activities?.length || 0} activities recorded
-${lead.activities?.map((activity: any) => `- ${activity.type}: ${activity.subject} (${activity.status})`).join('\n') || 'No activities'}
+Activities: ${activities.length} activities recorded
+${activities.map((activity) => `- ${activity.type}: ${activity.subject} (${activity.status})`).join('\n')}
 
-Deals: ${lead.deals?.length || 0} deals associated
-${lead.deals?.map((deal: any) => `- ${deal.title}: $${deal.value} (${deal.stage})`).join('\n') || 'No deals'}
+Deals: ${deals.length} deals associated
+${deals.map((deal) => `- ${deal.title}: $${deal.value} (${deal.stage})`).join('\n') || 'No deals'}
 
 Generate a comprehensive behavioral profile including:
 1. name: Professional persona name

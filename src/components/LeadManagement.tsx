@@ -7,16 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, Brain, Zap, Star, Clock, TrendingDown, Activity, ClipboardList } from 'lucide-react';
+import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, Brain, Zap, Star, Clock, TrendingDown, Activity, ClipboardList, User, Linkedin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import LeadForm from './LeadForm';
-import { analyzeSmartLeads, type SmartLeadResponse, type SmartLeadAnalysis } from '@/lib/ai';
+import { analyzeSmartLeads, type SmartLeadResponse, type SmartLeadAnalysis, generateLeadPersona } from '@/lib/ai';
 import EmailComposer from './EmailComposer';
 import ActivityForm from './ActivityForm';
 import LeadActivities from './LeadActivities';
+import { CustomerPersona } from '@/lib/ai/types';
+import { Lightbulb } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { searchLinkedInContacts, type LinkedInContact, type LinkedInSearchRequest, type LinkedInSearchResponse } from '@/lib/ai/linkedinEnricher';
 
 interface Lead {
   id: string;
@@ -87,6 +91,24 @@ const LeadManagement = () => {
   
   // State for activity counts
   const [activityCounts, setActivityCounts] = useState<{[key: string]: number}>({});
+
+  // Add these states for the Persona feature
+  const [showPersonaDialog, setShowPersonaDialog] = useState(false);
+  const [selectedLeadForPersona, setSelectedLeadForPersona] = useState<Lead | null>(null);
+  const [leadPersona, setLeadPersona] = useState<CustomerPersona | null>(null);
+  const [isGeneratingPersona, setIsGeneratingPersona] = useState(false);
+  const [personaError, setPersonaError] = useState<string | null>(null);
+
+  // Add these states for Smart Lead and LinkedIn features
+  const [showSmartLeadInputDialog, setShowSmartLeadInputDialog] = useState(false);
+  const [smartLeadQuery, setSmartLeadQuery] = useState('');
+  const [isProcessingSmartLeadQuery, setIsProcessingSmartLeadQuery] = useState(false);
+
+  const [showLinkedInDialog, setShowLinkedInDialog] = useState(false);
+  const [linkedInQuery, setLinkedInQuery] = useState('');
+  const [linkedInResults, setLinkedInResults] = useState<LinkedInContact[]>([]);
+  const [isSearchingLinkedIn, setIsSearchingLinkedIn] = useState(false);
+  const [linkedInError, setLinkedInError] = useState<string | null>(null);
 
   // Fetch leads data from Supabase
   const { data: leads = [], isLoading, refetch } = useQuery({
@@ -454,7 +476,7 @@ const LeadManagement = () => {
     }
   };
 
-  const handleSmartLeadAnalysis = async () => {
+  const handleSmartLeadAnalysis = async (query?: string) => {
     if (leads.length === 0) {
       toast({
         title: "No leads to analyze",
@@ -468,6 +490,14 @@ const LeadManagement = () => {
     setShowSmartLeadDialog(true);
 
     try {
+      // Pass the query as part of user preferences if provided
+      const preferences = query ? {
+        query: query,
+        industryFocus: ['saas', 'technology', 'healthcare'], // Default values
+        dealSizePreference: 'any' as const
+      } : undefined;
+      
+      // Use the query to influence the analysis
       const analysis = await analyzeSmartLeads({
         leads: leads.map(lead => ({
           id: lead.id,
@@ -498,7 +528,8 @@ const LeadManagement = () => {
           contact_id: deal.contact_id,
           created_at: deal.created_at,
           closed_at: deal.outcome === 'won' || deal.outcome === 'lost' ? deal.created_at : undefined
-        }))
+        })),
+        userPreferences: preferences
       });
 
       setSmartLeadAnalysis(analysis);
@@ -517,6 +548,28 @@ const LeadManagement = () => {
       setShowSmartLeadDialog(false);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  // Add Smart Lead query submission function
+  const handleSmartLeadQuerySubmit = async () => {
+    if (!smartLeadQuery.trim()) return;
+    
+    setIsProcessingSmartLeadQuery(true);
+    setShowSmartLeadInputDialog(false);
+    
+    try {
+      // Pass the query to the existing analysis function
+      await handleSmartLeadAnalysis(smartLeadQuery);
+    } catch (error) {
+      console.error('Error processing smart lead query:', error);
+      toast({
+        title: "Error analyzing leads",
+        description: error instanceof Error ? error.message : 'An error occurred while analyzing leads',
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingSmartLeadQuery(false);
     }
   };
 
@@ -637,6 +690,126 @@ const LeadManagement = () => {
     }
   }, [activities]);
 
+  // Add function to handle LinkedIn search
+  const handleLinkedInSearch = async () => {
+    if (!linkedInQuery.trim()) return;
+    
+    setIsSearchingLinkedIn(true);
+    setLinkedInError(null);
+    
+    try {
+      const searchRequest: LinkedInSearchRequest = {
+        searchQuery: linkedInQuery,
+        targetIndustries: [],
+        targetRoles: [],
+        maxResults: 5
+      };
+      
+      const results = await searchLinkedInContacts(searchRequest);
+      setLinkedInResults(results.contacts);
+    } catch (error) {
+      console.error('Error searching LinkedIn:', error);
+      setLinkedInError(error instanceof Error ? error.message : 'Failed to search LinkedIn');
+    } finally {
+      setIsSearchingLinkedIn(false);
+    }
+  };
+
+  // Add function to add LinkedIn contact as lead
+  const handleAddLeadFromLinkedIn = async (contact: LinkedInContact) => {
+    try {
+      // Convert LinkedIn contact to lead format
+      const newLead = {
+        name: contact.name,
+        email: contact.email || '',
+        company: contact.company,
+        phone: contact.phone || '',
+        status: 'new',
+        source: 'linkedin',
+        score: contact.relevanceScore || 50,
+        user_id: user?.id
+      };
+      
+      // Add to database
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(newLead)
+        .select();
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Lead added successfully",
+        description: `${contact.name} from ${contact.company} has been added as a new lead.`,
+        variant: "default"
+      });
+      
+      // Refresh leads list
+      refetch();
+      
+    } catch (error) {
+      console.error('Error adding lead from LinkedIn:', error);
+      toast({
+        title: "Error adding lead",
+        description: error instanceof Error ? error.message : 'Failed to add lead',
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add function to handle showing lead persona
+  const handleShowLeadPersona = async (lead: Lead) => {
+    setSelectedLeadForPersona(lead);
+    setShowPersonaDialog(true);
+    setLeadPersona(null);
+    setPersonaError(null);
+    setIsGeneratingPersona(true);
+    
+    try {
+      // First, fetch lead activities
+      const { data: leadActivities, error: activitiesError } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+        
+      if (activitiesError) throw activitiesError;
+      
+      // If no activities, show error
+      if (!leadActivities || leadActivities.length === 0) {
+        setIsGeneratingPersona(false);
+        setPersonaError('No activities found for this lead. Add some interactions before generating a persona.');
+        return;
+      }
+      
+      // Generate persona based on lead and activities
+      const persona = await generateLeadPersona({
+        lead: {
+          name: lead.name,
+          email: lead.email,
+          company: lead.company,
+          status: lead.status,
+          source: lead.source,
+          score: lead.score
+        },
+        activities: leadActivities.map(activity => ({
+          type: activity.type,
+          subject: activity.subject,
+          description: activity.description,
+          status: activity.status,
+          created_at: activity.created_at
+        }))
+      });
+      
+      setLeadPersona(persona);
+    } catch (error) {
+      console.error('Error generating lead persona:', error);
+      setPersonaError(error instanceof Error ? error.message : 'Failed to generate persona');
+    } finally {
+      setIsGeneratingPersona(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -712,7 +885,7 @@ const LeadManagement = () => {
             </div>
             <div className="flex items-center space-x-3">
               <Button 
-                onClick={handleSmartLeadAnalysis}
+                onClick={() => handleSmartLeadAnalysis()}
                 disabled={isAnalyzing || leads.length === 0}
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
@@ -727,6 +900,20 @@ const LeadManagement = () => {
                     Smart Lead
                   </>
                 )}
+              </Button>
+              <Button
+                onClick={() => setShowSmartLeadInputDialog(true)}
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                <Brain className="mr-2 h-4 w-4" />
+                Smart Lead Query
+              </Button>
+              <Button
+                onClick={() => setShowLinkedInDialog(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Linkedin className="mr-2 h-4 w-4" />
+                Get from LinkedIn
               </Button>
               <Button onClick={() => setShowLeadForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
@@ -943,6 +1130,19 @@ const LeadManagement = () => {
                                 className="hover:bg-red-50 text-red-600"
                               >
                                 <Trash2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShowLeadPersona(lead);
+                                }}
+                                disabled={!activityCounts[lead.id] || activityCounts[lead.id] === 0}
+                              >
+                                <User className="w-3 h-3 mr-1 text-violet-500" />
+                                Persona
                               </Button>
                             </div>
                           </div>
@@ -1339,6 +1539,354 @@ const LeadManagement = () => {
               </div>
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Smart Lead Input Dialog */}
+      <Dialog open={showSmartLeadInputDialog} onOpenChange={setShowSmartLeadInputDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Smart Lead Search</DialogTitle>
+            <DialogDescription>
+              Describe the ideal lead you're looking for, and our AI will find the best matches from your existing leads with activity history.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search Query</label>
+              <Textarea
+                placeholder="E.g., 'Find me leads interested in our enterprise plan who have engaged with our pricing email'"
+                value={smartLeadQuery}
+                onChange={(e) => setSmartLeadQuery(e.target.value)}
+                className="min-h-[120px]"
+              />
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+              <p className="font-medium">Note:</p>
+              <p>This will only analyze leads that have at least one activity (interaction history).</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowSmartLeadInputDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              onClick={handleSmartLeadQuerySubmit}
+              disabled={!smartLeadQuery.trim() || isProcessingSmartLeadQuery}
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {isProcessingSmartLeadQuery ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Brain className="mr-2 h-4 w-4" />
+                  Find Smart Leads
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* LinkedIn Search Dialog */}
+      <Dialog open={showLinkedInDialog} onOpenChange={setShowLinkedInDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>LinkedIn Lead Search</DialogTitle>
+            <DialogDescription>
+              Find potential leads from LinkedIn based on your search criteria.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-2 block">Search Query</label>
+                <Input
+                  placeholder="E.g., 'Sales Directors in SaaS companies in San Francisco'"
+                  value={linkedInQuery}
+                  onChange={(e) => setLinkedInQuery(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={handleLinkedInSearch}
+                disabled={!linkedInQuery.trim() || isSearchingLinkedIn}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSearchingLinkedIn ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Search
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {linkedInError && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-md">
+                <p className="font-medium">Error searching LinkedIn</p>
+                <p className="text-sm mt-1">{linkedInError}</p>
+              </div>
+            )}
+            
+            {isSearchingLinkedIn && (
+              <div className="flex flex-col items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <p className="text-slate-600">Searching LinkedIn for relevant contacts...</p>
+              </div>
+            )}
+            
+            {linkedInResults.length > 0 && !isSearchingLinkedIn && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium">Search Results</h3>
+                
+                <div className="space-y-4">
+                  {linkedInResults.map((contact) => (
+                    <Card key={contact.id} className="overflow-hidden">
+                      <div className="flex flex-col md:flex-row">
+                        <div className="p-4 md:p-6 flex-1">
+                          <div className="flex items-start">
+                            <div className="bg-blue-100 rounded-full p-3 mr-4">
+                              <User className="w-6 h-6 text-blue-600" />
+                            </div>
+                            
+                            <div>
+                              <h4 className="text-lg font-medium">{contact.name}</h4>
+                              <p className="text-sm text-slate-600">{contact.title} at {contact.company}</p>
+                              <p className="text-sm text-slate-500 mt-1">{contact.location}</p>
+                              
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                                  {contact.industryMatch ? 'Industry Match' : 'New Industry'}
+                                </Badge>
+                                
+                                <Badge className="bg-violet-50 text-violet-700 border-violet-200">
+                                  {contact.estimatedDecisionMakingPower > 70 ? 'Key Decision Maker' : 
+                                   contact.estimatedDecisionMakingPower > 50 ? 'Influencer' : 'Contributor'}
+                                </Badge>
+                                
+                                <Badge className={`
+                                  ${contact.relevanceScore > 80 ? 'bg-green-50 text-green-700 border-green-200' : 
+                                   contact.relevanceScore > 60 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                   'bg-orange-50 text-orange-700 border-orange-200'}
+                                `}>
+                                  {contact.relevanceScore}% Relevant
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h5 className="text-xs uppercase text-slate-500 font-medium mb-1">Profile Summary</h5>
+                              <p className="text-sm">{contact.profileSummary}</p>
+                            </div>
+                            
+                            <div>
+                              <h5 className="text-xs uppercase text-slate-500 font-medium mb-1">Why This Contact?</h5>
+                              <p className="text-sm">{contact.alignmentReason}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4">
+                            <h5 className="text-xs uppercase text-slate-500 font-medium mb-1">Experience</h5>
+                            <ul className="text-sm space-y-1">
+                              {contact.experience.slice(0, 2).map((exp, index) => (
+                                <li key={index} className="text-slate-700">• {exp}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-slate-50 p-4 md:p-6 md:w-64 flex flex-col justify-between">
+                          <div>
+                            <h5 className="text-xs uppercase text-slate-500 font-medium mb-2">Contact Info</h5>
+                            {contact.email && (
+                              <div className="flex items-center text-sm mb-2">
+                                <Mail className="w-4 h-4 mr-2 text-slate-400" />
+                                <span className="text-slate-700">{contact.email}</span>
+                              </div>
+                            )}
+                            {contact.phone && (
+                              <div className="flex items-center text-sm mb-2">
+                                <Phone className="w-4 h-4 mr-2 text-slate-400" />
+                                <span className="text-slate-700">{contact.phone}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center text-sm">
+                              <Linkedin className="w-4 h-4 mr-2 text-slate-400" />
+                              <a 
+                                href={contact.linkedinUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline"
+                              >
+                                LinkedIn Profile
+                              </a>
+                            </div>
+                          </div>
+                          
+                          <Button
+                            className="mt-4 w-full"
+                            onClick={() => handleAddLeadFromLinkedIn(contact)}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add as Lead
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lead Persona Dialog */}
+      <Dialog open={showPersonaDialog} onOpenChange={setShowPersonaDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lead Persona</DialogTitle>
+            <DialogDescription>
+              {selectedLeadForPersona && (
+                <span>Behavioral profile for {selectedLeadForPersona.name} based on interaction history</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isGeneratingPersona && (
+              <div className="flex flex-col items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <p className="text-slate-600">Analyzing lead interactions and generating persona...</p>
+              </div>
+            )}
+            
+            {personaError && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-md">
+                <p className="font-medium">Error generating persona</p>
+                <p className="text-sm mt-1">{personaError}</p>
+              </div>
+            )}
+            
+            {leadPersona && !isGeneratingPersona && (
+              <div className="space-y-6">
+                <div className="flex items-start gap-6">
+                  <div className="bg-primary/10 rounded-full p-6">
+                    <User className="w-12 h-12 text-primary" />
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">{leadPersona.name}</h3>
+                    <p className="text-slate-500">{leadPersona.role} • {leadPersona.industry}</p>
+                    
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline" className="bg-slate-100">
+                        {leadPersona.company_size} Company
+                      </Badge>
+                      
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        {leadPersona.decision_making_style} Decision Maker
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Pain Points</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1">
+                        {leadPersona.pain_points.map((point, index) => (
+                          <li key={index} className="text-sm flex gap-2">
+                            <span className="text-red-500">•</span> {point}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Buying Motivations</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1">
+                        {leadPersona.buying_motivations.map((motivation, index) => (
+                          <li key={index} className="text-sm flex gap-2">
+                            <span className="text-green-500">•</span> {motivation}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Communication Style</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm">{leadPersona.communication_style}</p>
+                      
+                      <div className="mt-3">
+                        <p className="text-xs text-slate-500 mb-1">Preferred Channels</p>
+                        <div className="flex flex-wrap gap-1">
+                          {leadPersona.preferred_channels.map((channel, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {channel}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Likely Objections</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-1">
+                        {leadPersona.objections_likely.map((objection, index) => (
+                          <li key={index} className="text-sm flex gap-2">
+                            <span className="text-amber-500">•</span> {objection}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center">
+                      <Lightbulb className="w-4 h-4 mr-2 text-amber-500" />
+                      Recommended Approach
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    {leadPersona.recommended_approach}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

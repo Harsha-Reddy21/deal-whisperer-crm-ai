@@ -1,70 +1,101 @@
 // Objection Handler AI Service
 
-import type { ObjectionSuggestion } from './types';
 import { makeOpenAIRequest, parseOpenAIJsonResponse } from './config';
+import { ObjectionSuggestion } from './types';
+
+export interface ObjectionHandlerRequest {
+  dealId: string;
+  userId: string;
+  objection: string; // The customer objection text
+  dealInfo?: {
+    title: string;
+    description: string;
+    stage: string;
+    value: number;
+    probability: number;
+    activities?: Array<{
+      type: string;
+      subject: string;
+      description: string;
+      date: string;
+    }>;
+  };
+}
+
+export interface ObjectionHandlerResponse {
+  suggestions: ObjectionSuggestion[];
+  reasoning: string;
+  deal_context: string;
+}
 
 /**
- * Generate AI-powered objection handling suggestions
+ * Generate AI-powered responses to customer objections for a specific deal
+ * Takes into account the deal context and previous activities
  */
-export async function generateObjectionSuggestions(objection: string): Promise<ObjectionSuggestion[]> {
+export async function generateObjectionSuggestions(
+  request: ObjectionHandlerRequest
+): Promise<ObjectionHandlerResponse> {
   try {
-    console.log("Processing objection:", objection);
+    // Define the system prompt
+    const systemPrompt = `You are an expert sales advisor helping a salesperson respond to customer objections for a specific deal.
+Analyze the provided deal context and customer objection, then provide strategic responses.
+If no deal activities or description are provided, note that there's not enough context to provide customized suggestions.
+Your suggestions should be personalized based on the deal's specific context when available.
 
-    const prompt = `You are an expert sales coach specializing in objection handling. A customer has raised the following objection:
+IMPORTANT: Format your response as a valid JSON object with these fields:
+- suggestions: Array of objection handling strategies, each with 'approach', 'text', 'effectiveness', and 'reasoning'
+- reasoning: Your overall reasoning for the suggestions
+- deal_context: How the suggestions relate to the deal context`;
 
-"${objection}"
+    // Create the user message
+    const userMessage = `Please analyze this customer objection for a deal and provide strategic responses:
 
-Please provide 3 different response strategies. For each strategy, provide:
-1. A clear approach name (e.g., "Empathy + Value Reframe", "Question + Social Proof", etc.)
-2. The exact response text (as if speaking directly to the customer)
-3. An effectiveness score (70-95)
-4. A brief explanation of why this approach works
+DEAL INFORMATION:
+${request.dealInfo ? `
+Title: ${request.dealInfo.title || 'N/A'}
+Description: ${request.dealInfo.description || 'N/A'}
+Stage: ${request.dealInfo.stage || 'N/A'}
+Value: $${request.dealInfo.value?.toLocaleString() || 'N/A'}
+Probability: ${request.dealInfo.probability || 'N/A'}%
+` : 'No deal information available'}
 
-Format your response as a JSON array with objects containing: approach, text, effectiveness, reasoning
+${request.dealInfo?.activities && request.dealInfo.activities.length > 0 
+  ? `DEAL ACTIVITIES:
+${request.dealInfo.activities.map(a => 
+  `- ${a.date}: ${a.type} - ${a.subject}
+   ${a.description ? `   Details: ${a.description}` : ''}`
+).join('\n')}` 
+  : 'No deal activities available'}
 
-Make the responses sound natural, empathetic, and professional. Focus on understanding the customer's concern while guiding them toward a positive outcome.`;
+CUSTOMER OBJECTION:
+"${request.objection}"
 
-    const messages = [
-      {
-        role: "system" as const,
-        content: "You are an expert sales coach. Provide practical, empathetic objection handling strategies in valid JSON format."
-      },
-      {
-        role: "user" as const,
-        content: prompt
-      }
-    ];
+Provide me with:
+1. At least 3 strategic responses to this objection
+2. Your reasoning behind the suggestions
+3. How the responses relate to the specific deal context
 
-    const responseText = await makeOpenAIRequest(messages);
-    console.log("OpenAI response:", responseText);
-    
-    // Parse the JSON response
-    const suggestions = parseOpenAIJsonResponse<ObjectionSuggestion[]>(responseText);
-    
-    // Validate the response structure
-    if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      throw new Error('Invalid response format from OpenAI');
-    }
+If there's not enough context from the deal activities or description, please indicate this in your response.`;
 
-    // Validate each suggestion has required fields
-    const validSuggestions = suggestions.filter(suggestion => 
-      suggestion.approach && 
-      suggestion.text && 
-      typeof suggestion.effectiveness === 'number' && 
-      suggestion.reasoning
-    );
+    // Make the API request
+    const response = await makeOpenAIRequest([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ], {
+      temperature: 0.7,
+      maxTokens: 2000
+    });
 
-    if (validSuggestions.length === 0) {
-      throw new Error('No valid suggestions received from OpenAI');
-    }
+    // Parse the response
+    const result = parseOpenAIJsonResponse<ObjectionHandlerResponse>(response);
 
-    return validSuggestions;
-
+    return {
+      suggestions: result.suggestions || [],
+      reasoning: result.reasoning || 'No reasoning provided',
+      deal_context: result.deal_context || 'No deal context available'
+    };
   } catch (error) {
     console.error('Error generating objection suggestions:', error);
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to generate AI suggestions. Please check your connection and try again.');
+    throw new Error('Failed to generate responses to customer objection');
   }
 } 
