@@ -20,6 +20,9 @@
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
+    "noImplicitReturns": false,
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "maxNodeModuleJsDepth": 1,
 
     "baseUrl": ".",
     "paths": {

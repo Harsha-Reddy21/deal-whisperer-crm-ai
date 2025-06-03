@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { UserPlus, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, User, Linkedin, RefreshCw } from 'lucide-react';
+import { UserPlus, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, User, Linkedin, RefreshCw, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import LeadForm from './LeadForm';
 import LeadDetail from './LeadDetail';
+import EmailComposer from './EmailComposer';
 
 interface Lead {
   id: string;
@@ -27,6 +28,11 @@ interface Lead {
   created_at: string;
   title?: string;
   last_contact?: string;
+  assigned_to?: string;
+  company_id?: string;
+  converted_contact_id?: string;
+  updated_at?: string;
+  user_id?: string;
 }
 
 type SortField = 'name' | 'company' | 'score' | 'status' | 'source' | 'created_at';
@@ -42,6 +48,8 @@ const LeadsList = () => {
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [scoreFilter, setScoreFilter] = useState<string>('all');
   
   // Selected lead for detail view
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -59,6 +67,10 @@ const LeadsList = () => {
     status: 'new',
     source: 'manual'
   });
+
+  // Add state for email composer
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [leadForEmail, setLeadForEmail] = useState<Lead | null>(null);
 
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads', user?.id],
@@ -299,6 +311,12 @@ const LeadsList = () => {
   const qualifiedLeads = leads.filter(lead => lead.status === 'qualified').length;
   const newLeads = leads.filter(lead => lead.status === 'new').length;
 
+  // Add function to handle sending an email to a lead
+  const handleSendEmail = (lead: Lead) => {
+    setLeadForEmail(lead);
+    setShowEmailComposer(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -526,6 +544,15 @@ const LeadsList = () => {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSendEmail(lead)}
+                            className="hover:bg-blue-50"
+                          >
+                            <Mail className="w-4 h-4 mr-1" />
+                            Email
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -624,10 +651,11 @@ const LeadsList = () => {
               </div>
             </div>
           ) : (
-            <LeadForm onLeadCreated={() => {
-              setShowLeadForm(false);
-              refetch();
-            }} />
+            <LeadForm 
+              open={showLeadForm}
+              onOpenChange={(open) => setShowLeadForm(open)}
+              onLeadCreated={refetch}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -657,6 +685,21 @@ const LeadsList = () => {
             <LeadDetail 
               leadId={selectedLead.id} 
               onClose={() => setShowLeadDetail(false)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Email Composer Dialog */}
+      <Dialog open={showEmailComposer} onOpenChange={setShowEmailComposer}>
+        <DialogContent className="max-w-4xl">
+          {leadForEmail && (
+            <EmailComposer 
+              open={showEmailComposer}
+              onOpenChange={setShowEmailComposer}
+              prefilledTo={leadForEmail.email}
+              prefilledSubject={`Regarding our business opportunity - ${leadForEmail.company}`}
+              leadId={leadForEmail.id}
             />
           )}
         </DialogContent>

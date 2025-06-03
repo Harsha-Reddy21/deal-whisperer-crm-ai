@@ -50,6 +50,10 @@ interface Email {
   status: string;
   contact_id?: string;
   contact_name?: string;
+  lead_id?: string;
+  message: string;
+  deal_info: string;
+  importance?: string;
 }
 
 const EmailManager = () => {
@@ -140,108 +144,86 @@ const EmailManager = () => {
     enabled: !!user,
   });
 
-  // Fetch all emails from email_tracking table (both sent and received)
+  // Filter emails based on active view and search
   const { data: allEmailsData = [], refetch: refetchEmails } = useQuery({
-    queryKey: ['all-emails', user?.id, activeView],
+    queryKey: ['emails', user?.id, activeView],
     queryFn: async () => {
       if (!user) return [];
-      
+
+      // Fetch emails from the database (email_tracking table)
       const { data, error } = await supabase
         .from('email_tracking')
-        .select('*')
+        .select('*, deals(title, company)')
         .eq('user_id', user.id)
         .order('sent_at', { ascending: false });
 
-      if (error) throw error;
-
-      // If no emails exist, create sample emails for the user
-      if (data.length === 0) {
-        const sampleEmails = [
-          {
-            user_id: user.id,
-            email_id: 'sample_001',
-            subject: 'Welcome to our CRM system',
-            body: 'Thank you for joining our CRM platform. We are excited to help you manage your sales pipeline more effectively. This email contains important information about getting started with your account.',
-            sent_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            read_at: null, // Unread
-            contact_id: null
-          },
-          {
-            user_id: user.id,
-            email_id: 'sample_002',
-            subject: 'Partnership Opportunity Discussion',
-            body: 'I hope this email finds you well. I wanted to reach out regarding a potential partnership opportunity between our companies. We have been following your work and believe there could be significant synergy between our organizations. Would you be available for a brief call next week to discuss this further?',
-            sent_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-            read_at: null, // Unread
-            contact_id: null
-          },
-          {
-            user_id: user.id,
-            email_id: 'sample_003',
-            subject: 'Follow-up: Meeting Yesterday',
-            body: 'Thank you for taking the time to meet with me yesterday. I really enjoyed our conversation about the new product features and your roadmap for Q2. As discussed, I am attaching the proposal document for your review. Please let me know if you have any questions.',
-            sent_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            read_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Read
-            contact_id: null
-          },
-          {
-            user_id: user.id,
-            email_id: 'sample_004',
-            subject: 'Urgent: Contract Review Needed',
-            body: 'We need to finalize the contract terms by end of week to meet our Q1 deadline. The legal team has reviewed the document and made some minor adjustments. Can you please review the attached contract and let me know if the changes are acceptable?',
-            sent_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-            read_at: null, // Unread
-            contact_id: null
-          }
-        ];
-
-        try {
-          await supabase
-            .from('email_tracking')
-            .insert(sampleEmails as any);
-          
-          // Refetch to get the newly created emails
-          const { data: newData, error: newError } = await supabase
-            .from('email_tracking')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('sent_at', { ascending: false });
-
-          if (newError) throw newError;
-          data.push(...(newData || []));
-        } catch (insertError) {
-          console.error('Error creating sample emails:', insertError);
-        }
+      if (error) {
+        toast({
+          title: "Error loading emails",
+          description: error.message,
+          variant: "destructive",
+        });
+        return [];
       }
 
-      // Get contact and lead data separately for better performance
-      const contactIds = data.map(email => email.contact_id).filter(Boolean);
+      // Remove any mock or sample data
+      // Filter out emails with sample email_id
+      const realEmails = data.filter(email => !email.email_id.startsWith('sample_'));
+
+      // Extract all contact_ids and lead_ids for name lookups
+      const contactIds = realEmails
+        .filter(email => email.contact_id)
+        .map(email => email.contact_id);
+      
+      // Type assertion to access lead_id
+      const typedData = realEmails as any[];
+      const leadIds = typedData
+        .filter(email => email.lead_id)
+        .map(email => email.lead_id);
+
+      // Fetch contact details
       const { data: contactsData } = await supabase
         .from('contacts')
         .select('id, name, email')
         .in('id', contactIds);
 
+      // Fetch lead details
       const { data: leadsData } = await supabase
         .from('leads')
         .select('id, name, email')
-        .in('id', contactIds);
+        .in('id', leadIds);
 
+      // Create maps for quick lookup
       const contactsMap = new Map(contactsData?.map(c => [c.id, c]) || []);
       const leadsMap = new Map(leadsData?.map(l => [l.id, l]) || []);
 
-      return data.map(email => {
-        // Type assertion to handle new fields not in current types
-        const emailWithNewFields = email as any;
-        const relatedContact = contactsMap.get(email.contact_id || '') || leadsMap.get(email.contact_id || '');
+      // Map the email_tracking records to the interface we need
+      return typedData.map(email => {
+        let recipientName = 'Unknown';
+        let recipientEmail = '';
+        
+        // Determine recipient based on contact_id or lead_id
+        if (email.contact_id && contactsMap.has(email.contact_id)) {
+          const contact = contactsMap.get(email.contact_id);
+          recipientName = contact.name;
+          recipientEmail = contact.email;
+        } else if (email.lead_id && leadsMap.has(email.lead_id)) {
+          const lead = leadsMap.get(email.lead_id);
+          recipientName = lead.name;
+          recipientEmail = lead.email;
+        }
         
         return {
           id: email.id,
           subject: email.subject || 'No Subject',
-          recipient: activeView === 'sent' ? (relatedContact?.email || 'contact@example.com') : (user?.email || ''),
+          recipient: recipientEmail || 'No recipient',
           sent_at: email.sent_at,
-          status: emailWithNewFields.read_at ? 'read' : 'unread',
+          status: email.read_at ? 'read' : 'unread',
           contact_id: email.contact_id,
-          contact_name: relatedContact?.name || 'CRM System'
+          lead_id: email.lead_id,
+          contact_name: recipientName,
+          message: email.body || '',
+          deal_info: email.deals ? `${email.deals.title} - ${email.deals.company}` : ''
         } as Email;
       });
     },
@@ -250,10 +232,8 @@ const EmailManager = () => {
 
   // Filter emails based on active view and search
   const filteredEmails = allEmailsData.filter(email => {
-    // Filter by view type
-    const matchesView = activeView === 'sent' ? true : email.status !== undefined; // For inbox, show all
-    
-    if (!matchesView) return false;
+    // Basic filtering - we'll use sent_at to distinguish sent emails
+    // All emails are considered "sent" for now since we don't have a type field
     
     // Filter by search query
     if (searchQuery === '') return true;
@@ -283,7 +263,7 @@ const EmailManager = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
     },
     onError: (error: any) => {
       console.error('Error marking email as read:', error);
@@ -323,7 +303,7 @@ const EmailManager = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
-      queryClient.invalidateQueries({ queryKey: ['all-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
       refetchEmails();
       resetComposeForm();
       setShowComposeDialog(false);
@@ -380,10 +360,12 @@ const EmailManager = () => {
         emails: emailsToSummarize.map(email => ({
           id: email.id,
           subject: email.subject,
-          recipient: email.recipient,
-          sent_at: email.sent_at,
+          from_email: email.recipient, // Map recipient to from_email for the API
+          from_name: email.contact_name || 'Unknown',
+          body_text: email.message || '',
+          received_at: email.sent_at,
           status: email.status,
-          contact_name: email.contact_name
+          priority: email.importance || 'normal'
         })),
         summaryType: requestType,
         userPreferences: {
@@ -841,7 +823,7 @@ const EmailManager = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <p className="font-medium">{email.subject}</p>
-                            <p className="text-sm text-slate-600">From: {email.recipient}</p>
+                            <p className="text-sm text-slate-600">From: {email.from}</p>
                           </div>
                           <Badge className={getPriorityColor(email.urgency)}>
                             {email.urgency}

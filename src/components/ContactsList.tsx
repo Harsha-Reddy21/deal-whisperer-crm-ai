@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import ContactForm from './ContactForm';
 import { searchLinkedInContacts, type LinkedInSearchResponse, type LinkedInContact } from '@/lib/ai';
 import ContactDetail from './ContactDetail';
+import EmailComposer from './EmailComposer';
 
 interface Contact {
   id: string;
@@ -73,6 +74,10 @@ const ContactsList = () => {
   // Inside the ContactsList component, add state for selected contact
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showContactDetail, setShowContactDetail] = useState(false);
+  
+  // Add state for email composer
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [contactForEmail, setContactForEmail] = useState<Contact | null>(null);
 
   const { data: contacts = [], isLoading, refetch } = useQuery({
     queryKey: ['contacts', user?.id],
@@ -542,6 +547,12 @@ const ContactsList = () => {
     setShowContactDetail(true);
   };
 
+  // Add a function to handle sending an email
+  const handleSendEmail = (contact: Contact) => {
+    setContactForEmail(contact);
+    setShowEmailComposer(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -731,6 +742,15 @@ const ContactsList = () => {
                               <Button size="sm" variant="outline" onClick={() => handleViewContact(contact)}>
                                 <User className="w-4 h-4 mr-1" />
                                 View
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleSendEmail(contact)}
+                                className="hover:bg-blue-50"
+                              >
+                                <Mail className="w-4 h-4 mr-1" />
+                                Email
                               </Button>
                               <Button size="sm" variant="outline">
                                 <MessageSquare className="w-4 h-4 mr-1" />
@@ -1211,6 +1231,21 @@ const ContactsList = () => {
             <ContactDetail 
               contactId={selectedContact.id} 
               onClose={() => setShowContactDetail(false)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Composer Dialog */}
+      <Dialog open={showEmailComposer} onOpenChange={setShowEmailComposer}>
+        <DialogContent className="max-w-4xl">
+          {contactForEmail && (
+            <EmailComposer 
+              open={showEmailComposer}
+              onOpenChange={setShowEmailComposer}
+              prefilledTo={contactForEmail.email}
+              prefilledSubject={`Regarding our business relationship - ${contactForEmail.company}`}
+              contactId={contactForEmail.id}
             />
           )}
         </DialogContent>

@@ -18,6 +18,7 @@ interface EmailComposerProps {
   prefilledSubject?: string;
   contactId?: string;
   dealId?: string;
+  leadId?: string;
 }
 
 const EmailComposer = ({ 
@@ -26,7 +27,8 @@ const EmailComposer = ({
   prefilledTo = '', 
   prefilledSubject = '',
   contactId,
-  dealId 
+  dealId,
+  leadId
 }: EmailComposerProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -43,15 +45,6 @@ const EmailComposer = ({
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string>('');
   const [showGeneratedContent, setShowGeneratedContent] = useState(false);
-
-  // Update form data when props change
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      to: prefilledTo,
-      subject: prefilledSubject
-    }));
-  }, [prefilledTo, prefilledSubject]);
 
   // Fetch user profile for signature details
   const { data: userProfile } = useQuery({
@@ -82,53 +75,153 @@ const EmailComposer = ({
 
   // Fetch contact details for better AI generation context
   const { data: contactDetails } = useQuery({
-    queryKey: ['contact-details', contactId],
+    queryKey: ['contact-details', contactId, leadId, dealId],
     queryFn: async () => {
-      if (!contactId) return null;
-      
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('name, company, email')
-        .eq('id', contactId)
-        .single();
+      // If we have a contact ID, fetch contact details
+      if (contactId) {
+        const { data, error } = await supabase
+          .from('contacts')
+          .select('id, name, company, email')
+          .eq('id', contactId)
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }
+      
+      // If we have a lead ID, fetch lead details
+      if (leadId) {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('id, name, company, email')
+          .eq('id', leadId)
+          .single();
+          
+        if (error) throw error;
+        return data;
+      }
+      
+      // If we have a deal ID, fetch the deal and its associated contact
+      if (dealId) {
+        const { data: dealData, error: dealError } = await supabase
+          .from('deals')
+          .select('contact_id, contact_name')
+          .eq('id', dealId)
+          .single();
+          
+        if (dealError) throw dealError;
+        
+        if (dealData.contact_id) {
+          const { data, error } = await supabase
+            .from('contacts')
+            .select('id, name, company, email')
+            .eq('id', dealData.contact_id)
+            .single();
+            
+          if (error) throw error;
+          return data;
+        } else if (dealData.contact_name) {
+          // Return basic info if we only have the contact name
+          return {
+            id: null,
+            name: dealData.contact_name,
+            company: '',
+            email: ''
+          };
+        }
+      }
+      
+      return null;
     },
-    enabled: !!contactId && open,
+    enabled: !!(contactId || leadId || dealId) && open,
   });
+  
+  // Update form data when props change or when contact details are loaded
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      to: contactDetails?.email || prefilledTo,
+      subject: prefilledSubject
+    }));
+  }, [prefilledTo, prefilledSubject, contactDetails?.email]);
 
   const sendEmailMutation = useMutation({
     mutationFn: async (emailData: typeof formData) => {
       // In a real implementation, this would integrate with an email service
       // For now, we'll just track the email in our database
+      const emailTrackingData = {
+        user_id: user?.id,
+        contact_id: contactId || contactDetails?.id,
+        deal_id: dealId,
+        lead_id: leadId,
+        email_id: `email_${Date.now()}`,
+        subject: emailData.subject,
+        body: emailData.body,
+        read_at: null,
+        sent_at: new Date().toISOString()
+      };
+      
+      // Use type assertion to bypass TypeScript type checking
       const { data, error } = await supabase
         .from('email_tracking')
-        .insert({
-          user_id: user?.id,
-          contact_id: contactId,
-          deal_id: dealId,
-          email_id: `email_${Date.now()}`,
-          subject: emailData.subject,
-          sent_at: new Date().toISOString()
-        })
+        .insert(emailTrackingData as any)
         .select()
         .single();
 
       if (error) throw error;
 
-      // Also create an activity record
-      await supabase
-        .from('activities')
-        .insert({
-          user_id: user?.id,
-          contact_id: contactId,
-          deal_id: dealId,
-          type: 'email',
-          subject: `Email sent: ${emailData.subject}`,
-          description: `Sent email to ${emailData.to}`,
-          status: 'completed'
-        });
+      // Create an activity record based on the context
+      try {
+        if (leadId) {
+          // For leads, create an activity with lead_id
+          await supabase
+            .from('activities')
+            .insert({
+              user_id: user?.id,
+              lead_id: leadId,  // Use lead_id for activities
+              deal_id: dealId,
+              type: 'email',
+              subject: `Email sent: ${emailData.subject}`,
+              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+              status: 'done'
+            } as any);
+        } else if (contactId || contactDetails?.id) {
+          // For contacts, create an activity with contact_id
+          await supabase
+            .from('activities')
+            .insert({
+              user_id: user?.id,
+              contact_id: contactId || contactDetails?.id,
+              deal_id: dealId,
+              type: 'email',
+              subject: `Email sent: ${emailData.subject}`,
+              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+              status: 'completed' // Use 'completed' status for consistency
+            });
+        } else if (dealId) {
+          // If only deal_id is present, try to get the contact_id from the deal
+          const { data: dealData } = await supabase
+            .from('deals')
+            .select('contact_id')
+            .eq('id', dealId)
+            .single();
+            
+          await supabase
+            .from('activities')
+            .insert({
+              user_id: user?.id,
+              contact_id: dealData?.contact_id,
+              deal_id: dealId,
+              type: 'email',
+              subject: `Email sent: ${emailData.subject}`,
+              description: `To: ${emailData.to}\n\n======= SUBJECT =======\n${emailData.subject}\n\n======= MESSAGE =======\n${emailData.body}`,
+              status: 'completed'
+            });
+        }
+      } catch (activityError) {
+        console.error("Failed to create activity:", activityError);
+        // Continue with the function even if activity creation fails
+      }
 
       return data;
     },

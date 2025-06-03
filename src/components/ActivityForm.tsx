@@ -29,7 +29,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
     subject: '',
     description: '',
     priority: 'medium',
-    status: 'in_progress',
+    status: 'pending',
     due_date: '',
     contact_id: 'none',
     lead_id: 'none',
@@ -62,7 +62,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
         subject: '',
         description: '',
         priority: 'medium',
-        status: 'in_progress',
+        status: 'pending',
         due_date: '',
         contact_id: 'none',
         lead_id: 'none',
@@ -198,7 +198,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
         subject: '',
         description: '',
         priority: 'medium',
-        status: 'in_progress',
+        status: 'pending',
         due_date: '',
         contact_id: 'none',
         lead_id: 'none',
@@ -385,9 +385,10 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="rescheduled">Rescheduled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

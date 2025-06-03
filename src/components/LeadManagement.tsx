@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, Brain, Zap, Star, Clock, TrendingDown } from 'lucide-react';
+import { UserPlus, TrendingUp, Target, Users, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Plus, Mail, Phone, Calendar, MessageSquare, Edit, Trash2, Brain, Zap, Star, Clock, TrendingDown, Activity, ClipboardList } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import LeadForm from './LeadForm';
 import { analyzeSmartLeads, type SmartLeadResponse, type SmartLeadAnalysis } from '@/lib/ai';
+import EmailComposer from './EmailComposer';
+import ActivityForm from './ActivityForm';
+import LeadActivities from './LeadActivities';
 
 interface Lead {
   id: string;
@@ -24,6 +27,17 @@ interface Lead {
   status: string;
   source: string;
   score: number;
+  created_at: string;
+}
+
+interface Activity {
+  id: string;
+  type: string;
+  subject: string;
+  description: string;
+  status: string;
+  priority: string;
+  due_date: string;
   created_at: string;
 }
 
@@ -58,6 +72,63 @@ const LeadManagement = () => {
   const [smartLeadAnalysis, setSmartLeadAnalysis] = useState<SmartLeadResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // Add state for email composer
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [leadForEmail, setLeadForEmail] = useState<Lead | null>(null);
+
+  // Add state for activities
+  const [selectedLeadForActivities, setSelectedLeadForActivities] = useState<Lead | null>(null);
+  const [showActivitiesDialog, setShowActivitiesDialog] = useState(false);
+  const [showActivityForm, setShowActivityForm] = useState(false);
+
+  // Use useState and useEffect instead of React Query for activities
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  
+  // Function to fetch activities
+  const fetchActivities = async () => {
+    if (!user || !selectedLeadForActivities) {
+      setActivities([]);
+      return;
+    }
+    
+    setActivitiesLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .select('id, type, subject, description, status, priority, due_date, created_at')
+        .eq('lead_id', selectedLeadForActivities.id)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        toast({
+          title: "Error loading activities",
+          description: error.message,
+          variant: "destructive",
+        });
+        setActivities([]);
+      } else {
+        setActivities(data || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch activities:", e);
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+  
+  // Effect to fetch activities when lead changes
+  useEffect(() => {
+    if (selectedLeadForActivities && user) {
+      fetchActivities();
+    }
+  }, [selectedLeadForActivities, user]);
+  
+  // Alias for compatibility with existing code
+  const refetchActivities = fetchActivities;
+
   const { data: leads = [], isLoading, refetch } = useQuery({
     queryKey: ['leads', user?.id],
     queryFn: async () => {
@@ -80,7 +151,7 @@ const LeadManagement = () => {
 
       return data.map(lead => ({
         id: lead.id,
-        name: lead.name,
+        name: lead.name || 'Unnamed Lead',
         email: lead.email || '',
         company: lead.company || '',
         phone: lead.phone || '',
@@ -143,26 +214,26 @@ const LeadManagement = () => {
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim();
       filtered = leads.filter(lead => {
-        const nameMatch = lead.name.toLowerCase().includes(searchLower);
-        const companyMatch = lead.company.toLowerCase().includes(searchLower);
-        const emailMatch = lead.email.toLowerCase().includes(searchLower);
-        const phoneMatch = lead.phone.toLowerCase().includes(searchLower);
-        const statusMatch = lead.status.toLowerCase().includes(searchLower);
-        const sourceMatch = lead.source.toLowerCase().includes(searchLower);
+        const nameMatch = lead.name?.toLowerCase().includes(searchLower) || false;
+        const companyMatch = lead.company?.toLowerCase().includes(searchLower) || false;
+        const emailMatch = lead.email?.toLowerCase().includes(searchLower) || false;
+        const phoneMatch = lead.phone?.toLowerCase().includes(searchLower) || false;
+        const statusMatch = lead.status?.toLowerCase().includes(searchLower) || false;
+        const sourceMatch = lead.source?.toLowerCase().includes(searchLower) || false;
         
         return nameMatch || companyMatch || emailMatch || phoneMatch || statusMatch || sourceMatch;
       });
 
       // Sort by relevance when searching
       filtered.sort((a, b) => {
-        const aName = a.name.toLowerCase().includes(searchLower) ? 3 : 0;
-        const aCompany = a.company.toLowerCase().includes(searchLower) ? 2 : 0;
-        const aEmail = a.email.toLowerCase().includes(searchLower) ? 1 : 0;
+        const aName = a.name?.toLowerCase().includes(searchLower) ? 3 : 0;
+        const aCompany = a.company?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const aEmail = a.email?.toLowerCase().includes(searchLower) ? 1 : 0;
         const aRelevance = aName + aCompany + aEmail;
 
-        const bName = b.name.toLowerCase().includes(searchLower) ? 3 : 0;
-        const bCompany = b.company.toLowerCase().includes(searchLower) ? 2 : 0;
-        const bEmail = b.email.toLowerCase().includes(searchLower) ? 1 : 0;
+        const bName = b.name?.toLowerCase().includes(searchLower) ? 3 : 0;
+        const bCompany = b.company?.toLowerCase().includes(searchLower) ? 2 : 0;
+        const bEmail = b.email?.toLowerCase().includes(searchLower) ? 1 : 0;
         const bRelevance = bName + bCompany + bEmail;
 
         return bRelevance - aRelevance;
@@ -201,16 +272,16 @@ const LeadManagement = () => {
 
         switch (sortField) {
           case 'name':
-            aValue = a.name.toLowerCase();
-            bValue = b.name.toLowerCase();
+            aValue = a.name?.toLowerCase() || '';
+            bValue = b.name?.toLowerCase() || '';
             break;
           case 'company':
-            aValue = a.company.toLowerCase();
-            bValue = b.company.toLowerCase();
+            aValue = a.company?.toLowerCase() || '';
+            bValue = b.company?.toLowerCase() || '';
             break;
           case 'score':
-            aValue = a.score;
-            bValue = b.score;
+            aValue = a.score || 0;
+            bValue = b.score || 0;
             break;
           case 'status':
             const statusOrder = { 'new': 1, 'contacted': 2, 'qualified': 3, 'unqualified': 4 };
@@ -218,12 +289,12 @@ const LeadManagement = () => {
             bValue = statusOrder[b.status as keyof typeof statusOrder] || 0;
             break;
           case 'source':
-            aValue = a.source;
-            bValue = b.source;
+            aValue = a.source || '';
+            bValue = b.source || '';
             break;
           case 'created_at':
-            aValue = new Date(a.created_at);
-            bValue = new Date(b.created_at);
+            aValue = new Date(a.created_at || 0);
+            bValue = new Date(b.created_at || 0);
             break;
           default:
             return 0;
@@ -522,6 +593,36 @@ const LeadManagement = () => {
   const conversionRate = totalLeads > 0 ? ((qualifiedLeads / totalLeads) * 100).toFixed(1) : '0';
   const averageScore = totalLeads > 0 ? (leads.reduce((sum, lead) => sum + lead.score, 0) / totalLeads).toFixed(1) : '0';
 
+  // Add function to handle email action
+  const handleSendEmail = (lead: Lead) => {
+    setLeadForEmail(lead);
+    setShowEmailComposer(true);
+  };
+
+  // Function to handle viewing activities
+  const handleViewActivities = (lead: Lead) => {
+    setSelectedLeadForActivities(lead);
+    setShowActivitiesDialog(true);
+    refetchActivities();
+  };
+
+  // Function to handle adding an activity
+  const handleAddActivity = () => {
+    setShowActivityForm(true);
+  };
+
+  // Function to get activity type color
+  const getActivityTypeColor = (type: string) => {
+    switch (type) {
+      case 'call': return 'bg-blue-100 text-blue-800';
+      case 'email': return 'bg-purple-100 text-purple-800';
+      case 'meeting': return 'bg-green-100 text-green-800';
+      case 'task': return 'bg-orange-100 text-orange-800';
+      case 'note': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -753,15 +854,15 @@ const LeadManagement = () => {
                           <div className="flex items-center space-x-4 text-sm text-slate-600">
                             <div className="flex items-center">
                               <span className="mr-1">{getSourceIcon(lead.source)}</span>
-                              {lead.company || 'No company'}
+                              {lead.company ? lead.company : 'No company'}
                             </div>
                             <div className="flex items-center">
                               <Mail className="w-4 h-4 mr-1" />
-                              {lead.email || 'No email'}
+                              {lead.email ? lead.email : 'No email'}
                             </div>
                             <div className="flex items-center">
                               <Phone className="w-4 h-4 mr-1" />
-                              {lead.phone || 'No phone'}
+                              {lead.phone ? lead.phone : 'No phone'}
                             </div>
                           </div>
 
@@ -776,25 +877,27 @@ const LeadManagement = () => {
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Button size="sm" variant="outline">
-                                <Mail className="w-4 h-4 mr-1" />
-                                Email
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleViewActivities(lead)}
+                              >
+                                <ClipboardList className="w-4 h-4 mr-1" />
+                                Activities
                               </Button>
                               <Button size="sm" variant="outline">
                                 <Phone className="w-4 h-4 mr-1" />
                                 Call
                               </Button>
-                              {lead.status === 'qualified' && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => convertToContact(lead)}
-                                  className="hover:bg-green-50 text-green-600"
-                                >
-                                  <UserPlus className="w-4 h-4 mr-1" />
-                                  Convert
-                                </Button>
-                              )}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => convertToContact(lead)}
+                                className="hover:bg-green-50 text-green-600"
+                              >
+                                <UserPlus className="w-4 h-4 mr-1" />
+                                Convert
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
@@ -934,6 +1037,49 @@ const LeadManagement = () => {
         onLeadCreated={refetch}
       />
 
+      {/* Email Composer Dialog */}
+      <EmailComposer 
+        open={showEmailComposer}
+        onOpenChange={setShowEmailComposer}
+        prefilledTo={leadForEmail?.email || ''}
+        prefilledSubject={`Regarding ${leadForEmail?.name} from ${leadForEmail?.company}`}
+        leadId={leadForEmail?.id}
+      />
+
+      {/* Activities Dialog */}
+      <Dialog open={showActivitiesDialog} onOpenChange={setShowActivitiesDialog}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <ClipboardList className="w-5 h-5 mr-2 text-blue-600" />
+              Activities for {selectedLeadForActivities?.name}
+            </DialogTitle>
+            <DialogDescription>
+              View and manage activities related to this lead
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedLeadForActivities && user && (
+            <LeadActivities 
+              leadId={selectedLeadForActivities.id} 
+              userId={user.id} 
+              onAddActivity={() => refetch()}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Form */}
+      <ActivityForm 
+        open={showActivityForm}
+        onOpenChange={setShowActivityForm}
+        onActivityCreated={() => {
+          refetchActivities();
+          setShowActivityForm(false);
+        }}
+        initialLeadId={selectedLeadForActivities?.id}
+      />
+      
       {/* Smart Lead Analysis Dialog */}
       <Dialog open={showSmartLeadDialog} onOpenChange={setShowSmartLeadDialog}>
         <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">

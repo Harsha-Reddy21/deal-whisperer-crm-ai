@@ -16,6 +16,7 @@ import DealForm from './DealForm';
 import SemanticSearchDialog from './SemanticSearchDialog';
 import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilarityResponse } from '@/lib/ai';
 import ActivityForm from './ActivityForm';
+import EmailComposer from './EmailComposer';
 
 interface Deal {
   id: string;
@@ -29,6 +30,7 @@ interface Deal {
   next_step: string;
   created_at: string;
   deal_status: string;
+  contact_id?: string;
   activities_count?: number;
 }
 
@@ -111,6 +113,10 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const [showDealActivities, setShowDealActivities] = useState(false);
   const [selectedDealForActivitiesView, setSelectedDealForActivitiesView] = useState<Deal | null>(null);
 
+  // Add this state for email functionality
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [selectedDealForEmail, setSelectedDealForEmail] = useState<Deal | null>(null);
+
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
     queryFn: async () => {
@@ -142,7 +148,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
         next_step: deal.next_step || 'Follow up required',
         created_at: deal.created_at,
-        deal_status: deal.deal_status || deal.outcome || 'in_progress'
+        deal_status: deal.deal_status || deal.outcome || 'in_progress',
+        contact_id: deal.contact_id
       }));
 
       // Fetch activity counts for all deals
@@ -618,6 +625,12 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setShowDealActivities(true);
   };
 
+  // Add function to handle sending an email
+  const handleSendEmail = (deal: Deal) => {
+    setSelectedDealForEmail(deal);
+    setShowEmailComposer(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -890,6 +903,15 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 >
                                   <Plus className="w-4 h-4 mr-1" />
                                   Add Activity
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => handleSendEmail(deal)}
+                                  className="hover:bg-blue-50 text-blue-600 border-blue-200"
+                                >
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  Email
                                 </Button>
                                 <Button
                                   size="sm" 
@@ -1452,6 +1474,21 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Composer Dialog */}
+      <Dialog open={showEmailComposer} onOpenChange={setShowEmailComposer}>
+        <DialogContent className="max-w-4xl">
+          {selectedDealForEmail && (
+            <EmailComposer 
+              open={showEmailComposer}
+              onOpenChange={setShowEmailComposer}
+              prefilledSubject={`Regarding ${selectedDealForEmail.title} - ${selectedDealForEmail.company}`}
+              dealId={selectedDealForEmail.id}
+              contactId={selectedDealForEmail.contact_id}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

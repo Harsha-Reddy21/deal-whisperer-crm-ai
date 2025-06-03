@@ -366,11 +366,17 @@ const ActivitiesManager = () => {
 
   // Calculate activity metrics
   const totalActivities = activities.length;
-  const inProgressActivities = activities.filter(activity => activity.status === 'in_progress').length;
-  const doneActivities = activities.filter(activity => activity.status === 'done').length;
-  const overdueActivities = activities.filter(activity => 
-    activity.status === 'in_progress' && isOverdue(activity.due_date)
-  ).length;
+  const overdueActivities = activities.filter(a => isOverdue(a.due_date)).length;
+  
+  // Count activities by type instead of by status
+  const emailActivities = activities.filter(a => a.type === 'email').length;
+  const callActivities = activities.filter(a => a.type === 'call').length;
+  const meetingActivities = activities.filter(a => a.type === 'meeting').length;
+  const noteActivities = activities.filter(a => a.type === 'note').length;
+  
+  // Keep these for the tabs
+  const inProgressActivities = activities.filter(a => a.status === 'in_progress').length;
+  const doneActivities = activities.filter(a => a.status === 'done').length;
 
   if (isLoading) {
     return (
@@ -401,34 +407,56 @@ const ActivitiesManager = () => {
 
         <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{inProgressActivities}</div>
-            <p className="text-xs text-slate-600">Need attention</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{doneActivities}</div>
-            <p className="text-xs text-slate-600">Finished tasks</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">Overdue</CardTitle>
             <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">{overdueActivities}</div>
             <p className="text-xs text-slate-600">Past due date</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Emails</CardTitle>
+            <Mail className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{emailActivities}</div>
+            <p className="text-xs text-slate-600">Communication type</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Calls</CardTitle>
+            <Phone className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{callActivities}</div>
+            <p className="text-xs text-slate-600">Communication type</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Meetings</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{meetingActivities}</div>
+            <p className="text-xs text-slate-600">Communication type</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">Notes</CardTitle>
+            <FileText className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">{noteActivities}</div>
+            <p className="text-xs text-slate-600">Communication type</p>
           </CardContent>
         </Card>
       </div>

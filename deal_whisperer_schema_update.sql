@@ -557,4 +557,26 @@ BEGIN
   RAISE NOTICE 'Created sync_lead_company_id trigger function and trigger';
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'Error updating contacts/leads-companies relationship: %', SQLERRM;
+END $$;
+
+-- 7. Add lead_id to email_tracking table
+DO $$
+BEGIN
+  -- Check if lead_id column exists in email_tracking table
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'email_tracking' AND column_name = 'lead_id'
+  ) THEN
+    -- Add lead_id column with FK constraint
+    ALTER TABLE email_tracking ADD COLUMN lead_id UUID REFERENCES leads(id) ON DELETE SET NULL;
+    
+    -- Create index for improved performance
+    CREATE INDEX IF NOT EXISTS idx_email_tracking_lead_id ON email_tracking(lead_id);
+    
+    RAISE NOTICE 'Added lead_id column to email_tracking table';
+  ELSE
+    RAISE NOTICE 'lead_id column already exists in email_tracking table';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Error updating email_tracking table: %', SQLERRM;
 END $$; 
