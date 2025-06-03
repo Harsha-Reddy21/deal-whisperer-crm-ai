@@ -88,6 +88,7 @@ const ObjectionHandler = ({ dealInfo }: ObjectionHandlerProps) => {
   const handleUseResponse = (suggestion: ObjectionSuggestion) => {
     // You can implement this to integrate with your CRM or other systems
     console.log('Using suggestion:', suggestion);
+    console.log('OBJECTION_HANDLER: Objection handled in deals:', suggestion.approach);
     // For now, we'll just copy it to clipboard
     handleCopyResponse(suggestion.text, -1);
   };

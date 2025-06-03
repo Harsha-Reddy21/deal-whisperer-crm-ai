@@ -624,9 +624,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const handleDealCoach = async (deal: Deal) => {
     setSelectedDealForCoaching(deal);
     setShowDealCoach(true);
-    setCoachingRecommendations([]);
-    setCoachingError(null);
     setIsLoadingCoachingData(true);
+    setCoachingError(null);
+    console.log('DEAL_COACH: Deal coach used in deals:', deal.title);
     
     try {
       // Fetch closed deals for analysis

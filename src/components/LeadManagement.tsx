@@ -556,11 +556,12 @@ const LeadManagement = () => {
     if (!smartLeadQuery.trim()) return;
     
     setIsProcessingSmartLeadQuery(true);
-    setShowSmartLeadInputDialog(false);
+    console.log('SMART_LEAD_QUERY: Smart lead query used in leads:', smartLeadQuery);
     
     try {
-      // Pass the query to the existing analysis function
       await handleSmartLeadAnalysis(smartLeadQuery);
+      setSmartLeadQuery('');
+      setShowSmartLeadInputDialog(false);
     } catch (error) {
       console.error('Error processing smart lead query:', error);
       toast({
@@ -764,6 +765,7 @@ const LeadManagement = () => {
     setLeadPersona(null);
     setPersonaError(null);
     setIsGeneratingPersona(true);
+    console.log('PERSONA: Persona used in leads:', lead.name);
     
     try {
       // First, fetch lead activities
@@ -884,23 +886,6 @@ const LeadManagement = () => {
               </CardDescription>
             </div>
             <div className="flex items-center space-x-3">
-              <Button 
-                onClick={() => handleSmartLeadAnalysis()}
-                disabled={isAnalyzing || leads.length === 0}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Brain className="w-4 h-4 mr-2 animate-pulse" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Smart Lead
-                  </>
-                )}
-              </Button>
               <Button
                 onClick={() => setShowSmartLeadInputDialog(true)}
                 className="bg-violet-600 hover:bg-violet-700 text-white"
