@@ -136,4 +136,7 @@ export * from './embeddingService';
 export * from './dealEmbeddingManager';
 
 // Lead embeddings service
-export { leadEmbeddingService, LeadEmbeddingService } from './leadEmbeddings'; 
+export { leadEmbeddingService, LeadEmbeddingService } from './leadEmbeddings';
+
+// Contact embeddings service
+export { contactEmbeddingService, ContactEmbeddingService } from './contactEmbeddings'; 

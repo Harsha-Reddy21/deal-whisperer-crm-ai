@@ -16,6 +16,7 @@ import ContactForm from './ContactForm';
 import { searchLinkedInContacts, type LinkedInSearchResponse, type LinkedInContact } from '@/lib/ai';
 import ContactDetail from './ContactDetail';
 import EmailComposer from './EmailComposer';
+import { useContactEmbeddings } from '@/hooks/useContactEmbeddings';
 
 interface Contact {
   id: string;
@@ -123,6 +124,8 @@ const ContactsList = () => {
     staleTime: 0, // Always refetch when requested
     refetchOnMount: true, // Always refetch when component mounts
   });
+
+  const { handleContactUpdated } = useContactEmbeddings();
 
   // Advanced search and filter algorithm
   const filteredAndSortedContacts = useMemo(() => {
@@ -301,6 +304,7 @@ const ContactsList = () => {
     }
 
     try {
+      console.log(`[ContactsList] Updating contact ${editingContact.id}...`);
       const { error } = await supabase
         .from('contacts')
         .update({
@@ -315,11 +319,22 @@ const ContactsList = () => {
 
       if (error) throw error;
 
+      // Update the embeddings for the contact after updating its data
+      console.log(`[ContactsList] Contact ${editingContact.id} updated, now updating embeddings...`);
+      try {
+        await handleContactUpdated(editingContact.id);
+        console.log(`[ContactsList] Embeddings update triggered for contact ${editingContact.id}`);
+      } catch (embeddingError) {
+        console.error('[ContactsList] Error updating contact embeddings after edit:', embeddingError);
+        // Don't fail the operation if embedding update fails
+      }
+
       toast({
         title: "Contact updated",
         description: "Contact has been successfully updated.",
       });
 
+      console.log('[ContactsList] Contact update process completed successfully');
       setEditingContact(null);
       refetch();
     } catch (error: any) {

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useContactEmbeddings } from '@/hooks/useContactEmbeddings';
 
 interface ContactFormProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface ContactFormProps {
 const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { handleContactCreated } = useContactEmbeddings();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -82,7 +84,9 @@ const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps)
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      console.log('[ContactForm] Creating new contact...');
+      // Create the contact
+      const { data: newContact, error } = await supabase
         .from('contacts')
         .insert({
           user_id: user.id,
@@ -94,14 +98,30 @@ const ContactForm = ({ open, onOpenChange, onContactCreated }: ContactFormProps)
           status: formData.status,
           persona: formData.persona.trim(),
           score: Math.floor(Math.random() * 100) // Random score for demo
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Generate embedding for the new contact
+      if (newContact?.id) {
+        console.log(`[ContactForm] Contact created with ID: ${newContact.id}, now generating embeddings...`);
+        try {
+          await handleContactCreated(newContact.id);
+          console.log(`[ContactForm] Embeddings generation triggered for contact ${newContact.id}`);
+        } catch (embeddingError) {
+          console.error('[ContactForm] Error generating contact embedding:', embeddingError);
+          // Don't fail the operation if embedding generation fails
+        }
+      }
 
       toast({
         title: "Contact created!",
         description: "Your new contact has been added.",
       });
+
+      console.log('[ContactForm] Contact creation process completed successfully');
 
       // Reset form
       setFormData({
