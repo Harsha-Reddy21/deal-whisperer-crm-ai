@@ -28,7 +28,6 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
     contact_id: '',
     contact_name: '',
     next_step: '',
-    probability: '50',
     deal_status: 'in_progress'
   });
 
@@ -113,8 +112,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
           contact_id: formData.contact_id,
           contact_name: formData.contact_name,
           next_step: formData.next_step,
-          probability: formData.deal_status === 'in_progress' ? (parseInt(formData.probability) || 50) : null,
-          deal_status: formData.deal_status
+          outcome: formData.deal_status
         });
 
       if (error) throw error;
@@ -133,7 +131,6 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
         contact_id: '',
         contact_name: '',
         next_step: '',
-        probability: '50',
         deal_status: 'in_progress'
       });
 
@@ -226,20 +223,6 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
                 placeholder="50000"
               />
             </div>
-            
-            {formData.deal_status === 'in_progress' && (
-              <div className="space-y-2">
-                <Label htmlFor="probability">Probability (%)</Label>
-                <Input
-                  id="probability"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.probability}
-                  onChange={(e) => handleChange('probability', e.target.value)}
-                />
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

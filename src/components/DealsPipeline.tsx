@@ -27,7 +27,6 @@ interface Deal {
   company: string;
   value: number;
   stage: string;
-  probability: number;
   contact_name: string;
   last_activity: string;
   next_step: string;
@@ -54,7 +53,7 @@ interface DealsPipelineProps {
   onSelectDeal?: (deal: Deal) => void;
 }
 
-type SortField = 'title' | 'company' | 'value' | 'stage' | 'probability' | 'created_at';
+type SortField = 'title' | 'company' | 'value' | 'stage' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 interface DealActivitiesCount {
@@ -66,9 +65,7 @@ interface SimilarDeal {
   title: string;
   value: number;
   stage: string;
-  probability: number;
   similarity: number;
-  deal_status: string;
   company?: string;
   similarity_score?: number;
   similarity_reasons?: string[];
@@ -94,9 +91,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     title: '',
     company: '',
     value: '',
-    stage: '',
-    probability: '',
-    deal_status: ''
+    stage: 'Discovery',
+    deal_status: 'in_progress'
   });
 
   // AI Embedding state
@@ -125,9 +121,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   // Add these new states
   const [showObjectionHandler, setShowObjectionHandler] = useState(false);
   const [selectedDealForObjection, setSelectedDealForObjection] = useState<Deal | null>(null);
-  const [showClosingProbability, setShowClosingProbability] = useState(false);
-  const [closingProbabilityResult, setClosingProbabilityResult] = useState<number | null>(null);
-  const [isCalculatingProbability, setIsCalculatingProbability] = useState(false);
 
   // Add state for Deal Coach
   const [showDealCoach, setShowDealCoach] = useState(false);
@@ -162,12 +155,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         company: deal.company || '',
         value: Number(deal.value),
         stage: deal.stage || 'Discovery',
-        probability: deal.probability || 0,
         contact_name: deal.contact_name || '',
         last_activity: deal.last_activity ? new Date(deal.last_activity).toLocaleDateString() : 'No activity',
         next_step: deal.next_step || 'Follow up required',
         created_at: deal.created_at,
-        deal_status: deal.deal_status || deal.outcome || 'in_progress',
+        deal_status: deal.outcome || 'in_progress',
         contact_id: deal.contact_id,
         outcome: deal.outcome
       }));
@@ -294,10 +286,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             aValue = stageOrder[a.stage as keyof typeof stageOrder] || 0;
             bValue = stageOrder[b.stage as keyof typeof stageOrder] || 0;
             break;
-          case 'probability':
-            aValue = a.probability;
-            bValue = b.probability;
-            break;
           case 'created_at':
             aValue = new Date(a.created_at);
             bValue = new Date(b.created_at);
@@ -337,48 +325,25 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setEditingDeal(deal);
     setEditForm({
       title: deal.title,
-      company: deal.company || '',
-      value: deal.value?.toString() || '',
-      stage: deal.stage || 'Discovery',
-      probability: deal.probability?.toString() || '50',
-      deal_status: deal.deal_status || 'in_progress'
+      company: deal.company,
+      value: deal.value.toString(),
+      stage: deal.stage,
+      deal_status: deal.deal_status
     });
-    
-    // Fetch activities for this deal
-    fetchDealActivities(deal.id);
   };
 
   const handleSaveEdit = async () => {
     if (!editingDeal || !user) return;
 
-    if (!editForm.title.trim()) {
-      toast({
-        title: "Error",
-        description: "Title is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!editForm.value || isNaN(Number(editForm.value))) {
-      toast({
-        title: "Error",
-        description: "Valid value is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('deals')
         .update({
-          title: editForm.title.trim(),
-          company: editForm.company.trim(),
-          value: Number(editForm.value),
+          title: editForm.title,
+          company: editForm.company,
+          value: parseFloat(editForm.value) || 0,
           stage: editForm.stage,
-          probability: editForm.deal_status === 'in_progress' ? (Number(editForm.probability) || 0) : null,
-          deal_status: editForm.deal_status
+          outcome: editForm.deal_status
         })
         .eq('id', editingDeal.id)
         .eq('user_id', user.id);
@@ -386,8 +351,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       if (error) throw error;
 
       toast({
-        title: "Deal updated",
-        description: "Deal has been successfully updated.",
+        title: "Deal updated!",
+        description: "Deal information has been saved.",
       });
 
       setEditingDeal(null);
@@ -456,19 +421,12 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'Discovery': return 'bg-blue-100 text-blue-800';
-      case 'Proposal': return 'bg-yellow-100 text-yellow-800';
-      case 'Negotiation': return 'bg-orange-100 text-orange-800';
-      case 'Closing': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Discovery': return 'text-blue-600';
+      case 'Proposal': return 'text-yellow-600';
+      case 'Negotiation': return 'text-orange-600';
+      case 'Closing': return 'text-green-600';
+      default: return 'text-slate-600';
     }
-  };
-
-  const getProbabilityColor = (probability: number) => {
-    if (probability >= 75) return 'text-green-600';
-    if (probability >= 50) return 'text-yellow-600';
-    if (probability >= 25) return 'text-orange-600';
-    return 'text-red-600';
   };
 
   const getOutcomeColor = (outcome: string) => {
@@ -518,33 +476,25 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   };
 
   const handleGetDealRecommendations = async (deal: Deal) => {
-    if (!user) return;
-
     setSelectedDealForRecommendations(deal);
     setShowRecommendations(true);
-    setIsAnalyzingSimilarity(true);
     setDealSimilarityAnalysis(null);
-
+    setIsAnalyzingSimilarity(true);
+    
     try {
-      const analysis = await analyzeDealSimilarity({
+      const response = await analyzeDealSimilarity({
         dealId: deal.id,
-        userId: user.id,
+        userId: user?.id || '',
         maxSimilarDeals: 5,
         includeRecommendations: true
       });
       
-      setDealSimilarityAnalysis(analysis);
-
+      setDealSimilarityAnalysis(response);
+    } catch (error) {
+      console.error('Error getting deal recommendations:', error);
       toast({
-        title: "AI Analysis Complete!",
-        description: `Found ${analysis.similar_deals.length} similar deals and generated ${analysis.recommendations.length} recommendations.`,
-      });
-
-    } catch (error: any) {
-      console.error('Error getting deal similarity analysis:', error);
-      toast({
-        title: "Analysis failed",
-        description: error.message || "Failed to analyze deal similarity. Please try again.",
+        title: "Error getting recommendations",
+        description: "There was an error analyzing similar deals. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -567,7 +517,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
   // Calculate pipeline metrics
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-  const weightedValue = deals.reduce((sum, deal) => sum + (deal.value * deal.probability / 100), 0);
   const averageDealSize = deals.length > 0 ? totalValue / deals.length : 0;
   
   // Calculate outcome metrics
@@ -653,77 +602,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
   // Add this function to handle customer objection
   const handleCustomerObjection = async (deal: Deal) => {
-    // First, fetch activities for this deal
-    const { data } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('deal_id', deal.id)
-      .eq('user_id', user?.id);
-    
-    // Map the returned data to match the Activity type
-    const activities: Activity[] = (data || []).map(a => ({
-      id: a.id,
-      type: a.type,
-      subject: a.subject,
-      description: a.description || '',
-      status: a.status,
-      priority: a.priority,
-      due_date: a.due_date,
-      contact_name: a.contact_name || '',
-      created_at: a.created_at
-    }));
-    
-    setSelectedDealActivities(activities);
     setSelectedDealForObjection(deal);
     setShowObjectionHandler(true);
-  };
-
-  // Add this function to calculate closing probability
-  const handleGetClosingProbability = async (deal: Deal) => {
-    setIsCalculatingProbability(true);
-    try {
-      // Fetch activities and deal details for analysis
-      const { data: activities } = await supabase
-        .from('activities')
-        .select('*')
-        .eq('deal_id', deal.id)
-        .eq('user_id', user?.id);
-      
-      const dealDetails = {
-        id: deal.id,
-        title: deal.title,
-        company: deal.company,
-        value: deal.value,
-        stage: deal.stage,
-        contact_name: deal.contact_name,
-        activities: (activities || []).map(a => ({
-          type: a.type,
-          subject: a.subject,
-          description: a.description || '',
-          date: new Date(a.created_at).toLocaleDateString()
-        }))
-      };
-      
-      // Get calculated probability using OpenAI
-      const { data, error } = await supabase.functions.invoke('calculate-closing-probability', {
-        body: { deal: dealDetails }
-      });
-      
-      if (error) throw error;
-      
-      // Update state with the result
-      setClosingProbabilityResult(data.probability);
-      setShowClosingProbability(true);
-    } catch (error) {
-      console.error('Error calculating probability:', error);
-      toast({
-        title: "Error calculating probability",
-        description: "There was an error calculating the closing probability. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCalculatingProbability(false);
-    }
   };
 
   // Add function to handle Deal Coach button click
@@ -913,7 +793,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 { field: 'company', label: 'Company' },
                 { field: 'value', label: 'Value' },
                 { field: 'stage', label: 'Stage' },
-                { field: 'probability', label: 'Probability' },
                 { field: 'created_at', label: 'Date Added' }
               ].map(({ field, label }) => (
                 <Button
@@ -994,22 +873,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-slate-600">Close Probability:</span>
-                                  {deal.deal_status === 'in_progress' && (
-                                    <>
-                                      <span className={`text-sm font-medium ${getProbabilityColor(deal.probability)}`}>
-                                        {deal.probability}%
-                                      </span>
-                                      <Progress value={deal.probability} className="w-20" />
-                                    </>
-                                  )}
-                                  {deal.deal_status !== 'in_progress' && (
-                                    <Badge variant="outline" className="text-blue-600">
-                                      Probability not available
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2">
                                   <span className="text-sm text-slate-600">Activities:</span>
                                   <Badge variant="outline" className="text-blue-600">
                                     {dealActivitiesCount[deal.id] || 0}
@@ -1052,15 +915,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 >
                                   <AlertCircle className="w-4 h-4 mr-1" />
                                   Objection
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleGetClosingProbability(deal)}
-                                  className="hover:bg-purple-50 text-purple-600 border-purple-200"
-                                >
-                                  <Target className="w-4 h-4 mr-1" />
-                                  Get Probability
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1167,19 +1021,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 </SelectContent>
               </Select>
             </div>
-            {editForm.deal_status === 'in_progress' && (
-              <div>
-                <label className="text-sm font-medium">Probability (%)</label>
-                <Input
-                  value={editForm.probability}
-                  onChange={(e) => setEditForm({ ...editForm, probability: e.target.value })}
-                  placeholder="Close probability"
-                  type="number"
-                  min="0"
-                  max="100"
-                />
-              </div>
-            )}
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setEditingDeal(null)}>
                 Cancel
@@ -1248,7 +1089,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg">${selectedDealForRecommendations.value.toLocaleString()}</p>
-                    <p className="text-sm text-slate-600">{selectedDealForRecommendations.probability}% probability</p>
+                    <p className="text-sm text-slate-600">{selectedDealForRecommendations.stage}</p>
                   </div>
                 </div>
               </div>
@@ -1356,11 +1197,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                   <div className="flex items-center space-x-2 mb-1">
                                     <h4 className="font-medium text-slate-900">{similarDeal.title}</h4>
                                     <Badge className={`text-xs ${
-                                      similarDeal.deal_status === 'won' ? 'bg-green-100 text-green-800' :
-                                      similarDeal.deal_status === 'lost' ? 'bg-red-100 text-red-800' :
+                                      similarDeal.outcome === 'won' ? 'bg-green-100 text-green-800' :
+                                      similarDeal.outcome === 'lost' ? 'bg-red-100 text-red-800' :
                                       'bg-blue-100 text-blue-800'
                                     }`}>
-                                      {similarDeal.deal_status}
+                                      {similarDeal.outcome || 'in_progress'}
                                     </Badge>
                                   </div>
                                   <p className="text-sm text-slate-600">{similarDeal.company} • {similarDeal.stage}</p>
@@ -1689,49 +1530,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Closing Probability Dialog */}
-      <Dialog open={showClosingProbability} onOpenChange={setShowClosingProbability}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Deal Closing Probability</DialogTitle>
-          </DialogHeader>
-          
-          <div className="p-6 flex flex-col items-center justify-center">
-            {closingProbabilityResult !== null && (
-              <>
-                <div className="w-36 h-36 rounded-full border-8 border-primary flex items-center justify-center mb-4 relative">
-                  <span className="text-3xl font-bold">{Math.round(closingProbabilityResult)}%</span>
-                  <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
-                    <circle 
-                      cx="50" cy="50" r="45" fill="none" 
-                      stroke="#f0f0f0" strokeWidth="8"
-                    />
-                    <circle 
-                      cx="50" cy="50" r="45" fill="none" 
-                      stroke="currentColor" strokeWidth="8"
-                      strokeDasharray="283"
-                      strokeDashoffset={283 - (283 * closingProbabilityResult / 100)}
-                      className="text-primary"
-                      transform="rotate(-90 50 50)"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-center mb-2">
-                  {closingProbabilityResult >= 80 ? 'Very High Probability' :
-                   closingProbabilityResult >= 60 ? 'High Probability' :
-                   closingProbabilityResult >= 40 ? 'Medium Probability' :
-                   closingProbabilityResult >= 20 ? 'Low Probability' : 'Very Low Probability'}
-                </h3>
-                <p className="text-sm text-slate-500 text-center">
-                  This probability is calculated based on deal data, activities, and historical patterns.
-                  The accuracy improves with more data available.
-                </p>
-              </>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Deal Coach Dialog */}
       <Dialog open={showDealCoach} onOpenChange={setShowDealCoach}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1775,7 +1573,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                       </div>
                       <div>
                         <p><span className="font-medium">Value:</span> ${selectedDealForCoaching.value.toLocaleString()}</p>
-                        <p><span className="font-medium">Probability:</span> {selectedDealForCoaching.probability}%</p>
                         <p><span className="font-medium">Contact:</span> {selectedDealForCoaching.contact_name || 'No contact'}</p>
                       </div>
                     </div>

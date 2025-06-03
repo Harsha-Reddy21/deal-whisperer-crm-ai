@@ -1,4 +1,0 @@
-name,website,industry,size,phone,email,address,city,state,country,description,status,revenue,employees,founded_year,linkedin_url,notes,score
-Acme Corporation,https://acme.com,Technology,large,555-0123,contact@acme.com,123 Business St,San Francisco,CA,USA,Leading technology company,prospect,5000000,250,2010,https://linkedin.com/company/acme,Great potential client,85
-TechStart Inc,https://techstart.io,Software,startup,555-0456,hello@techstart.io,456 Innovation Ave,Austin,TX,USA,Innovative startup in AI space,customer,500000,25,2020,https://linkedin.com/company/techstart,Existing customer - very satisfied,90
-Global Manufacturing,https://globalmfg.com,Manufacturing,enterprise,555-0789,info@globalmfg.com,789 Industrial Blvd,Detroit,MI,USA,Large manufacturing conglomerate,partner,50000000,5000,1985,https://linkedin.com/company/globalmfg,Strategic partner for industrial solutions,95 
