@@ -8,10 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Users, TrendingUp, DollarSign, Target, MessageSquare, Calendar, LogOut, User, Brain, Building2 } from 'lucide-react';
 import DealsPipeline from '@/components/DealsPipeline';
 import ContactsList from '@/components/ContactsList';
-import AICoach from '@/components/AICoach';
 import AIAssistant from '@/components/AIAssistant';
 import ObjectionHandler from '@/components/ObjectionHandler';
-import CustomerPersonaBuilder from '@/components/CustomerPersonaBuilder';
 import WinLossExplainer from '@/components/WinLossExplainer';
 import ActivitiesManager from '@/components/ActivitiesManager';
 import LeadManagement from '@/components/LeadManagement';
@@ -35,30 +33,6 @@ const Index = () => {
   const { toast } = useToast();
 
   console.log('Index component rendered, user:', user);
-
-  // Listen for AI Coach tab switch events
-  useEffect(() => {
-    const handleSwitchToAICoach = (event: any) => {
-      console.log('🎯 Index: Received switchToAICoach event');
-      console.log('🎯 Index: Event detail (deal):', event.detail);
-      console.log('🎯 Index: Switching to AI Coach with deal:', event.detail?.title);
-      console.log('🎯 Index: Current activeTab before switch:', activeTab);
-      
-      // Set the selected deal first, then switch to AI Coach tab
-      setSelectedDeal(event.detail);
-      setActiveTab('ai-coach');
-      
-      console.log('🎯 Index: Tab switched to ai-coach');
-      console.log('🎯 Index: Selected deal set to:', event.detail?.title);
-    };
-
-    console.log('🎯 Index: Adding switchToAICoach event listener');
-    window.addEventListener('switchToAICoach', handleSwitchToAICoach);
-    return () => {
-      console.log('🎯 Index: Removing switchToAICoach event listener');
-      window.removeEventListener('switchToAICoach', handleSwitchToAICoach);
-    };
-  }, []); // Remove activeTab from dependency array to prevent re-registration
 
   // Fetch real statistics from the database
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
@@ -134,29 +108,6 @@ const Index = () => {
   const handleAIAssistant = () => {
     console.log('Switching to AI Assistant tab');
     setActiveTab('ai-assistant');
-  };
-
-  // Test function to debug the event system
-  const testAICoachEvent = () => {
-    console.log('🧪 Testing AI Coach event system');
-    const testDeal = {
-      id: 'test-123',
-      title: 'Test Deal',
-      company: 'Test Company',
-      value: 50000,
-      stage: 'Discovery',
-      probability: 75,
-      contact_name: 'Test Contact',
-      last_activity: 'Today',
-      next_step: 'Follow up',
-      created_at: new Date().toISOString()
-    };
-    
-    const event = new CustomEvent('switchToAICoach', { 
-      detail: testDeal 
-    });
-    console.log('🧪 Dispatching test event:', event);
-    window.dispatchEvent(event);
   };
 
   // Show loading state if user is not loaded yet
@@ -241,9 +192,6 @@ const Index = () => {
                 <MessageSquare className="w-4 h-4 mr-2" />
                 AI Assistant
               </Button>
-              <Button variant="outline" size="sm" onClick={testAICoachEvent} className="bg-yellow-50 border-yellow-300">
-                🧪 Test AI Coach
-              </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
@@ -284,9 +232,7 @@ const Index = () => {
               <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
               <TabsTrigger value="reports" className="whitespace-nowrap">Reports</TabsTrigger>
               <TabsTrigger value="ai-assistant" className="whitespace-nowrap">AI Assistant</TabsTrigger>
-              <TabsTrigger value="ai-coach" className="whitespace-nowrap">AI Coach</TabsTrigger>
               <TabsTrigger value="objection-handler" className="whitespace-nowrap">Objections</TabsTrigger>
-              <TabsTrigger value="persona-builder" className="whitespace-nowrap">Personas</TabsTrigger>
               <TabsTrigger value="win-loss" className="whitespace-nowrap">Win-Loss</TabsTrigger>
               <TabsTrigger value="compose-email" className="whitespace-nowrap">Emails</TabsTrigger>
               <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
@@ -320,16 +266,8 @@ const Index = () => {
             <AIAssistant />
           </TabsContent>
 
-          <TabsContent value="ai-coach" className="space-y-6">
-            <AICoach selectedDeal={selectedDeal} onSelectDeal={setSelectedDeal} />
-          </TabsContent>
-
           <TabsContent value="objection-handler" className="space-y-6">
             <ObjectionHandler />
-          </TabsContent>
-
-          <TabsContent value="persona-builder" className="space-y-6">
-            <CustomerPersonaBuilder />
           </TabsContent>
 
           <TabsContent value="win-loss" className="space-y-6">
