@@ -133,4 +133,7 @@ export * from './dealSimilarityAnalyzer';
 
 // Vector Embeddings and Semantic Search
 export * from './embeddingService';
-export * from './dealEmbeddingManager'; 
+export * from './dealEmbeddingManager';
+
+// Lead embeddings service
+export { leadEmbeddingService, LeadEmbeddingService } from './leadEmbeddings'; 

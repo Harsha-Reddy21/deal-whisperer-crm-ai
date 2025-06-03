@@ -1,0 +1,3 @@
+// Export all components for easy imports
+export { default as EmbeddingManager } from './EmbeddingManager';
+// ... other existing exports ... 

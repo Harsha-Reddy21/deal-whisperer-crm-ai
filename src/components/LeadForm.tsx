@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 
 interface LeadFormProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface LeadFormProps {
 const LeadForm = ({ open, onOpenChange, onLeadCreated }: LeadFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { handleLeadCreated } = useLeadEmbeddings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -82,7 +84,9 @@ const LeadForm = ({ open, onOpenChange, onLeadCreated }: LeadFormProps) => {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      console.log('[LeadForm] Creating new lead...');
+      // Create the lead
+      const { data: newLead, error } = await supabase
         .from('leads')
         .insert({
           user_id: user.id,
@@ -93,15 +97,31 @@ const LeadForm = ({ open, onOpenChange, onLeadCreated }: LeadFormProps) => {
           source: formData.source,
           score: formData.score,
           status: formData.status
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Generate embedding for the new lead
+      if (newLead?.id) {
+        console.log(`[LeadForm] Lead created with ID: ${newLead.id}, now generating embeddings...`);
+        try {
+          await handleLeadCreated(newLead.id);
+          console.log(`[LeadForm] Embeddings generation triggered for lead ${newLead.id}`);
+        } catch (embeddingError) {
+          console.error('[LeadForm] Error generating lead embedding:', embeddingError);
+          // Don't fail the operation if embedding generation fails
+        }
+      }
 
       toast({
         title: "Lead created!",
         description: "Your lead has been successfully created.",
       });
 
+      console.log('[LeadForm] Lead creation process completed successfully');
+      
       setFormData({
         name: '',
         company: '',

@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import LeadForm from './LeadForm';
 import LeadDetail from './LeadDetail';
 import EmailComposer from './EmailComposer';
+import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 
 interface Lead {
   id: string;
@@ -109,6 +110,8 @@ const LeadsList = () => {
     enabled: !!user,
   });
 
+  const { handleLeadUpdated } = useLeadEmbeddings();
+
   const handleEdit = (lead: Lead) => {
     setEditingLead(lead);
     setEditForm({
@@ -135,6 +138,7 @@ const LeadsList = () => {
     }
 
     try {
+      console.log(`[LeadsList] Updating lead ${editingLead.id}...`);
       const { error } = await supabase
         .from('leads')
         .update({
@@ -150,11 +154,22 @@ const LeadsList = () => {
 
       if (error) throw error;
 
+      // Update the embeddings for the lead after updating its data
+      console.log(`[LeadsList] Lead ${editingLead.id} updated, now updating embeddings...`);
+      try {
+        await handleLeadUpdated(editingLead.id);
+        console.log(`[LeadsList] Embeddings update triggered for lead ${editingLead.id}`);
+      } catch (embeddingError) {
+        console.error('[LeadsList] Error updating lead embeddings after edit:', embeddingError);
+        // Don't fail the operation if embedding update fails
+      }
+
       toast({
         title: "Success",
         description: "Lead updated successfully",
       });
 
+      console.log('[LeadsList] Lead update process completed successfully');
       setEditingLead(null);
       refetch();
     } catch (error: any) {

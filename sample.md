@@ -1,14 +1,68 @@
-1. In the "deals" feature, in the respective deal add button "customer objection" the user can add input data. And the 'AI'(LLM) has to suggest convincing response on the input data. Make sure that the AI suggestions should be taken on the activities + description in the particular deal. If there is no description and activites kindly say there is no data. 
+Follow the sample record:
 
-2. add another button "deal coach" in the deal such that when user clicks it, the AI has to suggest next-steps to improve probabilty. The LLM has to take the other deals which are closed(loss/won) into consideration and give next steps to improve probability. 
+1.
+lead_data:
+{
+  "id": "lead_123",
+  "name": "Alice Johnson",
+  "email": "alice@greentech.io",
+  "company": "GreenTech Innovations",
+  "phone": "+1-555-123-4567",
+  "status": "Qualified",
+  "lead_source": "Webinar",
+  "score": 78,
+  "created_at": "2025-05-15",
+  "owner": "Michael Scott",
+  "notes": "Very interested in our sustainability tools. Wants to see a demo."
+}
 
-3. In the 'Leads' feature add button 'Persona' for every lead. It has to shown the behavior of the lead using all activities of the lead(interaction history). This button should be activated only when there is atleast one activity of the respective lead. 
+activities:
 
-4. The 'smart lead' button should get the user input, based on that the ai has to query the best lead. Note that the llm has to query only the leads who has atleast one activity(interaction history)
+[
+  {
+    "type": "Email",
+    "date": "2025-05-16",
+    "content": "Sent welcome email with product overview and demo request link."
+  },
+  {
+    "type": "Call",
+    "date": "2025-05-18",
+    "content": "Discussed use case. Alice mentioned her team is evaluating eco-certification tools."
+  },
+  {
+    "type": "Meeting",
+    "date": "2025-05-20",
+    "content": "Demo scheduled. Alice and her CTO will attend."
+  }
+]
 
-5. In the leads feature add button "Get from Linkedin", such that the llm has to use linked and based on some inputs it has to give top leads, and there should be another button add lead such we can add lead to the leads feature after the llm generates the response
+
+3. compose the embedding text:
+Lead: Alice Johnson
+Company: GreenTech Innovations
+Email: alice@greentech.io
+Phone: +1-555-123-4567
+Lead Source: Webinar
+Status: Qualified
+Score: 78
+Owner: Michael Scott
+Created At: May 15, 2025
+Notes: Very interested in our sustainability tools. Wants to see a demo.
+
+Activities:
+- [2025-05-16] Email: Sent welcome email with product overview and demo request link.
+- [2025-05-18] Call: Discussed use case. Alice mentioned her team is evaluating eco-certification tools.
+- [2025-05-20] Meeting: Demo scheduled. Alice and her CTO will attend.
 
 
-6. Why the lead management is showing like this, there are proper values in the database, but it is not able to load it properly. Please fix the issue
+4. embedd the text:
+import openai
 
-7.remove the button lead score, rather create lead score such that ai will give score 0 to 100 based on the history (activities). And the button should be activated only if there is interaction history. 2. Smart lead gets all the best lead who has the interaction history atleat 1
+response = openai.embeddings.create(
+    model="text-embedding-3-small",
+    input=lead_text  # from above
+)
+embedding_vector = response.data[0].embedding
+
+
+4. add to database

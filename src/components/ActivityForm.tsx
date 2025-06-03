@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { User, Target, Plus } from 'lucide-react';
+import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 
 interface ActivityFormProps {
   open: boolean;
@@ -23,6 +24,7 @@ interface ActivityFormProps {
 const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, initialContactId, initialLeadId }: ActivityFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { handleActivityChanged } = useLeadEmbeddings();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type: 'call',
@@ -168,6 +170,7 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
     setIsSubmitting(true);
     try {
       // Prepare activity data
+      console.log('[ActivityForm] Creating new activity...');
       const activityData = {
         user_id: user.id,
         type: formData.type,
@@ -181,17 +184,40 @@ const ActivityForm = ({ open, onOpenChange, onActivityCreated, initialDealId, in
         deal_id: formData.deal_id === 'none' ? null : formData.deal_id || null
       };
 
-      const { error } = await supabase
+      console.log('[ActivityForm] Activity data prepared:', { 
+        type: activityData.type,
+        lead_id: activityData.lead_id 
+      });
+
+      const { data: newActivity, error } = await supabase
         .from('activities')
-        .insert(activityData);
+        .insert(activityData)
+        .select('id, lead_id')
+        .single();
 
       if (error) throw error;
+
+      // Update embeddings for the associated lead if exists
+      if (newActivity?.id && newActivity?.lead_id) {
+        console.log(`[ActivityForm] Activity created with ID: ${newActivity.id} for lead: ${newActivity.lead_id}, updating lead embeddings...`);
+        try {
+          await handleActivityChanged(newActivity.id);
+          console.log(`[ActivityForm] Lead embeddings update triggered for activity ${newActivity.id}`);
+        } catch (embeddingError) {
+          console.error('[ActivityForm] Error updating lead embeddings after activity creation:', embeddingError);
+          // Don't fail the overall operation if embedding update fails
+        }
+      } else {
+        console.log('[ActivityForm] Activity created but no related lead found, skipping embeddings update');
+      }
 
       toast({
         title: "Activity created",
         description: "Your activity has been created successfully.",
       });
 
+      console.log('[ActivityForm] Activity creation process completed successfully');
+      
       // Reset form
       setFormData({
         type: 'call',
