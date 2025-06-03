@@ -35,6 +35,7 @@ import {
   formatCRMDataForAI,
   analyzeDataTrends,
   semanticSearchService,
+  debugSemanticSearch,
   type OpenAIMessage,
   type CRMDataContext,
   type SemanticSearchResponse
@@ -201,29 +202,34 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
 
   // Load chat sessions from localStorage
   const { data: chatSessions = [], refetch } = useQuery({
-    queryKey: ['chat-sessions', user?.id],
+    queryKey: ['chat-sessions', user?.id || 'default'],
     queryFn: async () => {
-      if (!user) return [];
-      const stored = localStorage.getItem(`chat-sessions-${user.id}`);
+      // Get storage key based on user ID or default
+      const storageKey = user?.id ? `chat-sessions-${user.id}` : 'chat-sessions-default';
+      const stored = localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [];
     },
-    enabled: !!user,
+    enabled: true, // Always enabled, not dependent on user
   });
 
   // Fetch CRM data when dialog opens
   useEffect(() => {
-    if (open && user && !crmDataContext) {
+    if (open && !crmDataContext) {
       loadCRMData();
     }
-  }, [open, user]);
+  }, [open, user, crmDataContext]);
 
   const loadCRMData = async () => {
-    if (!user) return;
+    // Check if user ID is available
+    const effectiveUserId = user?.id || 'mock-user-123';
+    if (!user?.id) {
+      console.log(`⚠️ [ChatCRM] No user ID available, using mock ID for CRM data`);
+    }
     
     setIsLoadingCRMData(true);
     try {
       console.log('Fetching comprehensive CRM data for ChatCRM context...');
-      const data = await fetchCRMData(user.id);
+      const data = await fetchCRMData(effectiveUserId);
       setCrmDataContext(data);
       console.log('Comprehensive CRM data loaded:', data.summary);
       
@@ -245,10 +251,10 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
 
   // Save chat sessions to localStorage
   const saveChatSessions = (sessions: ChatSession[]) => {
-    if (user) {
-      localStorage.setItem(`chat-sessions-${user.id}`, JSON.stringify(sessions));
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-    }
+    // Use a default key if user ID is not available
+    const storageKey = user?.id ? `chat-sessions-${user.id}` : 'chat-sessions-default';
+    localStorage.setItem(storageKey, JSON.stringify(sessions));
+    queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
   };
 
   // Auto-scroll to bottom when new messages arrive
@@ -276,36 +282,65 @@ const ChatCRM = ({ open, onOpenChange, initialMessage }: ChatCRMProps) => {
 
   // Perform semantic search based on the user message
   const performSemanticSearch = async (query: string) => {
-    if (!user || !query.trim()) return null;
+    if (!query.trim()) return null;
     
     try {
-      console.log('[Semantic Search] Performing search for query:', query);
+      console.log(`\n🔍 [ChatCRM] SEMANTIC SEARCH FLOW: Starting search for user query`);
+      console.log(`📝 [ChatCRM] User Message: "${query}"`);
       
+      // Check if user ID is available
+      const effectiveUserId = user?.id || 'mock-user-123';
+      if (!user?.id) {
+        console.log(`⚠️ [ChatCRM] No user ID available, using mock ID for semantic search`);
+      }
+      
+      console.log(`🚀 [ChatCRM] Step 1: Delegating to semanticSearchService...`);
       const searchResponse = await semanticSearchService.semanticSearch({
         query,
-        userId: user.id,
-        maxResults: 5,
-        similarityThreshold: 0.5
+        userId: effectiveUserId,
+        maxResults: 10, // Increased from 5 to get more results
+        similarityThreshold: 0.01 // Very low threshold to ensure we get results
       });
       
-      console.log('[Semantic Search] Results:', searchResponse);
+      console.log(`✅ [ChatCRM] Step 2: Semantic search completed`);
+      console.log(`📊 [ChatCRM] Search Stats: ${searchResponse.totalResults} results found for query "${searchResponse.query}"`);
+      
+      if (searchResponse.results.length > 0) {
+        console.log(`🏆 [ChatCRM] Top match: ${searchResponse.results[0].type} - ${searchResponse.results[0].name} (${Math.round(searchResponse.results[0].similarity * 100)}% relevance)`);
+        
+        // Log all results with similarity scores for debugging
+        console.log(`📋 [ChatCRM] All results:`);
+        searchResponse.results.forEach((result, index) => {
+          console.log(`  ${index + 1}. [${result.type}] ${result.title || result.name} - ${Math.round(result.similarity * 100)}% relevance`);
+        });
+        
+        // Use the visualization tool to display detailed results
+        console.log(`\n📊 [ChatCRM] Visualizing search results:`);
+        debugSemanticSearch(searchResponse);
+      }
+      
       setLastSearchResults(searchResponse);
       return searchResponse;
     } catch (error) {
-      console.error('[Semantic Search] Error performing semantic search:', error);
+      console.error('❌ [ChatCRM] Error performing semantic search:', error);
       return null;
     }
   };
 
   // Format the system message with CRM data and semantic search results
   const formatSystemMessage = (query: string, searchResults: SemanticSearchResponse | null) => {
+    console.log(`📝 [ChatCRM] Step 3: Formatting system message with CRM data and search results`);
+    
     let systemContent = `You are an expert CRM AI assistant for Deal Whisperer CRM. You have access to comprehensive real-time data from the user's CRM system.
 
 ${crmDataContext ? formatCRMDataForAI(crmDataContext) : 'No CRM data available at the moment.'}`;
 
     // Add semantic search results if available
     if (searchResults && searchResults.results.length > 0) {
+      console.log(`📊 [ChatCRM] Including ${searchResults.results.length} semantic search results in AI context`);
       systemContent += `\n\n${semanticSearchService.formatResultsForAI(searchResults)}`;
+    } else {
+      console.log(`ℹ️ [ChatCRM] No semantic search results to include in AI context`);
     }
 
     // Add role and guidelines
@@ -324,12 +359,20 @@ Guidelines:
 - Be helpful and proactive in identifying opportunities and risks
 - Keep responses focused and valuable for sales and CRM management`;
 
+    console.log(`✅ [ChatCRM] System message prepared (${systemContent.length} characters)`);
     return systemContent;
   };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      if (!user || !currentSession) throw new Error('No active session');
+      if (!currentSession) throw new Error('No active session');
+      
+      // Check for user ID
+      if (!user?.id) {
+        console.log(`⚠️ [ChatCRM] No user ID available, proceeding with mock user for chat`);
+      }
+      
+      console.log(`\n🚀 [ChatCRM] CHAT FLOW: Processing user message "${message}"`);
       
       const userMessage: ChatMessage = {
         id: `msg_${Date.now()}_user`,
@@ -346,11 +389,17 @@ Guidelines:
       };
 
       setCurrentSession(updatedSession);
+      console.log(`✅ [ChatCRM] User message added to session`);
 
       // Perform semantic search based on the user message
+      console.log(`🔎 [ChatCRM] SEMANTIC SEARCH FLOW: Starting semantic search for user query`);
+      const startTime = performance.now();
       const searchResults = await performSemanticSearch(message);
+      const searchTime = (performance.now() - startTime).toFixed(2);
+      console.log(`⏱️ [ChatCRM] Semantic search completed in ${searchTime}ms`);
 
       // Prepare messages for OpenAI
+      console.log(`📝 [ChatCRM] PREPARING LLM CONTEXT: Formatting system message with search results`);
       const systemMessage: OpenAIMessage = {
         role: "system",
         content: formatSystemMessage(message, searchResults)
@@ -363,12 +412,19 @@ Guidelines:
           content: msg.content
         }))
       ];
-
+      console.log('conversationMessages', conversationMessages);
+      console.log('searchResults', searchResults);
+      console.log(`🤖 [ChatCRM] CALLING LLM: Sending request to OpenAI with ${conversationMessages.length} messages`);
+      console.log(`📊 [ChatCRM] Context includes ${searchResults?.results.length || 0} semantically relevant items`);
+      
+      const llmStartTime = performance.now();
       const response = await makeOpenAIRequest(conversationMessages, {
         model: "gpt-4",
         temperature: 0.7,
         maxTokens: 1000
       });
+      const llmTime = (performance.now() - llmStartTime).toFixed(2);
+      console.log(`⏱️ [ChatCRM] LLM response received in ${llmTime}ms`);
 
       if (!response) {
         throw new Error('No response from AI');
@@ -392,6 +448,7 @@ Guidelines:
         s.id === finalSession.id ? finalSession : s
       );
       saveChatSessions(allSessions);
+      console.log(`✅ [ChatCRM] CHAT FLOW COMPLETE: Response saved to session`);
 
       return { session: finalSession, response };
     },

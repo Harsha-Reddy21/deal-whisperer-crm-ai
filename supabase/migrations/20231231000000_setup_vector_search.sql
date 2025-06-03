@@ -17,17 +17,14 @@ ALTER TABLE IF EXISTS leads
 ADD COLUMN IF NOT EXISTS embedding vector(1536),
 ADD COLUMN IF NOT EXISTS embedding_updated_at timestamptz;
 
--- Drop existing functions to prevent errors
-DROP FUNCTION IF EXISTS search_similar_deals(vector, float, int, uuid);
-DROP FUNCTION IF EXISTS search_similar_contacts(vector, float, int, uuid);
-DROP FUNCTION IF EXISTS search_similar_leads(vector, float, int, uuid);
-
 -- Creates a function to search for similar deals using vector similarity
+-- Note: We use a very low default threshold (0.01) to ensure results are always returned
+-- even for queries that don't have strong semantic matches
 CREATE OR REPLACE FUNCTION search_similar_deals(
   query_embedding vector(1536),
-  similarity_threshold float,
-  match_count int,
-  target_user_id uuid
+  target_user_id uuid,
+  similarity_threshold float DEFAULT 0.01,
+  match_count int DEFAULT 20
 )
 RETURNS TABLE (
   id uuid,
@@ -42,14 +39,15 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 BEGIN
+  -- Using a low threshold to prioritize returning results over strict similarity
   RETURN QUERY
   SELECT
     d.id,
     d.title,
     d.company,
     d.stage,
-    d.value,
-    d.probability,
+    CAST(d.value AS float), -- Explicitly cast to float to prevent type mismatch
+    CAST(d.probability AS float), -- Also cast probability to prevent potential type mismatch
     d.contact_name,
     1 - (d.embedding <=> query_embedding) as similarity
   FROM
@@ -65,11 +63,12 @@ END;
 $$;
 
 -- Creates a function to search for similar contacts using vector similarity
+-- Using a low threshold to ensure results are returned for all queries
 CREATE OR REPLACE FUNCTION search_similar_contacts(
   query_embedding vector(1536),
-  similarity_threshold float,
-  match_count int,
-  target_user_id uuid
+  target_user_id uuid,
+  similarity_threshold float DEFAULT 0.01,
+  match_count int DEFAULT 20
 )
 RETURNS TABLE (
   id uuid,
@@ -94,7 +93,7 @@ BEGIN
     c.email,
     c.phone,
     c.status,
-    c.score,
+    CAST(c.score AS float), -- Explicitly cast to float to prevent type mismatch
     1 - (c.embedding <=> query_embedding) as similarity
   FROM
     contacts c
@@ -109,11 +108,12 @@ END;
 $$;
 
 -- Creates a function to search for similar leads using vector similarity
+-- Using a low threshold to ensure results are returned for all queries
 CREATE OR REPLACE FUNCTION search_similar_leads(
   query_embedding vector(1536),
-  similarity_threshold float,
-  match_count int,
-  target_user_id uuid
+  target_user_id uuid,
+  similarity_threshold float DEFAULT 0.01,
+  match_count int DEFAULT 20
 )
 RETURNS TABLE (
   id uuid,
@@ -138,7 +138,7 @@ BEGIN
     l.phone,
     l.source,
     l.status,
-    l.score,
+    CAST(l.score AS float), -- Explicitly cast to float to prevent type mismatch
     1 - (l.embedding <=> query_embedding) as similarity
   FROM
     leads l

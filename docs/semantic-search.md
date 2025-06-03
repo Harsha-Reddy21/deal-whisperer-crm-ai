@@ -27,18 +27,18 @@ The implementation uses pgvector to store and query vector embeddings:
 
 ```sql
 -- Deal table embedding column
-ALTER TABLE deals ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE deals ADD COLUMN embedding vector(1536);
 
 -- Contact table embedding column 
-ALTER TABLE contacts ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE contacts ADD COLUMN embedding vector(1536);
 
 -- Lead table embedding column
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS embedding vector(1536);
+ALTER TABLE leads ADD COLUMN embedding vector(1536);
 
 -- Indexes for faster vector search
-CREATE INDEX IF NOT EXISTS deals_embedding_idx ON deals USING ivfflat (embedding vector_cosine_ops);
-CREATE INDEX IF NOT EXISTS contacts_embedding_idx ON contacts USING ivfflat (embedding vector_cosine_ops);
-CREATE INDEX IF NOT EXISTS leads_embedding_idx ON leads USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX deals_embedding_idx ON deals USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX contacts_embedding_idx ON contacts USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX leads_embedding_idx ON leads USING ivfflat (embedding vector_cosine_ops);
 ```
 
 ### Vector Similarity Search Functions
@@ -62,6 +62,30 @@ RETURNS TABLE (
   contact_name text,
   similarity float
 )
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    d.id,
+    d.title,
+    d.company,
+    d.stage,
+    d.value,
+    d.probability,
+    d.contact_name,
+    1 - (d.embedding <=> query_embedding) as similarity
+  FROM
+    deals d
+  WHERE
+    d.user_id = target_user_id
+    AND d.embedding IS NOT NULL
+    AND 1 - (d.embedding <=> query_embedding) > similarity_threshold
+  ORDER BY
+    d.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
 ```
 
 Similar functions exist for `search_similar_contacts` and `search_similar_leads`.
@@ -101,6 +125,46 @@ The ChatCRM component leverages semantic search by:
 2. Formatting the results to include in the context sent to the LLM
 3. Including relevant CRM data based on the query's semantic meaning
 
+## Examples
+
+### Example 1: Semantic Search Query
+
+**User Question**: "What enterprise clients have we worked with recently?"
+
+Even if no CRM records contain the exact words "enterprise clients", the semantic search will understand the intent and find:
+
+- Deals with large companies
+- Contacts at enterprise-level organizations
+- Leads from Fortune 500 companies
+
+**Flow**:
+1. Query → Embedding conversion
+2. Vector similarity search across deals, contacts, leads
+3. Results sorted by relevance
+4. Top matches included in AI context
+
+### Example 2: Specific Domain Knowledge
+
+**User Question**: "Show me deals related to cloud migration"
+
+The system will match semantically similar concepts such as:
+- AWS deployment deals
+- Azure migration projects
+- Data center transition discussions
+- Infrastructure modernization opportunities
+
+This works even if the exact phrase "cloud migration" doesn't appear in the records.
+
+### Example 3: Intent Understanding
+
+**User Question**: "Which leads seem most promising right now?"
+
+The semantic search understands this is about lead quality and will match:
+- Leads with high scores
+- Recently active leads
+- Leads with positive engagement metrics
+- Leads matching successful past conversion patterns
+
 ## Benefits
 
 - **Better Understanding**: The AI can better understand what the user is looking for
@@ -115,6 +179,13 @@ Embeddings are automatically kept up-to-date:
 - When a deal, contact, or lead is created, an embedding is generated
 - When a deal, contact, or lead is updated, its embedding is regenerated
 - When an activity related to a deal, contact, or lead changes, the parent item's embedding is updated
+
+## Performance Considerations
+
+- **Embedding Generation**: Happens asynchronously after entity creation/update
+- **Search Performance**: Vector similarity search is optimized with pgvector indexes
+- **Cache Strategy**: Consider caching common search results
+- **Batch Processing**: Embedding updates are processed in batches for efficiency
 
 ## Future Enhancements
 
