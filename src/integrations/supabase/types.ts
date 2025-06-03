@@ -13,13 +13,12 @@ export type Database = {
         Row: {
           completed_at: string | null
           company_id: string | null
-          contact_id: string | null
+          contact_id: string
           created_at: string
           deal_id: string | null
           description: string | null
           due_date: string | null
           id: string
-          lead_id: string | null
           priority: string | null
           status: string | null
           subject: string
@@ -30,13 +29,12 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           company_id?: string | null
-          contact_id?: string | null
+          contact_id: string
           created_at?: string
           deal_id?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
-          lead_id?: string | null
           priority?: string | null
           status?: string | null
           subject: string
@@ -47,13 +45,12 @@ export type Database = {
         Update: {
           completed_at?: string | null
           company_id?: string | null
-          contact_id?: string | null
+          contact_id?: string
           created_at?: string
           deal_id?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
-          lead_id?: string | null
           priority?: string | null
           status?: string | null
           subject?: string
@@ -82,14 +79,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activities_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
+          }
         ]
       }
       comments: {

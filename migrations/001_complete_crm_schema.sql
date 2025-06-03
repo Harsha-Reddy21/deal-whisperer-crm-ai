@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS leads (
 CREATE TABLE IF NOT EXISTS deals (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  contact_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
+  contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT,
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS deals (
 CREATE TABLE IF NOT EXISTS activities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  contact_id UUID REFERENCES contacts(id) ON DELETE CASCADE,
+  contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
   deal_id UUID REFERENCES deals(id) ON DELETE CASCADE,
   company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
   type TEXT NOT NULL CHECK (type IN ('call', 'email', 'meeting', 'task', 'note', 'demo', 'proposal', 'follow_up')),

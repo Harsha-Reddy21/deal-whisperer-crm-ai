@@ -74,16 +74,7 @@ const CustomerPersonaBuilder = () => {
     queryFn: async () => {
       if (!selectedLeadId) return null;
       
-      // Check for activities related to the lead directly by lead_id
-      const { data: leadActivities, error: leadActivitiesError } = await supabase
-        .from('activities')
-        .select('*')
-        .eq('lead_id', selectedLeadId)
-        .limit(10);
-
-      if (leadActivitiesError) console.error('Error fetching lead activities:', leadActivitiesError);
-
-      // Also check for activities related to the lead through converted contact
+      // Now we only check for activities related to the lead through converted contact
       const { data: contactActivities, error: contactActivitiesError } = await supabase
         .from('activities')
         .select('*')
@@ -92,11 +83,8 @@ const CustomerPersonaBuilder = () => {
 
       if (contactActivitiesError) console.error('Error fetching contact activities:', contactActivitiesError);
 
-      // Combine both activity sources
-      const allActivities = [
-        ...(leadActivities || []),
-        ...(contactActivities || [])
-      ];
+      // No need to combine since we only have one source now
+      const allActivities = contactActivities || [];
 
       // Check for deals related to the lead
       const { data: deals, error: dealsError } = await supabase
@@ -120,7 +108,7 @@ const CustomerPersonaBuilder = () => {
         hasData
       };
     },
-    enabled: !!selectedLeadId && !!selectedLead,
+    enabled: !!selectedLeadId && !!selectedLead && !!selectedLead.converted_contact_id,
   });
 
   const generatePersona = async () => {

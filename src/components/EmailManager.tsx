@@ -45,22 +45,11 @@ import {
 interface Email {
   id: string;
   subject: string;
-  from_email: string;
-  from_name?: string;
-  to_email: string;
-  body_text?: string;
-  snippet?: string;
-  type: 'inbox' | 'sent';
-  status: 'read' | 'unread' | 'starred';
-  priority?: 'low' | 'normal' | 'high' | 'urgent';
-  sent_at?: string;
-  received_at?: string;
-  read_at?: string;
-  has_attachments: boolean;
-  attachment_count: number;
-  created_at: string;
+  recipient: string;
+  sent_at: string;
+  status: string;
   contact_id?: string;
-  lead_id?: string;
+  contact_name?: string;
 }
 
 const EmailManager = () => {
@@ -78,11 +67,12 @@ const EmailManager = () => {
   
   // Compose form state
   const [formData, setFormData] = useState({
-    to: '',
-    cc: '',
-    bcc: '',
     subject: '',
-    body: ''
+    recipient: '',
+    message: '',
+    contact_id: null,
+    send_date: '',
+    importance: 'normal'
   });
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -247,26 +237,11 @@ const EmailManager = () => {
         return {
           id: email.id,
           subject: email.subject || 'No Subject',
-          from_email: activeView === 'sent' ? (user?.email || 'Unknown') : (relatedContact?.email || 'system@crm.com'),
-          from_name: activeView === 'sent' 
-            ? (userProfile?.first_name && userProfile?.last_name 
-                ? `${userProfile.first_name} ${userProfile.last_name}` 
-                : userProfile?.first_name || 'User')
-            : (relatedContact?.name || 'CRM System'),
-          to_email: activeView === 'sent' ? (relatedContact?.email || 'contact@example.com') : (user?.email || ''),
-          body_text: emailWithNewFields.body || '',
-          snippet: emailWithNewFields.body ? emailWithNewFields.body.substring(0, 100) + '...' : '',
-          type: activeView,
-          status: emailWithNewFields.read_at ? 'read' : 'unread',
-          priority: 'normal' as const,
+          recipient: activeView === 'sent' ? (relatedContact?.email || 'contact@example.com') : (user?.email || ''),
           sent_at: email.sent_at,
-          received_at: email.sent_at,
-          read_at: emailWithNewFields.read_at,
-          has_attachments: false,
-          attachment_count: 0,
-          created_at: email.created_at,
+          status: emailWithNewFields.read_at ? 'read' : 'unread',
           contact_id: email.contact_id,
-          lead_id: null
+          contact_name: relatedContact?.name || 'CRM System'
         } as Email;
       });
     },
@@ -285,9 +260,8 @@ const EmailManager = () => {
     const searchLower = searchQuery.toLowerCase();
     return (
       email.subject.toLowerCase().includes(searchLower) ||
-      email.from_email.toLowerCase().includes(searchLower) ||
-      (email.from_name && email.from_name.toLowerCase().includes(searchLower)) ||
-      (email.body_text && email.body_text.toLowerCase().includes(searchLower))
+      email.recipient.toLowerCase().includes(searchLower) ||
+      (email.contact_name && email.contact_name.toLowerCase().includes(searchLower))
     );
   });
 
@@ -319,19 +293,15 @@ const EmailManager = () => {
   const sendEmailMutation = useMutation({
     mutationFn: async (emailData: typeof formData) => {
       // Track the email in our database with type assertion for new fields
-      const emailRecord = {
-        user_id: user?.id,
-        contact_id: selectedContactId || null,
-        email_id: `email_${Date.now()}`,
-        subject: emailData.subject,
-        body: emailData.body,
-        sent_at: new Date().toISOString(),
-        read_at: new Date().toISOString() // Mark sent emails as read
-      } as any;
-
       const { data, error } = await supabase
         .from('email_tracking')
-        .insert(emailRecord)
+        .insert({
+          user_id: user?.id,
+          contact_id: emailData.contact_id || null,
+          email_id: `email_${Date.now()}`,
+          subject: emailData.subject,
+          sent_at: new Date().toISOString()
+        })
         .select()
         .single();
 
@@ -342,10 +312,10 @@ const EmailManager = () => {
         .from('activities')
         .insert({
           user_id: user?.id,
-          contact_id: selectedContactId || null,
+          contact_id: emailData.contact_id || null,
           type: 'email',
           subject: `Email sent: ${emailData.subject}`,
-          description: `Sent email to ${emailData.to}`,
+          description: `Sent email to ${emailData.recipient}`,
           status: 'completed'
         });
 
@@ -410,12 +380,10 @@ const EmailManager = () => {
         emails: emailsToSummarize.map(email => ({
           id: email.id,
           subject: email.subject,
-          from_email: email.from_email,
-          from_name: email.from_name,
-          body_text: email.body_text || email.snippet || '',
-          received_at: email.received_at || email.sent_at || email.created_at,
+          recipient: email.recipient,
+          sent_at: email.sent_at,
           status: email.status,
-          priority: email.priority
+          contact_name: email.contact_name
         })),
         summaryType: requestType,
         userPreferences: {
@@ -447,11 +415,12 @@ const EmailManager = () => {
 
   const resetComposeForm = () => {
     setFormData({
-      to: '',
-      cc: '',
-      bcc: '',
       subject: '',
-      body: ''
+      recipient: '',
+      message: '',
+      contact_id: null,
+      send_date: '',
+      importance: 'normal'
     });
     setSelectedContactId('');
     setAttachments([]);
@@ -488,7 +457,7 @@ const EmailManager = () => {
       };
 
       const response = await generateEmailContent(request);
-      setFormData(prev => ({ ...prev, body: response.content }));
+      setFormData(prev => ({ ...prev, message: response.content }));
       
       toast({
         title: "Message generated",
@@ -510,7 +479,7 @@ const EmailManager = () => {
     setSelectedContactId(contactId);
     const contact = contacts.find(c => c.id === contactId) || leads.find(l => l.id === contactId);
     if (contact?.email) {
-      setFormData(prev => ({ ...prev, to: contact.email }));
+      setFormData(prev => ({ ...prev, recipient: contact.email }));
     }
   };
 
@@ -525,7 +494,7 @@ const EmailManager = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.to || !formData.subject || !formData.body) {
+    if (!formData.recipient || !formData.subject || !formData.message) {
       toast({
         title: "Missing required fields",
         description: "Please fill in recipient, subject, and message body.",
@@ -705,35 +674,13 @@ const EmailManager = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2 flex-1 min-w-0">
                           {email.status === 'starred' && <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
-                          {email.priority && email.priority !== 'normal' && (
-                            <AlertCircle className={`w-4 h-4 flex-shrink-0 ${getPriorityColor(email.priority)}`} />
-                          )}
                           <span className={`truncate ${email.status === 'unread' ? 'font-semibold' : ''}`}>
-                            {email.type === 'inbox' 
-                              ? (email.from_name || email.from_email)
-                              : `To: ${email.to_email}`
-                            }
+                            {email.recipient}
                           </span>
-                          {email.has_attachments && (
-                            <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          )}
                         </div>
                         <div className="flex items-center space-x-2">
-                          {selectedEmail?.id === email.id && openAIConfigured && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                generateEmailSummary('single', email);
-                              }}
-                              disabled={isGeneratingSummary}
-                            >
-                              <Brain className="w-3 h-3" />
-                            </Button>
-                          )}
                           <span className="text-xs text-slate-500 flex-shrink-0">
-                            {formatDate(email.received_at || email.sent_at || email.created_at)}
+                            {formatDate(email.sent_at)}
                           </span>
                         </div>
                       </div>
@@ -741,11 +688,6 @@ const EmailManager = () => {
                         <p className={`text-sm truncate ${email.status === 'unread' ? 'font-semibold' : 'text-slate-600'}`}>
                           {email.subject}
                         </p>
-                        {(email.snippet || email.body_text) && (
-                          <p className="text-xs text-slate-500 truncate mt-1">
-                            {email.snippet || email.body_text?.substring(0, 100)}
-                          </p>
-                        )}
                       </div>
                     </div>
                   ))
@@ -764,18 +706,18 @@ const EmailManager = () => {
               <div className="flex-1">
                 <CardTitle className="text-lg flex items-center">
                   {selectedEmail.subject}
-                  {selectedEmail.priority && selectedEmail.priority !== 'normal' && (
-                    <Badge className={`ml-2 ${getPriorityColor(selectedEmail.priority)}`}>
-                      {selectedEmail.priority}
+                  {selectedEmail.importance && selectedEmail.importance !== 'normal' && (
+                    <Badge className={`ml-2 ${getPriorityColor(selectedEmail.importance)}`}>
+                      {selectedEmail.importance}
                     </Badge>
                   )}
                 </CardTitle>
                 <div className="flex items-center justify-between text-sm text-slate-600 mt-2">
                   <div>
-                    <span className="font-medium">From:</span> {selectedEmail.from_name || selectedEmail.from_email}
+                    <span className="font-medium">From:</span> {selectedEmail.contact_name || selectedEmail.recipient}
                   </div>
                   <div>
-                    {formatDate(selectedEmail.received_at || selectedEmail.sent_at || selectedEmail.created_at)}
+                    {formatDate(selectedEmail.sent_at)}
                   </div>
                 </div>
               </div>
@@ -812,10 +754,8 @@ const EmailManager = () => {
           </CardHeader>
           <CardContent>
             <div className="prose max-w-none">
-              {selectedEmail.body_text ? (
-                <div className="whitespace-pre-wrap">{selectedEmail.body_text}</div>
-              ) : selectedEmail.snippet ? (
-                <div className="text-slate-600 italic">{selectedEmail.snippet}</div>
+              {selectedEmail.message ? (
+                <div className="whitespace-pre-wrap">{selectedEmail.message}</div>
               ) : (
                 <div className="text-slate-500 italic">No content available</div>
               )}
@@ -901,7 +841,7 @@ const EmailManager = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <p className="font-medium">{email.subject}</p>
-                            <p className="text-sm text-slate-600">From: {email.from}</p>
+                            <p className="text-sm text-slate-600">From: {email.recipient}</p>
                           </div>
                           <Badge className={getPriorityColor(email.urgency)}>
                             {email.urgency}
@@ -979,29 +919,10 @@ const EmailManager = () => {
               <label className="text-sm font-medium">To *</label>
               <Input
                 placeholder="recipient@example.com"
-                value={formData.to}
-                onChange={(e) => setFormData(prev => ({ ...prev, to: e.target.value }))}
+                value={formData.recipient}
+                onChange={(e) => setFormData(prev => ({ ...prev, recipient: e.target.value }))}
                 required
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">CC</label>
-                <Input
-                  placeholder="cc@example.com"
-                  value={formData.cc}
-                  onChange={(e) => setFormData(prev => ({ ...prev, cc: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">BCC</label>
-                <Input
-                  placeholder="bcc@example.com"
-                  value={formData.bcc}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bcc: e.target.value }))}
-                />
-              </div>
             </div>
 
             {/* Subject */}
@@ -1042,8 +963,8 @@ const EmailManager = () => {
               <Textarea
                 placeholder="Type your message here or click 'Generate Message' to create AI content..."
                 className="min-h-[200px]"
-                value={formData.body}
-                onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+                value={formData.message}
+                onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                 required
               />
               {!openAIConfigured && (

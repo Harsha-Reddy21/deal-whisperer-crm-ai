@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, Zap, Brain, Sparkles, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, DollarSign, Target, Calendar, User, MessageSquare, Plus, Search, Filter, ArrowUpDown, SortAsc, SortDesc, Edit, Trash2, Zap, Brain, Sparkles, TrendingDown, AlertTriangle, CheckCircle, Phone, Mail, Users, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import DealForm from './DealForm';
 import SemanticSearchDialog from './SemanticSearchDialog';
 import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilarityResponse } from '@/lib/ai';
+import ActivityForm from './ActivityForm';
 
 interface Deal {
   id: string;
@@ -30,12 +31,28 @@ interface Deal {
   outcome: string;
 }
 
+interface Activity {
+  id: string;
+  type: string;
+  subject: string;
+  description: string;
+  status: string;
+  priority: string;
+  due_date: string;
+  contact_name: string;
+  created_at: string;
+}
+
 interface DealsPipelineProps {
   onSelectDeal?: (deal: Deal) => void;
 }
 
 type SortField = 'title' | 'company' | 'value' | 'stage' | 'probability' | 'created_at';
 type SortDirection = 'asc' | 'desc';
+
+interface DealActivitiesCount {
+  [dealId: string]: number;
+}
 
 const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const { user } = useAuth();
@@ -68,6 +85,17 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const [dealSimilarityAnalysis, setDealSimilarityAnalysis] = useState<DealSimilarityResponse | null>(null);
   const [isAnalyzingSimilarity, setIsAnalyzingSimilarity] = useState(false);
 
+  // Activity state
+  const [selectedDealActivities, setSelectedDealActivities] = useState<Activity[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [dealActivitiesCount, setDealActivitiesCount] = useState<DealActivitiesCount>({});
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [selectedDealForActivity, setSelectedDealForActivity] = useState<Deal | null>(null);
+
+  // Add this state for managing activities view
+  const [showDealActivities, setShowDealActivities] = useState(false);
+  const [selectedDealForActivitiesView, setSelectedDealForActivitiesView] = useState<Deal | null>(null);
+
   const { data: deals = [], isLoading, refetch } = useQuery({
     queryKey: ['deals', user?.id],
     queryFn: async () => {
@@ -88,7 +116,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         return [];
       }
 
-      return data.map(deal => ({
+      const dealsData = data.map(deal => ({
         id: deal.id,
         title: deal.title,
         company: deal.company || '',
@@ -101,9 +129,47 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
         created_at: deal.created_at,
         outcome: deal.outcome || 'in_progress'
       }));
+
+      // Fetch activity counts for all deals
+      await fetchActivitiesCounts(dealsData.map(d => d.id));
+      
+      return dealsData;
     },
     enabled: !!user,
   });
+
+  // Function to fetch activity counts for deals
+  const fetchActivitiesCounts = async (dealIds: string[]) => {
+    if (!user || dealIds.length === 0) return;
+    
+    try {
+      // Use a manual count since some DBs might not support group by in this context
+      const { data, error } = await supabase
+        .from('activities')
+        .select('deal_id')
+        .eq('user_id', user.id)
+        .in('deal_id', dealIds);
+
+      if (error) throw error;
+
+      // Count occurrences of each deal_id
+      const countsMap: DealActivitiesCount = {};
+      data.forEach(item => {
+        if (item.deal_id) {
+          countsMap[item.deal_id] = (countsMap[item.deal_id] || 0) + 1;
+        }
+      });
+      
+      // Set counts for deals with no activities to 0
+      dealIds.forEach(id => {
+        if (!countsMap[id]) countsMap[id] = 0;
+      });
+      
+      setDealActivitiesCount(countsMap);
+    } catch (error: any) {
+      console.error('Error fetching activity counts:', error);
+    }
+  };
 
   // Advanced search and filter algorithm
   const filteredAndSortedDeals = useMemo(() => {
@@ -235,6 +301,9 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       probability: deal.probability.toString(),
       outcome: deal.outcome
     });
+    
+    // Fetch activities for this deal
+    fetchDealActivities(deal.id);
   };
 
   const handleSaveEdit = async () => {
@@ -341,29 +410,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       console.log('🧠 DealsPipeline: Fallback check - verifying AI Coach opened');
       // This timeout allows us to check if the event worked
     }, 100);
-  };
-
-  // Calculate AI readiness score for each deal
-  const calculateAIReadiness = (deal: Deal) => {
-    let score = 0;
-    if (deal.value > 0) score += 20;
-    if (deal.probability > 0) score += 20;
-    if (deal.contact_name) score += 20;
-    if (deal.stage !== 'Discovery') score += 20;
-    if (deal.next_step && deal.next_step !== 'Follow up required') score += 20;
-    return score;
-  };
-
-  const getAIReadinessColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getAIReadinessLabel = (score: number) => {
-    if (score >= 80) return 'High';
-    if (score >= 60) return 'Medium';
-    return 'Low';
   };
 
   const getStageColor = (stage: string) => {
@@ -488,6 +534,75 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
   const inProgressDeals = deals.filter(deal => deal.outcome === 'in_progress').length;
   const wonValue = deals.filter(deal => deal.outcome === 'won').reduce((sum, deal) => sum + deal.value, 0);
 
+  // Fetch activities for a deal
+  const fetchDealActivities = async (dealId: string) => {
+    if (!user) return;
+    
+    setIsLoadingActivities(true);
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .select(`
+          *,
+          contacts(name)
+        `)
+        .eq('deal_id', dealId)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const activities = data.map(activity => ({
+        id: activity.id,
+        type: activity.type,
+        subject: activity.subject || '',
+        description: activity.description || '',
+        status: activity.status,
+        priority: activity.priority,
+        due_date: activity.due_date || '',
+        contact_name: activity.contacts?.name || '',
+        created_at: activity.created_at
+      }));
+
+      setSelectedDealActivities(activities);
+    } catch (error: any) {
+      console.error('Error fetching deal activities:', error);
+      toast({
+        title: "Error loading activities",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
+
+  // Add this function to handle opening the activity form
+  const handleAddActivity = (deal: Deal) => {
+    setSelectedDealForActivity(deal);
+    setShowActivityForm(true);
+  };
+
+  // Update the activity creation handler
+  const handleActivityCreated = () => {
+    // Refresh activities for the currently edited deal
+    if (editingDeal) {
+      fetchDealActivities(editingDeal.id);
+    }
+    
+    // Refresh activity counts for all deals
+    fetchActivitiesCounts(deals.map(d => d.id));
+  };
+
+  // Add this function to handle viewing activities for a deal
+  const handleViewActivities = (deal: Deal) => {
+    setSelectedDealForActivitiesView(deal);
+    fetchDealActivities(deal.id);
+    setShowDealActivities(true);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -558,36 +673,10 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                 Sales Pipeline
               </CardTitle>
               <CardDescription>
-                Track and manage your sales opportunities with AI-powered insights
+                Track and manage your sales opportunities
               </CardDescription>
             </div>
             <div className="flex items-center space-x-3">
-              <Button 
-                onClick={() => setShowSemanticSearch(true)}
-                variant="outline"
-                className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
-              >
-                <Zap className="w-4 h-4 mr-2 text-purple-600" />
-                AI Search
-              </Button>
-              <Button 
-                onClick={handleBatchProcessEmbeddings}
-                disabled={isProcessingEmbeddings}
-                variant="outline"
-                className="bg-gradient-to-r from-blue-50 to-green-50 hover:from-blue-100 hover:to-green-100 border-blue-200"
-              >
-                {isProcessingEmbeddings ? (
-                  <>
-                    <Brain className="w-4 h-4 mr-2 animate-pulse text-blue-600" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Brain className="w-4 h-4 mr-2 text-blue-600" />
-                    Generate AI
-                  </>
-                )}
-              </Button>
               <Button onClick={() => setShowDealForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Deal
@@ -708,7 +797,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             ) : (
               <div className="grid gap-4">
                 {filteredAndSortedDeals.map((deal) => {
-                  const aiReadiness = calculateAIReadiness(deal);
                   return (
                     <Card key={deal.id} className="border border-slate-200 hover:shadow-md transition-all duration-200">
                       <CardContent className="p-4">
@@ -729,14 +817,18 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-4 text-sm text-slate-600">
-                              <div className="flex items-center">
-                                <User className="w-4 h-4 mr-1" />
-                                {deal.company}
+                            <div className="text-sm text-slate-600">
+                              <div className="flex items-center space-x-1">
+                                <User className="w-3 h-3" />
+                                <span>{deal.contact_name || 'No contact'}</span>
                               </div>
-                              <div className="flex items-center">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                Last activity: {deal.last_activity}
+                              <div className="flex items-center space-x-1">
+                                <Users className="w-3 h-3" />
+                                <span>{deal.company || 'No company'}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>{new Date(deal.created_at).toLocaleDateString()}</span>
                               </div>
                             </div>
 
@@ -750,33 +842,32 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                   <Progress value={deal.probability} className="w-20" />
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-slate-600">AI Readiness:</span>
-                                  <span className={`text-sm font-medium ${getAIReadinessColor(aiReadiness)}`}>
-                                    {getAIReadinessLabel(aiReadiness)}
-                                  </span>
-                                  <Progress value={aiReadiness} className="w-16" />
+                                  <span className="text-sm text-slate-600">Activities:</span>
+                                  <Badge variant="outline" className="text-blue-600">
+                                    {dealActivitiesCount[deal.id] || 0}
+                                  </Badge>
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Button 
                                   size="sm" 
-                                  variant={aiReadiness >= 60 ? "default" : "outline"}
-                                  onClick={() => handleAICoach(deal)}
-                                  className={aiReadiness >= 60 ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" : "hover:bg-purple-50"}
+                                  variant="outline" 
+                                  onClick={() => handleViewActivities(deal)}
+                                  className="hover:bg-green-50 text-green-600 border-green-200"
                                 >
                                   <MessageSquare className="w-4 h-4 mr-1" />
-                                  {aiReadiness >= 60 ? "Get AI Insights" : "AI Coach"}
+                                  View Activities
                                 </Button>
                                 <Button 
                                   size="sm" 
                                   variant="outline" 
-                                  onClick={() => handleGetDealRecommendations(deal)}
-                                  className="hover:bg-orange-50 text-orange-600 border-orange-200"
+                                  onClick={() => handleAddActivity(deal)}
+                                  className="hover:bg-blue-50 text-blue-600 border-blue-200"
                                 >
-                                  <Sparkles className="w-4 h-4 mr-1" />
-                                  Similar
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add Activity
                                 </Button>
-                                <Button 
+                                <Button
                                   size="sm" 
                                   variant="outline" 
                                   onClick={() => handleEdit(deal)}
@@ -784,7 +875,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button 
+                                <Button
                                   size="sm" 
                                   variant="outline" 
                                   onClick={() => setDeletingDeal(deal)}
@@ -798,43 +889,6 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
                             <div className="bg-slate-50 p-2 rounded text-sm">
                               <strong>Next Step:</strong> {deal.next_step}
                             </div>
-
-                            {/* AI Insights Preview */}
-                            {aiReadiness >= 80 && (
-                              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded border border-green-200">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                  <span className="text-sm font-medium text-green-800">AI Insight Available</span>
-                                </div>
-                                <p className="text-sm text-green-700">
-                                  This deal has high-quality data. AI can provide detailed recommendations for acceleration.
-                                </p>
-                              </div>
-                            )}
-                            
-                            {aiReadiness >= 60 && aiReadiness < 80 && (
-                              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-3 rounded border border-yellow-200">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                  <span className="text-sm font-medium text-yellow-800">AI Analysis Ready</span>
-                                </div>
-                                <p className="text-sm text-yellow-700">
-                                  Good data quality. AI can provide targeted recommendations to improve close probability.
-                                </p>
-                              </div>
-                            )}
-                            
-                            {aiReadiness < 60 && (
-                              <div className="bg-gradient-to-r from-red-50 to-pink-50 p-3 rounded border border-red-200">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                  <span className="text-sm font-medium text-red-800">Limited AI Data</span>
-                                </div>
-                                <p className="text-sm text-red-700">
-                                  Add more deal details (contact, activities, notes) to unlock AI recommendations.
-                                </p>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -1215,8 +1269,201 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Activities for the selected deal */}
+      {editingDeal && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-lg">Activities for this Deal</CardTitle>
+            <CardDescription>All activities associated with {editingDeal.title}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingActivities ? (
+              <div className="py-4 text-center">Loading activities...</div>
+            ) : selectedDealActivities.length === 0 ? (
+              <div className="py-4 text-center text-muted-foreground">No activities found for this deal</div>
+            ) : (
+              <div className="space-y-2">
+                {selectedDealActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start p-3 border rounded-lg bg-white">
+                    <div className={`mr-3 p-2 rounded-full ${getActivityTypeColor(activity.type)}`}>
+                      {getActivityTypeIcon(activity.type)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{activity.subject}</h4>
+                        <Badge variant={activity.status === 'completed' ? 'default' : 'outline'}>
+                          {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                        </Badge>
+                      </div>
+                      {activity.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                      )}
+                      <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                        <User className="w-3 h-3 mr-1" />
+                        <span className="mr-2">{activity.contact_name}</span>
+                        {activity.due_date && (
+                          <>
+                            <Calendar className="w-3 h-3 mr-1 ml-2" />
+                            <span>{new Date(activity.due_date).toLocaleDateString()}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ActivityForm component at the end */}
+      <ActivityForm
+        open={showActivityForm}
+        onOpenChange={setShowActivityForm}
+        onActivityCreated={handleActivityCreated}
+        initialDealId={selectedDealForActivity?.id}
+      />
+
+      {/* Activities View Dialog */}
+      <Dialog open={showDealActivities} onOpenChange={setShowDealActivities}>
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2 text-blue-600" />
+              {selectedDealForActivitiesView && `Activities for ${selectedDealForActivitiesView.title}`}
+            </DialogTitle>
+            <DialogDescription>
+              View and manage activities related to this deal
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Actions */}
+            <div className="flex justify-between items-center">
+              <div>
+                {selectedDealForActivitiesView && (
+                  <p className="text-sm text-slate-600">
+                    {dealActivitiesCount[selectedDealForActivitiesView.id] || 0} activities found for this deal
+                  </p>
+                )}
+              </div>
+              <Button 
+                onClick={() => {
+                  if (selectedDealForActivitiesView) {
+                    handleAddActivity(selectedDealForActivitiesView);
+                    setShowDealActivities(false);
+                  }
+                }} 
+                className="bg-gradient-to-r from-blue-600 to-purple-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add New Activity
+              </Button>
+            </div>
+            
+            {/* Loading State */}
+            {isLoadingActivities && (
+              <div className="text-center py-8">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-slate-600">Loading activities...</p>
+              </div>
+            )}
+            
+            {/* Activities List */}
+            {!isLoadingActivities && selectedDealActivities.length === 0 && (
+              <div className="text-center py-8 bg-slate-50 rounded-lg">
+                <p className="text-slate-600">No activities found for this deal</p>
+                <p className="text-sm text-slate-500 mt-2">Add activities to track your interactions</p>
+              </div>
+            )}
+            
+            {!isLoadingActivities && selectedDealActivities.length > 0 && (
+              <div className="space-y-3">
+                {selectedDealActivities.map((activity) => (
+                  <Card key={activity.id} className="border border-slate-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Badge className={`
+                              ${activity.type === 'call' ? 'bg-blue-100 text-blue-800' : 
+                                activity.type === 'email' ? 'bg-purple-100 text-purple-800' :
+                                activity.type === 'meeting' ? 'bg-green-100 text-green-800' :
+                                activity.type === 'task' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-slate-100 text-slate-800'}
+                            `}>
+                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                            </Badge>
+                            <h4 className="font-medium text-slate-900">{activity.subject}</h4>
+                          </div>
+                          <p className="text-sm text-slate-600 mb-2">
+                            {activity.description || 'No description provided'}
+                          </p>
+                          <div className="flex items-center space-x-3 text-xs text-slate-500">
+                            <div className="flex items-center space-x-1">
+                              <User className="w-3 h-3" />
+                              <span>{activity.contact_name || 'No contact'}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(activity.created_at).toLocaleString()}</span>
+                            </div>
+                            <Badge className={`
+                              ${activity.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-slate-100 text-slate-800'}
+                            `}>
+                              {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default DealsPipeline;
+
+const getActivityTypeColor = (type: string) => {
+  switch (type) {
+    case 'call':
+      return 'bg-blue-100 text-blue-600';
+    case 'email':
+      return 'bg-purple-100 text-purple-600';
+    case 'meeting':
+      return 'bg-green-100 text-green-600';
+    case 'task':
+      return 'bg-amber-100 text-amber-600';
+    case 'note':
+      return 'bg-gray-100 text-gray-600';
+    default:
+      return 'bg-gray-100 text-gray-600';
+  }
+};
+
+const getActivityTypeIcon = (type: string) => {
+  switch (type) {
+    case 'call':
+      return <Phone className="w-4 h-4" />;
+    case 'email':
+      return <Mail className="w-4 h-4" />;
+    case 'meeting':
+      return <Users className="w-4 h-4" />;
+    case 'task':
+      return <CheckCircle className="w-4 h-4" />;
+    case 'note':
+      return <FileText className="w-4 h-4" />;
+    default:
+      return <MessageSquare className="w-4 h-4" />;
+  }
+};

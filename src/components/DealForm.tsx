@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface DealFormProps {
   open: boolean;
@@ -24,18 +25,83 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
     company: '',
     value: '',
     stage: 'Discovery',
+    contact_id: '',
     contact_name: '',
     next_step: '',
     probability: '50',
     outcome: 'in_progress'
   });
 
+  // Fetch contacts for dropdown
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts-for-deal', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, name, company')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && open,
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
+    if (!formData.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Title is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.contact_id) {
+      toast({
+        title: "Error",
+        description: "Contact is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // First, check if company exists and create it if needed
+      if (formData.company.trim()) {
+        // Check if company already exists
+        const { data: existingCompanies, error: companyCheckError } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('name', formData.company.trim())
+          .eq('user_id', user.id)
+          .limit(1);
+          
+        if (companyCheckError) throw companyCheckError;
+        
+        // If company doesn't exist, create it
+        if (!existingCompanies || existingCompanies.length === 0) {
+          const { error: companyCreateError } = await supabase
+            .from('companies')
+            .insert({
+              user_id: user.id,
+              name: formData.company.trim(),
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+            
+          if (companyCreateError) throw companyCreateError;
+          
+          console.log(`Created new company: ${formData.company.trim()}`);
+        }
+      }
+
+      // Now create the deal
       const { error } = await supabase
         .from('deals')
         .insert({
@@ -44,6 +110,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
           company: formData.company,
           value: parseFloat(formData.value) || 0,
           stage: formData.stage,
+          contact_id: formData.contact_id,
           contact_name: formData.contact_name,
           next_step: formData.next_step,
           probability: parseInt(formData.probability) || 50,
@@ -63,6 +130,7 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
         company: '',
         value: '',
         stage: 'Discovery',
+        contact_id: '',
         contact_name: '',
         next_step: '',
         probability: '50',
@@ -86,6 +154,16 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleContactChange = (contactId: string) => {
+    const selectedContact = contacts.find(contact => contact.id === contactId);
+    setFormData(prev => ({ 
+      ...prev, 
+      contact_id: contactId,
+      contact_name: selectedContact ? selectedContact.name : '',
+      company: selectedContact && selectedContact.company ? selectedContact.company : prev.company
+    }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -105,6 +183,26 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
               placeholder="Enterprise Software Deal"
               required
             />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="contact">Contact *</Label>
+            <Select 
+              value={formData.contact_id} 
+              onValueChange={handleContactChange}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a contact" />
+              </SelectTrigger>
+              <SelectContent>
+                {contacts.map((contact) => (
+                  <SelectItem key={contact.id} value={contact.id}>
+                    {contact.name} {contact.company && `(${contact.company})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
@@ -171,16 +269,6 @@ const DealForm = ({ open, onOpenChange, onDealCreated }: DealFormProps) => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contact_name">Contact Name</Label>
-            <Input
-              id="contact_name"
-              value={formData.contact_name}
-              onChange={(e) => handleChange('contact_name', e.target.value)}
-              placeholder="John Doe"
-            />
           </div>
 
           <div className="space-y-2">

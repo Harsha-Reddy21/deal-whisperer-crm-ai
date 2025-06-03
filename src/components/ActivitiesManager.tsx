@@ -25,10 +25,9 @@ interface Activity {
   due_date: string;
   created_at: string;
   contact_name?: string;
-  lead_name?: string;
 }
 
-type SortField = 'subject' | 'type' | 'priority' | 'status' | 'due_date' | 'created_at';
+type SortField = 'subject' | 'type' | 'priority' | 'status' | 'due_date' | 'created_at' | 'contact';
 type SortDirection = 'asc' | 'desc';
 
 const ActivitiesManager = () => {
@@ -63,8 +62,7 @@ const ActivitiesManager = () => {
         .from('activities')
         .select(`
           *,
-          contacts(name),
-          leads(name)
+          contacts(name)
         `)
         .eq('user_id', user.id)
         .order('due_date', { ascending: true });
@@ -87,8 +85,7 @@ const ActivitiesManager = () => {
         status: activity.status || 'pending',
         due_date: activity.due_date || '',
         created_at: activity.created_at,
-        contact_name: activity.contacts?.name,
-        lead_name: activity.leads?.name
+        contact_name: activity.contacts?.name
       }));
     },
     enabled: !!user,
@@ -113,9 +110,8 @@ const ActivitiesManager = () => {
         const priorityMatch = activity.priority.toLowerCase().includes(searchLower);
         const statusMatch = activity.status.toLowerCase().includes(searchLower);
         const contactMatch = activity.contact_name?.toLowerCase().includes(searchLower);
-        const leadMatch = activity.lead_name?.toLowerCase().includes(searchLower);
         
-        return subjectMatch || descriptionMatch || typeMatch || priorityMatch || statusMatch || contactMatch || leadMatch;
+        return subjectMatch || descriptionMatch || typeMatch || priorityMatch || statusMatch || contactMatch;
       });
 
       // Sort by relevance when searching
@@ -124,15 +120,13 @@ const ActivitiesManager = () => {
         const aDescription = a.description.toLowerCase().includes(searchLower) ? 2 : 0;
         const aType = a.type.toLowerCase().includes(searchLower) ? 1 : 0;
         const aContact = a.contact_name?.toLowerCase().includes(searchLower) ? 2 : 0;
-        const aLead = a.lead_name?.toLowerCase().includes(searchLower) ? 2 : 0;
-        const aRelevance = aSubject + aDescription + aType + aContact + aLead;
+        const aRelevance = aSubject + aDescription + aType + aContact;
 
         const bSubject = b.subject.toLowerCase().includes(searchLower) ? 3 : 0;
         const bDescription = b.description.toLowerCase().includes(searchLower) ? 2 : 0;
         const bType = b.type.toLowerCase().includes(searchLower) ? 1 : 0;
         const bContact = b.contact_name?.toLowerCase().includes(searchLower) ? 2 : 0;
-        const bLead = b.lead_name?.toLowerCase().includes(searchLower) ? 2 : 0;
-        const bRelevance = bSubject + bDescription + bType + bContact + bLead;
+        const bRelevance = bSubject + bDescription + bType + bContact;
 
         return bRelevance - aRelevance;
       });
@@ -159,22 +153,26 @@ const ActivitiesManager = () => {
             bValue = b.subject.toLowerCase();
             break;
           case 'type':
-            aValue = a.type;
-            bValue = b.type;
+            aValue = a.type.toLowerCase();
+            bValue = b.type.toLowerCase();
             break;
           case 'priority':
-            const priorityOrder = { 'low': 1, 'medium': 2, 'high': 3 };
+            const priorityOrder = { 'low': 1, 'medium': 2, 'high': 3, 'urgent': 4 };
             aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
             bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
             break;
           case 'status':
-            const statusOrder = { 'pending': 1, 'completed': 2, 'cancelled': 3 };
+            const statusOrder = { 'completed': 1, 'pending': 2, 'cancelled': 3 };
             aValue = statusOrder[a.status as keyof typeof statusOrder] || 0;
             bValue = statusOrder[b.status as keyof typeof statusOrder] || 0;
             break;
+          case 'contact':
+            aValue = a.contact_name?.toLowerCase() || '';
+            bValue = b.contact_name?.toLowerCase() || '';
+            break;
           case 'due_date':
-            aValue = a.due_date ? new Date(a.due_date) : new Date('9999-12-31');
-            bValue = b.due_date ? new Date(b.due_date) : new Date('9999-12-31');
+            aValue = a.due_date ? new Date(a.due_date) : new Date(0);
+            bValue = b.due_date ? new Date(b.due_date) : new Date(0);
             break;
           case 'created_at':
             aValue = new Date(a.created_at);
@@ -470,7 +468,7 @@ const ActivitiesManager = () => {
                   <div className="flex items-center space-x-2 flex-1">
                     <Search className="w-4 h-4 text-slate-400" />
                     <Input 
-                      placeholder="Search activities by subject, description, contact, lead..." 
+                      placeholder="Search activities by subject, description, contact..." 
                       className="flex-1" 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -523,14 +521,15 @@ const ActivitiesManager = () => {
                     { field: 'priority', label: 'Priority' },
                     { field: 'status', label: 'Status' },
                     { field: 'due_date', label: 'Due Date' },
-                    { field: 'created_at', label: 'Created' }
+                    { field: 'created_at', label: 'Created' },
+                    { field: 'contact', label: 'Contact' }
                   ].map(({ field, label }) => (
                     <Button
                       key={field}
-                      variant={sortField === field ? "default" : "ghost"}
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleSort(field as SortField)}
-                      className="h-8"
+                      className={`h-8 ${sortField === field ? "text-blue-600" : ""}`}
                     >
                       {label}
                       {sortField === field && (
@@ -599,14 +598,13 @@ const ActivitiesManager = () => {
                                     <p className="text-sm text-slate-600">{activity.description}</p>
                                   )}
 
-                                  {/* Contact/Lead Information */}
-                                  {(activity.contact_name || activity.lead_name) && (
+                                  {/* Contact Information */}
+                                  {(activity.contact_name) && (
                                     <div className="flex items-center space-x-1 text-sm text-slate-600">
                                       <User className="w-4 h-4" />
                                       <span>
-                                        {activity.contact_name || activity.lead_name}
+                                        {activity.contact_name}
                                         {activity.contact_name && ' (Contact)'}
-                                        {activity.lead_name && ' (Lead)'}
                                       </span>
                                     </div>
                                   )}
