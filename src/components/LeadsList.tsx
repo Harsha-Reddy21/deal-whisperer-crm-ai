@@ -17,6 +17,26 @@ import LeadDetail from './LeadDetail';
 import EmailComposer from './EmailComposer';
 import { useLeadEmbeddings } from '@/hooks/useLeadEmbeddings';
 
+// Extended lead type with additional properties from the database
+interface LeadData {
+  id: string;
+  name: string;
+  email?: string;
+  company?: string;
+  phone?: string;
+  status?: string;
+  source?: string;
+  score?: number;
+  created_at: string;
+  title?: string;
+  last_contact?: string;
+  assigned_to?: string;
+  company_id?: string;
+  converted_contact_id?: string;
+  updated_at?: string;
+  user_id?: string;
+}
+
 interface Lead {
   id: string;
   name: string;
@@ -27,13 +47,8 @@ interface Lead {
   source: string;
   score: number;
   created_at: string;
-  title?: string;
-  last_contact?: string;
-  assigned_to?: string;
-  company_id?: string;
-  converted_contact_id?: string;
-  updated_at?: string;
-  user_id?: string;
+  title: string;
+  last_contact: string;
 }
 
 type SortField = 'name' | 'company' | 'score' | 'status' | 'source' | 'created_at';
@@ -93,7 +108,11 @@ const LeadsList = () => {
         return [];
       }
 
-      return data.map(lead => ({
+      // Cast the database results to LeadData type
+      const leadData = data as LeadData[];
+      
+      // Convert to our Lead interface with defaults for missing values
+      return leadData.map(lead => ({
         id: lead.id,
         name: lead.name,
         email: lead.email || '',
@@ -381,13 +400,27 @@ const LeadsList = () => {
       {/* Leads List */}
       <Card className="bg-white/60 backdrop-blur-sm border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Target className="w-5 h-5 mr-2 text-blue-600" />
-            Leads Management
-          </CardTitle>
-          <CardDescription>
-            Manage and track all your leads in one place
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <UserPlus className="w-5 h-5 mr-2 text-blue-600" />
+                Leads
+              </CardTitle>
+              <CardDescription>
+                Manage and track your potential customers
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button onClick={() => setShowLinkedInDialog(true)} variant="outline" className="flex items-center">
+                <Linkedin className="w-4 h-4 mr-2 text-blue-600" />
+                LinkedIn Enrichment
+              </Button>
+              <Button onClick={() => setShowLeadForm(true)} className="bg-gradient-to-r from-blue-600 to-purple-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Lead
+              </Button>
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -422,22 +455,11 @@ const LeadsList = () => {
 
               <div className="flex items-center space-x-3">
                 <Button 
-                  onClick={handleGetFromLinkedIn}
-                  className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
-                >
-                  <Linkedin className="w-4 h-4 mr-2" />
-                  Get from LinkedIn
-                </Button>
-                <Button 
                   onClick={() => refetch()}
                   variant="outline"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Refresh
-                </Button>
-                <Button onClick={() => setShowLeadForm(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Lead
                 </Button>
               </div>
             </div>

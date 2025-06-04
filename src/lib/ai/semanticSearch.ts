@@ -176,44 +176,87 @@ export class SemanticSearchService {
     const startTime = performance.now();
     
     try {
-      // Use type assertion for RPC call
-      const { data: leadResults, error: leadError } = await (supabase as any).rpc(
-        'search_similar_leads',
-        {
-          query_embedding: queryEmbedding,
-          target_user_id: userId,
-          similarity_threshold: similarityThreshold,
-          match_count: maxResults
+      // First try with the standard function signature used in recent migrations
+      try {
+        console.log(`🔍 [Semantic Search] Trying standard search_similar_leads signature (query_embedding, target_user_id, similarity_threshold, match_count)`);
+        const { data: leadResults, error: leadError } = await (supabase as any).rpc(
+          'search_similar_leads',
+          {
+            query_embedding: queryEmbedding,
+            target_user_id: userId,
+            similarity_threshold: similarityThreshold,
+            match_count: maxResults
+          }
+        );
+
+        if (leadError) {
+          console.error('❌ [Semantic Search] Error with standard signature, trying alternative:', leadError);
+          throw leadError; // Throw to try the alternative
         }
-      );
 
-      if (leadError) {
-        console.error('❌ [Semantic Search] Lead search error:', leadError);
-        return [];
+        const searchTime = (performance.now() - startTime).toFixed(2);
+        console.log(`✅ [Semantic Search] Found ${leadResults?.length || 0} relevant leads in ${searchTime}ms`);
+        
+        if (leadResults && leadResults.length > 0) {
+          console.log('📊 [Semantic Search] Top lead match:', {
+            name: leadResults[0].name,
+            similarity: Math.round(leadResults[0].similarity * 100) + '%'
+          });
+        }
+
+        return (leadResults || []).map((lead: any) => ({
+          id: lead.id,
+          type: 'lead',
+          name: lead.name,
+          company: lead.company,
+          email: lead.email,
+          source: lead.source,
+          status: lead.status,
+          score: lead.score,
+          similarity: lead.similarity,
+          embeddingContent: lead.embedding_content
+        }));
+      } catch (standardSignatureError) {
+        // Try with the alternative signature from older migrations
+        console.log(`🔍 [Semantic Search] Trying alternative search_similar_leads signature (query_embedding, similarity_threshold, match_count, target_user_id)`);
+        const { data: leadResults, error: leadError } = await (supabase as any).rpc(
+          'search_similar_leads',
+          {
+            query_embedding: queryEmbedding,
+            similarity_threshold: similarityThreshold,
+            match_count: maxResults,
+            target_user_id: userId
+          }
+        );
+
+        if (leadError) {
+          console.error('❌ [Semantic Search] Lead search error with alternative signature:', leadError);
+          return []; // Return empty results if both approaches fail
+        }
+
+        const searchTime = (performance.now() - startTime).toFixed(2);
+        console.log(`✅ [Semantic Search] Found ${leadResults?.length || 0} relevant leads with alternative signature in ${searchTime}ms`);
+        
+        if (leadResults && leadResults.length > 0) {
+          console.log('📊 [Semantic Search] Top lead match:', {
+            name: leadResults[0].name,
+            similarity: Math.round(leadResults[0].similarity * 100) + '%'
+          });
+        }
+
+        return (leadResults || []).map((lead: any) => ({
+          id: lead.id,
+          type: 'lead',
+          name: lead.name,
+          company: lead.company,
+          email: lead.email,
+          source: lead.source,
+          status: lead.status,
+          score: lead.score,
+          similarity: lead.similarity,
+          embeddingContent: lead.embedding_content
+        }));
       }
-
-      const searchTime = (performance.now() - startTime).toFixed(2);
-      console.log(`✅ [Semantic Search] Found ${leadResults?.length || 0} relevant leads in ${searchTime}ms`);
-      
-      if (leadResults && leadResults.length > 0) {
-        console.log('📊 [Semantic Search] Top lead match:', {
-          name: leadResults[0].name,
-          similarity: Math.round(leadResults[0].similarity * 100) + '%'
-        });
-      }
-
-      return (leadResults || []).map((lead: any) => ({
-        id: lead.id,
-        type: 'lead',
-        name: lead.name,
-        company: lead.company,
-        email: lead.email,
-        source: lead.source,
-        status: lead.status,
-        score: lead.score,
-        similarity: lead.similarity,
-        embeddingContent: lead.embedding_content
-      }));
     } catch (error) {
       console.error('❌ [Semantic Search] Error searching leads:', error);
       return [];
