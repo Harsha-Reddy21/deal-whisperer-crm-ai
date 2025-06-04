@@ -20,6 +20,7 @@ import CalendarScheduling from '@/components/CalendarScheduling';
 import FileManagement from '@/components/FileManagement';
 import TranscriptsManager from '@/components/TranscriptsManager';
 import ChatCRM from '@/components/ChatCRM';
+import Agent from '@/components/Agent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,6 +111,11 @@ const Index = () => {
     setActiveTab('ai-assistant');
   };
 
+  const handleAgent = () => {
+    console.log('Switching to Agent tab');
+    setActiveTab('agent');
+  };
+
   // Show loading state if user is not loaded yet
   if (!user) {
     console.log('No user found, showing loading state');
@@ -189,8 +195,12 @@ const Index = () => {
                 ChatCRM
               </Button>
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleAIAssistant}>
-                <MessageSquare className="w-4 h-4 mr-2" />
+                <Brain className="w-4 h-4 mr-2" />
                 AI Assistant
+              </Button>
+              <Button variant="secondary" onClick={handleAgent}>
+                <Brain className="w-4 h-4 mr-2" />
+                Agent
               </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />
@@ -239,6 +249,7 @@ const Index = () => {
               <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
               <TabsTrigger value="companies" className="whitespace-nowrap">Companies</TabsTrigger>
               <TabsTrigger value="transcripts" className="whitespace-nowrap">Transcripts</TabsTrigger>
+              <TabsTrigger value="agent" className="whitespace-nowrap">Agent</TabsTrigger>
             </TabsList>
           </div>
 
@@ -292,6 +303,10 @@ const Index = () => {
 
           <TabsContent value="transcripts" className="space-y-6">
             <TranscriptsManager />
+          </TabsContent>
+
+          <TabsContent value="agent" className="space-y-6">
+            <Agent />
           </TabsContent>
         </Tabs>
       </div>
