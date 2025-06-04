@@ -283,6 +283,7 @@ export async function generateActivityBasedRecommendations(deal: any, activities
 
     // Prepare deal summary
     const dealSummary = {
+      id: deal.id,
       title: deal.title,
       company: deal.company,
       value: deal.value,
@@ -298,7 +299,16 @@ export async function generateActivityBasedRecommendations(deal: any, activities
       ? Math.round((now - new Date(deal.created_at).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
+    // Add a timestamp and unique identifier to prevent response caching
+    const timestamp = new Date().toISOString();
+    const uniqueId = Math.random().toString(36).substring(2, 15);
+
     const prompt = `You are an expert sales coach with access to deal activity data. Analyze this deal's activities to provide 3 strategic coaching recommendations to improve closing probability.
+
+SESSION INFO:
+- Analysis Timestamp: ${timestamp}
+- Analysis ID: ${uniqueId}
+- Deal ID: ${deal.id}
 
 DEAL INFORMATION:
 ${JSON.stringify(dealSummary, null, 2)}
@@ -339,6 +349,8 @@ PRIORITIZATION CRITERIA:
 - Medium: Process improvements, moderate engagement gaps, or standard best practices
 - Low: Optimization opportunities, minor improvements, or preventive measures
 
+IMPORTANT: Ensure each recommendation is customized to this specific deal and its unique activity patterns. Do not provide generic advice.
+
 Format your response as a JSON array with objects containing: type, title, description, action, impact, reasoning
 
 Ensure recommendations are practical, specific to this deal's activity patterns, and focused on improving probability.`;
@@ -346,15 +358,16 @@ Ensure recommendations are practical, specific to this deal's activity patterns,
     const messages = [
       {
         role: "system" as const,
-        content: "You are an expert sales coach specializing in activity analysis. Provide practical, data-driven recommendations in valid JSON format based on activity patterns and engagement metrics."
+        content: `You are an expert sales coach specializing in activity analysis. Provide practical, data-driven recommendations in valid JSON format based on activity patterns and engagement metrics. Each analysis should be unique to the specific deal with ID ${deal.id}.`
       },
       {
         role: "user" as const,
         content: prompt
       }
     ];
-    console.log("Messages:", prompt);
-    const responseText = await makeOpenAIRequest(messages, { maxTokens: 2000 });
+
+    console.log("Messages:", messages);
+    const responseText = await makeOpenAIRequest(messages, { maxTokens: 2000, temperature: 0.7 });
     
     // Parse the JSON response
     const recommendations = parseOpenAIJsonResponse<DealCoachRecommendation[]>(responseText);

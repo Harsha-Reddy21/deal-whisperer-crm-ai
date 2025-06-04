@@ -625,6 +625,8 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     setShowDealCoach(true);
     setIsLoadingCoachingData(true);
     setCoachingError(null);
+    // Clear previous recommendations to avoid showing stale data
+    setCoachingRecommendations([]);
     console.log('DEAL_COACH: Deal coach used in deals:', deal.title);
     
     try {
@@ -648,8 +650,11 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
       // Import the generateActivityBasedRecommendations function
       const { generateActivityBasedRecommendations } = await import('@/lib/ai/dealCoach');
       
-      // Get coaching recommendations based on deal activities
-      const recommendations = await generateActivityBasedRecommendations(deal, activities);
+      // Get coaching recommendations based on deal activities - force cache bust
+      const recommendations = await generateActivityBasedRecommendations(
+        {...deal, _cacheBust: Date.now()}, 
+        activities
+      );
       setCoachingRecommendations(recommendations);
       
     } catch (error) {

@@ -38,17 +38,23 @@ export async function makeOpenAIRequest(
   const openAIConfig = getOpenAIConfig();
   const requestConfig = { ...openAIConfig, ...config };
 
+  // Add cache-busting parameter to ensure fresh responses
+  const cacheBuster = Date.now().toString();
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${requestConfig.apiKey}`,
       'Content-Type': 'application/json',
+      'X-Cache-Buster': cacheBuster
     },
     body: JSON.stringify({
       model: requestConfig.model,
       messages,
       temperature: requestConfig.temperature,
-      max_tokens: requestConfig.maxTokens
+      max_tokens: requestConfig.maxTokens,
+      // Include a user field with timestamp to prevent response caching
+      user: `user-${cacheBuster}`
     }),
   });
 
