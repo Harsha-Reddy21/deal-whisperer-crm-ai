@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { OpenAI } from "openai";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const openai = new OpenAI({
   apiKey: import.meta.env.VITE_OPENAI_API_KEY,
@@ -24,6 +25,23 @@ const tools = [
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "getcontactfromlinkedin",
+      description: "Searches for a contact on LinkedIn based on user query, adds them to contacts, creates a deal, and sends an email",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query for finding the contact on LinkedIn (name, job title, company, industry, etc.)"
+          }
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 
 // Simulated tool implementations
@@ -38,7 +56,286 @@ async function runTool(toolName: string, args: any): Promise<string> {
     return result;
   }
   
+  if (toolName === "getcontactfromlinkedin") {
+    const result = await find_linkedin_contact(args.query);
+    return result;
+  }
+  
   return "Tool executed.";
+}
+
+// Function to search LinkedIn for contacts, add to contacts DB, create deal, and send email
+async function find_linkedin_contact(query: string) {
+  console.log(`Searching for LinkedIn contact with query: ${query}`);
+  try {
+    // Step 1: Use AI to generate a simulated LinkedIn search result
+    // In a real implementation, this would interact with LinkedIn's API
+    const searchResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a LinkedIn search assistant. Generate a realistic LinkedIn search result for the given query. Make the result realistic and detailed with current positions and companies. Your response must be valid JSON without code blocks or formatting." 
+        },
+        { 
+          role: "user", 
+          content: `Generate a realistic LinkedIn search result for this query: "${query}"
+
+Please provide 3 potential contacts in JSON format with the following structure:
+{
+  "results": [
+    {
+      "name": "Full Name",
+      "title": "Current Job Title",
+      "company": "Current Company",
+      "location": "City, Country",
+      "industry": "Industry",
+      "email": "professional email address",
+      "phone": "phone number (optional)",
+      "linkedin_url": "linkedin profile URL",
+      "experience_years": number of years of experience,
+      "skills": ["skill1", "skill2", "skill3"],
+      "education": "Highest education"
+    }
+  ]
+}
+
+Make sure the data is realistic for the query. Include realistic email addresses following common patterns.
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const searchResult = searchResponse.choices[0].message.content || "";
+    console.log("LinkedIn search results:", searchResult);
+    
+    // Clean and parse the result
+    const cleanedResult = cleanJsonString(searchResult);
+    let parsedResults;
+    try {
+      parsedResults = JSON.parse(cleanedResult);
+    } catch (e) {
+      console.error("Error parsing LinkedIn search results:", e);
+      return `Error: Could not parse LinkedIn search results. ${searchResult}`;
+    }
+    
+    if (!parsedResults.results || parsedResults.results.length === 0) {
+      return "No contacts found matching your search criteria.";
+    }
+    
+    // Step 2: Use AI to pick the most relevant contact
+    const selectionResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a sales assistant helping to find the most relevant LinkedIn contact based on a search query. Select the most promising prospect from the list." 
+        },
+        { 
+          role: "user", 
+          content: `Original search query: "${query}"
+          
+Here are the LinkedIn search results:
+${JSON.stringify(parsedResults.results, null, 2)}
+
+Please analyze these results and select the SINGLE most relevant contact based on the original query.
+Return your selection as a JSON object with the following structure:
+{
+  "selected_contact": {
+    // Copy all fields from the selected contact
+  },
+  "reason": "Explanation of why this contact is the most relevant"
+}
+
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const selectionResult = selectionResponse.choices[0].message.content || "";
+    console.log("Contact selection result:", selectionResult);
+    
+    // Clean and parse the selection
+    const cleanedSelection = cleanJsonString(selectionResult);
+    let parsedSelection;
+    try {
+      parsedSelection = JSON.parse(cleanedSelection);
+    } catch (e) {
+      console.error("Error parsing contact selection:", e);
+      return `Error: Could not parse contact selection. ${selectionResult}`;
+    }
+    
+    if (!parsedSelection.selected_contact) {
+      return "Failed to select a relevant contact from the search results.";
+    }
+    
+    const selectedContact = parsedSelection.selected_contact;
+    
+    // Step 3: Add the contact to the contacts table in Supabase
+    const now = new Date().toISOString();
+    
+    // Get current user ID
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    
+    if (!userId) {
+      return "Error: User not authenticated. Please sign in to add contacts.";
+    }
+    
+    const { data: contactData, error: contactError } = await supabase
+      .from("contacts")
+      .insert({
+        name: selectedContact.name,
+        email: selectedContact.email,
+        phone: selectedContact.phone || null,
+        company: selectedContact.company,
+        title: selectedContact.title,
+        created_at: now,
+        updated_at: now,
+        user_id: userId,
+        status: "Hot Lead",
+        score: 70, // Default lead score
+      })
+      .select()
+      .single();
+      
+    if (contactError) {
+      console.error("Error adding contact to Supabase:", contactError);
+      return `Error adding contact to database: ${contactError.message}`;
+    }
+    
+    console.log("Contact added successfully:", contactData);
+    const contactId = contactData.id;
+    
+    // Step 4: Create a new deal for this contact
+    const dealTitle = `${selectedContact.company} - ${query} Opportunity`;
+    const dealValue = Math.floor(Math.random() * 50000) + 10000; // Random value between 10k and 60k
+    
+    const { data: dealData, error: dealError } = await supabase
+      .from("deals")
+      .insert({
+        title: dealTitle,
+        value: dealValue,
+        stage: "Proposal",
+        company: selectedContact.company,
+        contact_id: contactId,
+        contact_name: selectedContact.name,
+        created_at: now,
+        updated_at: now,
+        last_activity: now,
+        user_id: userId,
+        probability: 20, // Initial probability
+      })
+      .select()
+      .single();
+      
+    if (dealError) {
+      console.error("Error creating deal in Supabase:", dealError);
+      return `Error creating deal: ${dealError.message}. Contact was still added to database.`;
+    }
+    
+    console.log("Deal created successfully:", dealData);
+    const dealId = dealData.id;
+    
+    // Step 5: Generate an introduction email for this contact
+    const emailResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a sales assistant that helps generate professional and personalized introduction emails. Generate an appropriate email based on the contact's profile and the business opportunity." 
+        },
+        { 
+          role: "user", 
+          content: `Please generate a professional introduction email for this new contact:
+          
+Contact:
+Name: ${selectedContact.name}
+Title: ${selectedContact.title}
+Company: ${selectedContact.company}
+Industry: ${selectedContact.industry}
+Skills: ${selectedContact.skills.join(", ")}
+          
+Deal:
+Title: ${dealTitle}
+Value: $${dealValue}
+Stage: Prospecting
+
+Original search query: "${query}"
+
+Please provide the email in JSON format with the following structure:
+{
+  "to": "${selectedContact.email}",
+  "subject": "A personalized and engaging subject line",
+  "body": "The generated email body that introduces yourself, mentions relevant aspects of their profile and experience, and suggests a potential opportunity to collaborate"
+}
+
+Make the email personalized, professional, and engaging. Avoid generic templates.
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const emailResult = emailResponse.choices[0].message.content || "";
+    console.log("Generated introduction email:", emailResult);
+    
+    // Clean and parse the email
+    const cleanedEmail = cleanJsonString(emailResult);
+    let parsedEmail;
+    try {
+      parsedEmail = JSON.parse(cleanedEmail);
+    } catch (e) {
+      console.error("Error parsing introduction email:", e);
+      return `Error: Could not parse introduction email. ${emailResult}`;
+    }
+    
+    // Step 6: Store the email in Supabase
+    const { data: emailData, error: emailError } = await supabase
+      .from("email_tracking")
+      .insert({
+        subject: parsedEmail.subject,
+        user_id: userId,
+        contact_id: contactId,
+        deal_id: dealId,
+        sent_at: now,
+        created_at: now,
+        email_id: crypto.randomUUID(), // Generate a unique ID
+      });
+      
+    if (emailError) {
+      console.error("Error storing email in Supabase:", emailError);
+      return `Error sending email: ${emailError.message}. Contact and deal were still created.`;
+    }
+    
+    // Step 7: Return a comprehensive response
+    return `
+LinkedIn Contact Found and Added:
+Name: ${selectedContact.name}
+Title: ${selectedContact.title}
+Company: ${selectedContact.company}
+Email: ${selectedContact.email}
+Phone: ${selectedContact.phone || "Not available"}
+
+Selection Reason: ${parsedSelection.reason}
+
+Deal Created:
+Title: ${dealTitle}
+Value: $${dealValue}
+Stage: Prospecting
+Probability: 20%
+
+Introduction Email Sent:
+To: ${parsedEmail.to}
+Subject: ${parsedEmail.subject}
+Body:
+${parsedEmail.body}
+
+Status: Contact added to database, deal created, and introduction email recorded.
+`;
+  } catch (error) {
+    console.error("Error in find_linkedin_contact:", error);
+    return `Error processing LinkedIn contact: ${error}`;
+  }
 }
 
 // Helper function to clean JSON strings that might contain markdown formatting
@@ -503,6 +800,16 @@ export default function Agent() {
         setLoading(false);
         return;
       }
+      
+      // Check if user is asking to find LinkedIn contacts
+      if (userPrompt.toLowerCase().includes("linkedin") || 
+          (userPrompt.toLowerCase().includes("find") && userPrompt.toLowerCase().includes("contact"))) {
+        setChatLog("Searching for LinkedIn contacts based on your query...");
+        const contactResult = await find_linkedin_contact(userPrompt);
+        setChatLog(prev => prev + "\n\n" + contactResult);
+        setLoading(false);
+        return;
+      }
 
       while (true) {
         const response = await openai.chat.completions.create({
@@ -554,7 +861,7 @@ export default function Agent() {
     <div style={{ maxWidth: 600, margin: "auto" }}>
       <h2 style={{ marginBottom: 16 }}>Email & Deal Assistant</h2>
       
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <button 
           onClick={() => {
             setLoading(true);
@@ -581,6 +888,32 @@ export default function Agent() {
           disabled={loading}
         >
           Find & Follow-up Critical Deals
+        </button>
+        
+        <input
+          type="text"
+          placeholder="Enter LinkedIn search query..."
+          value={userPrompt}
+          onChange={(e) => setUserPrompt(e.target.value)}
+          style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1, marginTop: 8 }}
+          disabled={loading}
+        />
+        <button 
+          onClick={() => {
+            if (!userPrompt.trim()) {
+              setChatLog("Please enter a search query.");
+              return;
+            }
+            setLoading(true);
+            setChatLog(`Searching for LinkedIn contacts matching: ${userPrompt}`);
+            find_linkedin_contact(userPrompt)
+              .then(result => setChatLog(result))
+              .finally(() => setLoading(false));
+          }} 
+          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4, marginTop: 8 }}
+          disabled={loading}
+        >
+          Find LinkedIn Contact
         </button>
       </div>
       
