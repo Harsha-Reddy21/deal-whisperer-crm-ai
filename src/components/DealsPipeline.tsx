@@ -18,7 +18,6 @@ import { batchProcessDealsForEmbeddings, analyzeDealSimilarity, type DealSimilar
 import ActivityForm from './ActivityForm';
 import EmailComposer from './EmailComposer';
 import ObjectionHandler from './ObjectionHandler';
-import { analyzeClosedDealsForCoaching } from '@/lib/ai/dealCoach';
 import { type DealCoachRecommendation } from '@/lib/ai/types';
 import { useDealEmbeddings } from '@/hooks/useDealEmbeddings';
 
@@ -629,28 +628,33 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
     console.log('DEAL_COACH: Deal coach used in deals:', deal.title);
     
     try {
-      // Fetch closed deals for analysis
-      const { data: closedDeals, error } = await supabase
-        .from('deals')
+      // Fetch activities for this deal
+      const { data: activities, error: activitiesError } = await supabase
+        .from('activities')
         .select('*')
+        .eq('deal_id', deal.id)
         .eq('user_id', user?.id)
-        .or('outcome.eq.won,outcome.eq.lost');
+        .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (activitiesError) throw activitiesError;
       
-      if (!closedDeals || closedDeals.length === 0) {
-        setCoachingError('No closed deals available for analysis. Close some deals (won/lost) first to get coaching recommendations.');
+      // Check if we have activities to analyze
+      if (!activities || activities.length === 0) {
+        setCoachingError('No activities found for this deal. Add some activities first to get activity-based recommendations.');
         setIsLoadingCoachingData(false);
         return;
       }
       
-      // Get coaching recommendations based on closed deals
-      const recommendations = await analyzeClosedDealsForCoaching(deal, closedDeals);
+      // Import the generateActivityBasedRecommendations function
+      const { generateActivityBasedRecommendations } = await import('@/lib/ai/dealCoach');
+      
+      // Get coaching recommendations based on deal activities
+      const recommendations = await generateActivityBasedRecommendations(deal, activities);
       setCoachingRecommendations(recommendations);
       
     } catch (error) {
-      console.error('Error getting deal coaching:', error);
-      setCoachingError(error instanceof Error ? error.message : 'Failed to generate coaching recommendations');
+      console.error('Error generating activity-based coaching:', error);
+      setCoachingError(error instanceof Error ? error.message : 'Failed to generate activity-based recommendations');
     } finally {
       setIsLoadingCoachingData(false);
     }
@@ -1492,7 +1496,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
 
       {/* Email Composer Dialog */}
       <Dialog open={showEmailComposer} onOpenChange={setShowEmailComposer}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedDealForEmail && (
             <EmailComposer 
               open={showEmailComposer}
@@ -1553,7 +1557,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             </DialogTitle>
             <DialogDescription>
               {selectedDealForCoaching && (
-                <span>AI coaching recommendations for {selectedDealForCoaching.title} based on analysis of closed deals</span>
+                <span>AI coaching recommendations for {selectedDealForCoaching.title} based on activity analysis</span>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1562,7 +1566,7 @@ const DealsPipeline = ({ onSelectDeal }: DealsPipelineProps) => {
             {isLoadingCoachingData && (
               <div className="flex flex-col items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-                <p className="text-slate-600">Analyzing closed deal patterns and generating recommendations...</p>
+                <p className="text-slate-600">Analyzing activity patterns and generating recommendations...</p>
               </div>
             )}
             

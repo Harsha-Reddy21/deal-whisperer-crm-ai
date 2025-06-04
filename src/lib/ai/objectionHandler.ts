@@ -66,7 +66,7 @@ ${request.dealInfo.activities.map(a =>
    ${a.description ? `   Details: ${a.description}` : ''}`
 ).join('\n')}` 
   : 'No deal activities available'}
-
+  
 CUSTOMER OBJECTION:
 "${request.objection}"
 
@@ -76,7 +76,8 @@ Provide me with:
 3. How the responses relate to the specific deal context
 
 If there's not enough context from the deal activities or description, please indicate this in your response.`;
-
+    console.log('User message:', userMessage);
+    console.log('System prompt:', systemPrompt);
     // Make the API request
     const response = await makeOpenAIRequest([
       { role: 'system', content: systemPrompt },
