@@ -16,6 +16,14 @@ const tools = [
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "critical_deal",
+      description: "Identifies deals with no activity in the last 7 days, finds the most critical one, and generates a follow-up email",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
 ];
 
 // Simulated tool implementations
@@ -23,6 +31,11 @@ async function runTool(toolName: string, args: any): Promise<string> {
   if (toolName === "summarizeEmails") {
     const summary = await summarize_unread_message();
     return summary;
+  }
+  
+  if (toolName === "critical_deal") {
+    const result = await get_critical_deals();
+    return result;
   }
   
   return "Tool executed.";
@@ -47,6 +60,219 @@ function cleanJsonString(jsonString) {
   }
   
   return cleaned;
+}
+
+// Function to identify and follow up on deals with no recent activity
+async function get_critical_deals() {
+  console.log("Fetching deals with no recent activity...");
+  try {
+    // Step 1: Calculate the date 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 2);
+    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
+    
+    console.log(`Looking for deals with no activity since ${sevenDaysAgoISO}`);
+    
+    // Step 2: Fetch deals from Supabase that haven't had activity in the last 7 days
+    const { data: staleDeals, error } = await supabase
+      .from("deals")
+      .select("*")
+      .lt("last_activity", sevenDaysAgoISO)
+      .order("value", { ascending: false }); // Order by deal value to prioritize higher value deals
+    
+    if (error) {
+      console.error("Error fetching stale deals:", error);
+      return `Error fetching stale deals: ${error.message}`;
+    }
+    
+    if (!staleDeals || staleDeals.length === 0) {
+      console.log("No stale deals found");
+      return "No deals with inactive status found in the last 2 days.";
+    }
+    
+    console.log(`Found ${staleDeals.length} stale deals`);
+    
+    // Step 3: Format deals for LLM
+    const dealsText = staleDeals.map(deal => 
+      `Deal ID: ${deal.id}
+       Title: ${deal.title || "No title"}
+       Value: $${deal.value || 0}
+       Stage: ${deal.stage || "Unknown"}
+       Company: ${deal.company || "Unknown"}
+       Contact: ${deal.contact_name || "Unknown"}
+       Last Activity: ${deal.last_activity || "Never"}
+       Next Step: ${deal.next_step || "None"}
+       Probability: ${deal.probability || 0}%
+       -------------------`
+    ).join("\n\n");
+    
+    // Step 4: Call LLM to identify the most critical deal
+    const analysisResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a sales assistant. Analyze the deals with no recent activity and identify the single most critical one that needs immediate follow-up. A critical deal might be high-value, in an advanced stage, or close to closing. Your response must be valid JSON without code blocks or formatting." 
+        },
+        { 
+          role: "user", 
+          content: `Here are deals with no activity in the last 2 days. Please analyze them and identify the SINGLE most critical deal that needs immediate follow-up:\n\n${dealsText}
+
+Please format your response as a JSON object with the following structure:
+{
+  "summary": "A brief summary of all stale deals",
+  "total_stale_deals": number of stale deals,
+  "most_critical_deal": {
+    "deal_id": "the deal ID of the most critical deal",
+    "title": "the deal title",
+    "value": "the deal value",
+    "reason": "why this deal is critical and needs immediate follow-up",
+    "suggested_action": "what action should be taken for this deal"
+  }
+}
+
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const analysisResult = analysisResponse.choices[0].message.content || "";
+    console.log("Deal analysis:", analysisResult);
+    
+    // Clean the result to handle markdown formatting
+    const cleanedResult = cleanJsonString(analysisResult);
+    console.log("Cleaned analysis result:", cleanedResult);
+    
+    let parsedAnalysis;
+    try {
+      // Parse the JSON response
+      parsedAnalysis = JSON.parse(cleanedResult);
+    } catch (e) {
+      console.error("Error parsing analysis result:", e);
+      return `Error: Could not parse the analysis result. ${analysisResult}`;
+    }
+    
+    if (!parsedAnalysis.most_critical_deal || !parsedAnalysis.most_critical_deal.deal_id) {
+      return `No critical deals identified.\n\n${JSON.stringify(parsedAnalysis, null, 2)}`;
+    }
+    
+    // Step 5: Get the critical deal details
+    const criticalDealId = parsedAnalysis.most_critical_deal.deal_id;
+    const criticalDeal = staleDeals.find(deal => deal.id === criticalDealId);
+    
+    if (!criticalDeal) {
+      return `Error: Could not find the critical deal with ID ${criticalDealId}`;
+    }
+    
+    // Step 6: Generate a follow-up email for the critical deal
+    const emailResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: "You are a sales assistant that helps generate professional and effective follow-up emails for stale deals. Generate an appropriate follow-up email for the critical deal. Your response must be valid JSON without code blocks or formatting." 
+        },
+        { 
+          role: "user", 
+          content: `Please generate a professional follow-up email for this critical deal that has had no activity in the last 7 days:
+          
+Deal ID: ${criticalDeal.id}
+Title: ${criticalDeal.title || "No title"}
+Value: $${criticalDeal.value || 0}
+Stage: ${criticalDeal.stage || "Unknown"}
+Company: ${criticalDeal.company || "Unknown"}
+Contact Name: ${criticalDeal.contact_name || "Unknown"}
+Last Activity: ${criticalDeal.last_activity || "Never"}
+Next Step: ${criticalDeal.next_step || "None"}
+Probability: ${criticalDeal.probability || 0}%
+Reason for follow-up: ${parsedAnalysis.most_critical_deal.reason}
+Suggested action: ${parsedAnalysis.most_critical_deal.suggested_action}
+
+Please provide the follow-up email in JSON format with the following structure:
+{
+  "to": "the contact's email (use their name + @company.com if not available)",
+  "subject": "Follow-up on [Deal Title]",
+  "body": "The generated email body that effectively follows up on this deal based on its status and details"
+}
+
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const generatedEmail = emailResponse.choices[0].message.content || "";
+    console.log("Generated follow-up email:", generatedEmail);
+    
+    // Clean the result to handle markdown formatting
+    const cleanedEmail = cleanJsonString(generatedEmail);
+    console.log("Cleaned email:", cleanedEmail);
+    
+    let parsedEmail;
+    try {
+      // Parse the JSON response
+      parsedEmail = JSON.parse(cleanedEmail);
+    } catch (e) {
+      console.error("Error parsing generated email:", e);
+      return `Error: Could not parse the generated email. ${generatedEmail}`;
+    }
+    
+    // Step 7: Store the follow-up email in Supabase
+    const now = new Date().toISOString();
+    const { data, error: insertError } = await supabase
+      .from("email_tracking")
+      .insert({
+        subject: parsedEmail.subject,
+        user_id: "a0954a90-39f5-4a83-bcf6-15201789dbd5", // Replace with actual user ID in production
+        contact_id: criticalDeal.contact_id,
+        deal_id: criticalDeal.id,
+        sent_at: now,
+        created_at: now,
+        email_id: crypto.randomUUID(), // Generate a unique ID
+      });
+      
+    if (insertError) {
+      console.error("Error storing follow-up email in Supabase:", insertError);
+      return `Error sending follow-up email: ${insertError.message}`;
+    }
+    
+    // Step 8: Update the deal's last_activity field
+    const { error: updateError } = await supabase
+      .from("deals")
+      .update({ 
+        last_activity: now,
+        next_step: parsedAnalysis.most_critical_deal.suggested_action
+      })
+      .eq("id", criticalDealId);
+      
+    if (updateError) {
+      console.error("Error updating deal:", updateError);
+      return `Warning: Follow-up email sent but could not update deal: ${updateError.message}`;
+    }
+    
+    // Step 9: Return a comprehensive response
+    return `
+Deal Analysis Summary:
+${parsedAnalysis.summary}
+
+Most Critical Deal Identified:
+Title: ${parsedAnalysis.most_critical_deal.title}
+Deal ID: ${parsedAnalysis.most_critical_deal.deal_id}
+Value: ${parsedAnalysis.most_critical_deal.value}
+Reason: ${parsedAnalysis.most_critical_deal.reason}
+Suggested Action: ${parsedAnalysis.most_critical_deal.suggested_action}
+
+Follow-Up Email Generated and Sent:
+To: ${parsedEmail.to}
+Subject: ${parsedEmail.subject}
+Body: 
+${parsedEmail.body}
+
+Status: Follow-up email stored in database and deal updated with new activity timestamp and next step.
+`;
+  } catch (error) {
+    console.error("Error in get_critical_deals:", error);
+    return `Error analyzing deals: ${error}`;
+  }
 }
 
 // All-in-one function to handle emails: fetch, analyze, reply, and update
@@ -267,6 +493,16 @@ export default function Agent() {
         setLoading(false);
         return;
       }
+      
+      // Check if user is asking to find critical deals
+      if ((userPrompt.toLowerCase().includes("critical") || userPrompt.toLowerCase().includes("stale")) && 
+          userPrompt.toLowerCase().includes("deal")) {
+        setChatLog("Analyzing stale deals and generating follow-up emails...");
+        const dealAnalysis = await get_critical_deals();
+        setChatLog(prev => prev + "\n\n" + dealAnalysis);
+        setLoading(false);
+        return;
+      }
 
       while (true) {
         const response = await openai.chat.completions.create({
@@ -316,21 +552,37 @@ export default function Agent() {
 
   return (
     <div style={{ maxWidth: 600, margin: "auto" }}>
-      <h2 style={{ marginBottom: 16 }}>Email Assistant</h2>
+      <h2 style={{ marginBottom: 16 }}>Email & Deal Assistant</h2>
       
-      <button 
-        onClick={() => {
-          setLoading(true);
-          setChatLog("Analyzing unread emails and generating replies to critical ones...");
-          summarize_unread_message()
-            .then(result => setChatLog(result))
-            .finally(() => setLoading(false));
-        }} 
-        style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4, marginBottom: 16 }}
-        disabled={loading}
-      >
-        Analyze & Reply to Critical Emails
-      </button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button 
+          onClick={() => {
+            setLoading(true);
+            setChatLog("Analyzing unread emails and generating replies to critical ones...");
+            summarize_unread_message()
+              .then(result => setChatLog(result))
+              .finally(() => setLoading(false));
+          }} 
+          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+          disabled={loading}
+        >
+          Analyze & Reply to Emails
+        </button>
+        
+        <button 
+          onClick={() => {
+            setLoading(true);
+            setChatLog("Analyzing stale deals and generating follow-up emails...");
+            get_critical_deals()
+              .then(result => setChatLog(result))
+              .finally(() => setLoading(false));
+          }} 
+          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+          disabled={loading}
+        >
+          Find & Follow-up Critical Deals
+        </button>
+      </div>
       
       <form onSubmit={handleSubmit}>
         <input
