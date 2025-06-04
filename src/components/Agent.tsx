@@ -153,6 +153,43 @@ const tools = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "create_email",
+      description: "Creates and sends an email to a contact with customizable content",
+      parameters: {
+        type: "object",
+        properties: {
+          recipient_name: {
+            type: "string",
+            description: "Name of the recipient"
+          },
+          recipient_email: {
+            type: "string",
+            description: "Email address of the recipient (optional - will be looked up if not provided)"
+          },
+          subject: {
+            type: "string",
+            description: "Subject line of the email (optional)"
+          },
+          email_type: {
+            type: "string",
+            description: "Type of email (e.g., 'introduction', 'follow-up', 'proposal', 'negotiation', 'closing') (optional)"
+          },
+          deal_id: {
+            type: "string",
+            description: "ID of a related deal (optional)"
+          },
+          context: {
+            type: "string",
+            description: "Additional context to include in the email (optional)"
+          }
+        },
+        required: ["recipient_name"],
+      },
+    },
+  },
 ];
 
 // Simulated tool implementations
@@ -203,6 +240,17 @@ async function runTool(toolName: string, args: any): Promise<string> {
       args.source,
       args.score,
       args.notes
+    );
+  }
+  
+  if (toolName === "create_email") {
+    result = await create_email(
+      args.recipient_name,
+      args.recipient_email,
+      args.subject,
+      args.email_type,
+      args.deal_id,
+      args.context
     );
   }
   
@@ -1088,6 +1136,63 @@ async function create_contact_function(
       return `A contact with email "${email}" already exists (${existingContacts[0].name}). Use the existing contact instead.`;
     }
     
+    // Also check for an exact name match to avoid duplicates
+    console.log("[CREATE CONTACT] Checking for existing contact with exact name:", name);
+    const { data: nameContacts, error: nameSearchError } = await supabase
+      .from("contacts")
+      .select("*")
+      .eq("name", name)
+      .eq("user_id", userId);
+      
+    if (nameSearchError) {
+      console.error("[CREATE CONTACT] Error searching for existing contact by name:", nameSearchError);
+      return `Error checking for existing contact: ${nameSearchError.message}`;
+    }
+    
+    if (nameContacts && nameContacts.length > 0) {
+      console.log("[CREATE CONTACT] Contact with this exact name already exists:", nameContacts[0]);
+      
+      // If the existing contact has a different email, offer to update it
+      if (nameContacts[0].email !== email) {
+        console.log(`[CREATE CONTACT] Existing contact has different email: ${nameContacts[0].email}`);
+        
+        // Update the contact with the new information
+        const { error: updateError } = await supabase
+          .from("contacts")
+          .update({
+            email: email,
+            company: company,
+            title: title || nameContacts[0].title,
+            phone: phone || nameContacts[0].phone,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", nameContacts[0].id);
+          
+        if (updateError) {
+          console.error("[CREATE CONTACT] Error updating existing contact:", updateError);
+          return `Error updating existing contact: ${updateError.message}`;
+        }
+        
+        console.log("[CREATE CONTACT] Updated existing contact with new information");
+        return `Contact "${name}" already exists with a different email. Contact information has been updated with new details.
+Contact ID: ${nameContacts[0].id}
+Name: ${name}
+Email: ${email}
+Company: ${company}
+Title: ${title || nameContacts[0].title || "Not specified"}
+Phone: ${phone || nameContacts[0].phone || "Not specified"}
+Status: ${nameContacts[0].status}
+`;
+      }
+      
+      return `A contact with name "${name}" already exists. Use the existing contact instead.
+Contact ID: ${nameContacts[0].id}
+Name: ${nameContacts[0].name}
+Email: ${nameContacts[0].email}
+Company: ${nameContacts[0].company}
+`;
+    }
+    
     // Create the new contact
     const now = new Date().toISOString();
     const statusToUse = status || "Hot Lead"; // Default status
@@ -1120,6 +1225,27 @@ async function create_contact_function(
       
     if (contactError) {
       console.error("[CREATE CONTACT] Error adding contact to Supabase:", contactError);
+      
+      // Check if the error is due to a unique constraint violation
+      if (contactError.message && contactError.message.includes("duplicate key value")) {
+        // Try to find the conflicting contact
+        const { data: conflictContacts, error: conflictError } = await supabase
+          .from("contacts")
+          .select("*")
+          .or(`email.eq.${email},name.eq.${name}`)
+          .eq("user_id", userId);
+          
+        if (!conflictError && conflictContacts && conflictContacts.length > 0) {
+          console.log("[CREATE CONTACT] Found conflicting contact:", conflictContacts[0]);
+          return `A contact with the same details already exists.
+Contact ID: ${conflictContacts[0].id}
+Name: ${conflictContacts[0].name}
+Email: ${conflictContacts[0].email}
+Company: ${conflictContacts[0].company}
+`;
+        }
+      }
+      
       return `Error creating contact: ${contactError.message}`;
     }
     
@@ -1431,6 +1557,9 @@ async function generateMissingContactInfo(name: string) {
   console.log(`[GENERATE INFO] Generating missing contact information for: ${name}`);
   
   try {
+    // Add random number to make email unique
+    const randomNumber = Math.floor(Math.random() * 10000);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -1450,6 +1579,9 @@ Please generate the following in JSON format:
   "phone": "a realistic phone number (optional)"
 }
 
+IMPORTANT: Make sure the email is unique by adding "${randomNumber}" somewhere in the username portion of the email.
+For example: "john.smith${randomNumber}@company.com" or "jsmith${randomNumber}@company.com"
+
 Choose a realistic domain for the email that makes sense for the company.
 IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
         }
@@ -1465,6 +1597,14 @@ IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blo
     try {
       parsedInfo = JSON.parse(cleanedResult);
       console.log("[GENERATE INFO] Successfully parsed contact info JSON");
+      
+      // Ensure email has the random number
+      if (!parsedInfo.email.includes(randomNumber.toString())) {
+        const emailParts = parsedInfo.email.split('@');
+        parsedInfo.email = `${emailParts[0]}${randomNumber}@${emailParts[1]}`;
+        console.log("[GENERATE INFO] Added random number to email:", parsedInfo.email);
+      }
+      
       return parsedInfo;
     } catch (e) {
       console.error("[GENERATE INFO] Error parsing generated contact info:", e);
@@ -1473,6 +1613,220 @@ IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blo
   } catch (error) {
     console.error("[GENERATE INFO] Error generating contact information:", error);
     return null;
+  }
+}
+
+// Function to create and send emails
+async function create_email(
+  recipient_name: string,
+  recipient_email?: string,
+  subject?: string,
+  email_type?: string,
+  deal_id?: string,
+  context?: string
+) {
+  console.log(`[CREATE EMAIL] Starting email creation for: ${recipient_name}`);
+  try {
+    // Get current user ID
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    
+    if (!userId) {
+      console.log("[CREATE EMAIL] Error: User not authenticated");
+      return "Error: User not authenticated. Please sign in to send emails.";
+    }
+    
+    // Find the contact by name if we don't have their email
+    let contactId = null;
+    let contact = null;
+    if (!recipient_email) {
+      console.log("[CREATE EMAIL] No email provided, searching for contact in database");
+      
+      const { data: contacts, error: contactError } = await supabase
+        .from("contacts")
+        .select("*")
+        .ilike("name", `%${recipient_name}%`)
+        .eq("user_id", userId);
+        
+      if (contactError) {
+        console.error("[CREATE EMAIL] Error searching for contact:", contactError);
+        return `Error finding contact: ${contactError.message}`;
+      }
+      
+      if (!contacts || contacts.length === 0) {
+        console.log("[CREATE EMAIL] No contact found with name:", recipient_name);
+        return `No contact found with name "${recipient_name}". Please create the contact first or provide an email address.`;
+      }
+      
+      contact = contacts[0];
+      contactId = contact.id;
+      recipient_email = contact.email;
+      
+      console.log(`[CREATE EMAIL] Found contact: ${contact.name}, Email: ${recipient_email}, Company: ${contact.company}`);
+    } else {
+      // Check if contact with this email exists
+      const { data: contacts, error: contactError } = await supabase
+        .from("contacts")
+        .select("*")
+        .eq("email", recipient_email)
+        .eq("user_id", userId);
+        
+      if (!contactError && contacts && contacts.length > 0) {
+        contact = contacts[0];
+        contactId = contact.id;
+        console.log(`[CREATE EMAIL] Found existing contact with email: ${recipient_email}`);
+      }
+    }
+    
+    // If we don't have a deal ID but have a contact with deals, find the most recent deal
+    let dealData = null;
+    if (!deal_id && contactId) {
+      console.log("[CREATE EMAIL] Looking for recent deals for this contact");
+      
+      const { data: deals, error: dealError } = await supabase
+        .from("deals")
+        .select("*")
+        .eq("contact_id", contactId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+        
+      if (!dealError && deals && deals.length > 0) {
+        dealData = deals[0];
+        deal_id = dealData.id;
+        console.log(`[CREATE EMAIL] Found recent deal: ${dealData.title}, ID: ${deal_id}`);
+      }
+    } else if (deal_id) {
+      // Get deal data if we have a deal ID
+      const { data: deal, error: dealError } = await supabase
+        .from("deals")
+        .select("*")
+        .eq("id", deal_id)
+        .single();
+        
+      if (!dealError && deal) {
+        dealData = deal;
+        console.log(`[CREATE EMAIL] Found deal with ID ${deal_id}: ${dealData.title}`);
+      }
+    }
+    
+    // Determine email type if not provided
+    const emailTypeToUse = email_type || 
+                          (dealData ? 
+                            (dealData.stage === "Prospecting" ? "introduction" : 
+                             dealData.stage === "Proposal" ? "proposal" : 
+                             dealData.stage === "Negotiation" ? "negotiation" : 
+                             dealData.stage === "Closing" ? "closing" : "follow-up") 
+                            : "general");
+    
+    console.log(`[CREATE EMAIL] Using email type: ${emailTypeToUse}`);
+    
+    // Generate the email content using OpenAI
+    console.log("[CREATE EMAIL] Generating email content with AI");
+    
+    const contactInfo = contact ? 
+      `Name: ${contact.name}
+      Company: ${contact.company || "Unknown"}
+      Title: ${contact.title || "Unknown"}
+      Status: ${contact.status || "Unknown"}` : 
+      `Name: ${recipient_name}
+      Email: ${recipient_email}`;
+    
+    const dealInfo = dealData ? 
+      `Deal Title: ${dealData.title}
+      Value: $${dealData.value || 0}
+      Stage: ${dealData.stage || "Unknown"}
+      Probability: ${dealData.probability || 0}%` : 
+      "No deal information available";
+    
+    const subjectToUse = subject || `${emailTypeToUse.charAt(0).toUpperCase() + emailTypeToUse.slice(1)} - ${contact ? contact.company : ""}`;
+    
+    const emailResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: `You are a sales assistant that helps generate professional ${emailTypeToUse} emails. Generate an appropriate email based on the contact and deal details provided. Return only JSON without code blocks or formatting.` 
+        },
+        { 
+          role: "user", 
+          content: `Please generate a professional ${emailTypeToUse} email:
+          
+Contact:
+${contactInfo}
+          
+Deal:
+${dealInfo}
+
+Additional Context:
+${context || "No additional context provided"}
+
+Please provide the email in JSON format with the following structure:
+{
+  "to": "${recipient_email}",
+  "subject": "${subjectToUse}",
+  "body": "The generated email body that is professional, personalized, and appropriate for a ${emailTypeToUse} email"
+}
+
+Make the email personalized, professional, and appropriate for the ${emailTypeToUse} stage.
+IMPORTANT: Return ONLY the JSON object without any markdown formatting, code blocks, or extra text.` 
+        }
+      ]
+    });
+    
+    const emailResult = emailResponse.choices[0].message.content || "";
+    console.log("[CREATE EMAIL] Generated email (first 100 chars):", emailResult.substring(0, 100));
+    
+    // Clean and parse the email
+    const cleanedEmail = cleanJsonString(emailResult);
+    let parsedEmail;
+    try {
+      parsedEmail = JSON.parse(cleanedEmail);
+      console.log("[CREATE EMAIL] Successfully parsed email JSON");
+    } catch (e) {
+      console.error("[CREATE EMAIL] Error parsing email:", e);
+      return `Error: Could not generate email. ${emailResult}`;
+    }
+    
+    // Store the email in Supabase
+    const now = new Date().toISOString();
+    console.log("[CREATE EMAIL] Storing email in Supabase");
+    
+    const { data: emailData, error: emailError } = await supabase
+      .from("email_tracking")
+      .insert({
+        subject: parsedEmail.subject,
+        user_id: userId,
+        contact_id: contactId,
+        deal_id: deal_id,
+        sent_at: now,
+        created_at: now,
+        email_id: crypto.randomUUID(), // Generate a unique ID
+      });
+      
+    if (emailError) {
+      console.error("[CREATE EMAIL] Error storing email in Supabase:", emailError);
+      return `Email created but could not be stored in database. Error: ${emailError.message}`;
+    }
+    
+    console.log("[CREATE EMAIL] Email stored successfully");
+    
+    // Return the complete email information
+    return `
+Email Created Successfully:
+To: ${recipient_name} <${parsedEmail.to}>
+Subject: ${parsedEmail.subject}
+Type: ${emailTypeToUse}
+${contactId ? `Contact ID: ${contactId}` : ""}
+${deal_id ? `Deal ID: ${deal_id}` : ""}
+
+Email Body:
+${parsedEmail.body}
+
+Status: Email created and stored in the system.
+`;
+  } catch (error) {
+    console.error("[CREATE EMAIL] Error in create_email:", error);
+    return `Error creating email: ${error}`;
   }
 }
 
@@ -1490,6 +1844,9 @@ export default function Agent() {
   const [contactCompany, setContactCompany] = useState("");
   const [contactTitle, setContactTitle] = useState("");
   const [pendingDealInfo, setPendingDealInfo] = useState<any>(null);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailType, setEmailType] = useState("");
+  const [emailContext, setEmailContext] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1533,6 +1890,76 @@ export default function Agent() {
         setChatLog("Searching for LinkedIn contacts based on your query...");
         const contactResult = await find_linkedin_contact(userPrompt);
         setChatLog(prev => prev + "\n\n" + contactResult);
+        setLoading(false);
+        return;
+      }
+      
+      // Check if user is asking to create an email
+      if ((userPrompt.toLowerCase().includes("create") || userPrompt.toLowerCase().includes("send") || userPrompt.toLowerCase().includes("write")) && 
+          userPrompt.toLowerCase().includes("email")) {
+        console.log("[DIRECT ROUTE] Detected email creation request");
+        
+        // Extract recipient name, email, subject, and email type
+        const recipientMatch = userPrompt.match(/to\s+([^,\.]+)/i) || 
+                              userPrompt.match(/for\s+([^,\.]+)/i) ||
+                              userPrompt.match(/recipient\s*:?\s*([^,\.]+)/i);
+        
+        const emailMatch = userPrompt.match(/email\s*:?\s*([^\s,\.]+@[^\s,\.]+\.[^\s,\.]+)/i);
+        
+        const subjectMatch = userPrompt.match(/subject\s*:?\s*"([^"]+)"/i) || 
+                             userPrompt.match(/subject\s*:?\s*([^,\.]+)/i) ||
+                             userPrompt.match(/about\s+["']?([^'",.]+)["']?/i);
+        
+        const typeMatch = userPrompt.match(/type\s*:?\s*([^,\.]+)/i) ||
+                          userPrompt.match(/(introduction|follow[- ]?up|proposal|negotiation|closing)/i);
+        
+        const contextMatch = userPrompt.match(/context\s*:?\s*"([^"]+)"/i) ||
+                             userPrompt.match(/context\s*:?\s*(.+)$/i) ||
+                             userPrompt.match(/message\s*:?\s*"([^"]+)"/i);
+        
+        const extractedRecipient = recipientMatch ? recipientMatch[1].trim() : "";
+        const extractedEmail = emailMatch ? emailMatch[1].trim() : "";
+        const extractedSubject = subjectMatch ? subjectMatch[1].trim() : "";
+        const extractedType = typeMatch ? typeMatch[1].trim().toLowerCase() : "";
+        const extractedContext = contextMatch ? contextMatch[1].trim() : "";
+        
+        console.log("[EMAIL EXTRACTION] Recipient:", extractedRecipient);
+        console.log("[EMAIL EXTRACTION] Email:", extractedEmail);
+        console.log("[EMAIL EXTRACTION] Subject:", extractedSubject);
+        console.log("[EMAIL EXTRACTION] Type:", extractedType);
+        console.log("[EMAIL EXTRACTION] Context:", extractedContext);
+        
+        // Update state with extracted values
+        if (extractedRecipient) setContactName(extractedRecipient);
+        if (extractedEmail) setContactEmail(extractedEmail);
+        if (extractedSubject) setEmailSubject(extractedSubject);
+        if (extractedType) setEmailType(extractedType);
+        if (extractedContext) setEmailContext(extractedContext);
+        
+        // Check if we have enough information to create an email
+        if (!extractedRecipient && !contactName) {
+          setChatLog("Please specify a recipient name for the email.");
+          setLoading(false);
+          return;
+        }
+        
+        setChatLog(`Creating ${extractedType || emailType || "a"} email for ${extractedRecipient || contactName}...`);
+        
+        // Create the email
+        const emailResult = await create_email(
+          extractedRecipient || contactName,
+          extractedEmail || contactEmail,
+          extractedSubject || emailSubject,
+          extractedType || emailType,
+          undefined, // No deal ID provided
+          extractedContext || emailContext
+        );
+        
+        setChatLog(emailResult);
+        
+        // Clear email-specific fields after sending
+        setEmailSubject("");
+        setEmailContext("");
         setLoading(false);
         return;
       }
@@ -1608,7 +2035,7 @@ export default function Agent() {
         
         return;
       }
-
+      
       // Use function calling with looping to solve complex tasks
       let maxIterations = 10; // Prevent infinite loops
       let iterationCount = 0;
@@ -1814,19 +2241,39 @@ Status: ${contactData.status}
         return;
       }
       
-      // Check if contact exists
-      console.log("[CHECK CONTACT] Querying Supabase for contact");
-      const { data: contacts, error: contactError } = await supabase
+      // Check if contact exists - use exact match first, then try fuzzy match
+      console.log("[CHECK CONTACT] Querying Supabase for contact with exact match");
+      let { data: exactContacts, error: exactContactError } = await supabase
         .from("contacts")
         .select("*")
-        .ilike("name", `%${contactName}%`)
+        .eq("name", contactName)
         .eq("user_id", userId);
         
-      if (contactError) {
-        console.error("[CHECK CONTACT] Error searching for contact:", contactError);
-        setChatLog(`Error finding contact: ${contactError.message}`);
+      if (exactContactError) {
+        console.error("[CHECK CONTACT] Error searching for contact:", exactContactError);
+        setChatLog(`Error finding contact: ${exactContactError.message}`);
         setLoading(false);
         return;
+      }
+      
+      // If no exact match, try a fuzzy match
+      let contacts = exactContacts;
+      if (!contacts || contacts.length === 0) {
+        console.log("[CHECK CONTACT] No exact match, trying fuzzy match");
+        const { data: fuzzyContacts, error: fuzzyContactError } = await supabase
+          .from("contacts")
+          .select("*")
+          .ilike("name", `%${contactName}%`)
+          .eq("user_id", userId);
+          
+        if (fuzzyContactError) {
+          console.error("[CHECK CONTACT] Error searching for contact with fuzzy match:", fuzzyContactError);
+          setChatLog(`Error finding contact: ${fuzzyContactError.message}`);
+          setLoading(false);
+          return;
+        }
+        
+        contacts = fuzzyContacts;
       }
       
       console.log("[CHECK CONTACT] Contact search results count:", contacts?.length || 0);
@@ -1840,6 +2287,37 @@ Status: ${contactData.status}
         if (contactEmail && contactCompany) {
           // We have enough info to create the contact automatically
           console.log("[CHECK CONTACT] Creating contact with existing information");
+          
+          // First check if a contact with this email already exists
+          const { data: emailContacts, error: emailCheckError } = await supabase
+            .from("contacts")
+            .select("*")
+            .eq("email", contactEmail)
+            .eq("user_id", userId);
+            
+          if (emailCheckError) {
+            console.error("[CHECK CONTACT] Error checking existing email:", emailCheckError);
+            setChatLog(`Error checking for existing contact: ${emailCheckError.message}`);
+            setLoading(false);
+            return;
+          }
+          
+          if (emailContacts && emailContacts.length > 0) {
+            // Email already exists for a different contact
+            console.log("[CHECK CONTACT] Email already exists for another contact:", emailContacts[0].name);
+            setChatLog(`A contact with email "${contactEmail}" already exists ('${emailContacts[0].name}'). Using this existing contact for the deal.`);
+            
+            // Use the existing contact for the deal
+            const dealResult = await create_deal(
+              emailContacts[0].name, 
+              dealTitle, 
+              dealValue, 
+              dealStage
+            );
+            setChatLog(prev => prev + "\n\n" + dealResult);
+            setLoading(false);
+            return;
+          }
           
           // Create the contact using the create_contact_function
           const contactResult = await create_contact_function(
@@ -1893,10 +2371,42 @@ Status: ${contactData.status}
           if (generatedInfo) {
             console.log("[CHECK CONTACT] Successfully generated contact information:", generatedInfo);
             
+            // First check if a contact with this email already exists
+            const generatedEmail = generatedInfo.email;
+            const { data: emailContacts, error: emailCheckError } = await supabase
+              .from("contacts")
+              .select("*")
+              .eq("email", generatedEmail)
+              .eq("user_id", userId);
+              
+            if (emailCheckError) {
+              console.error("[CHECK CONTACT] Error checking existing email:", emailCheckError);
+              setChatLog(`Error checking for existing contact: ${emailCheckError.message}`);
+              setLoading(false);
+              return;
+            }
+            
+            if (emailContacts && emailContacts.length > 0) {
+              // Email already exists for a different contact - this is unlikely with generated data but handle it
+              console.log("[CHECK CONTACT] Generated email already exists for another contact:", emailContacts[0].name);
+              setChatLog(`A contact with the generated email "${generatedEmail}" already exists. Using this existing contact for the deal.`);
+              
+              // Use the existing contact for the deal
+              const dealResult = await create_deal(
+                emailContacts[0].name, 
+                dealTitle, 
+                dealValue, 
+                dealStage
+              );
+              setChatLog(prev => prev + "\n\n" + dealResult);
+              setLoading(false);
+              return;
+            }
+            
             // Update state with generated info
-            if (!contactEmail && generatedInfo.email) setContactEmail(generatedInfo.email);
-            if (!contactCompany && generatedInfo.company) setContactCompany(generatedInfo.company);
-            if (!contactTitle && generatedInfo.title) setContactTitle(generatedInfo.title);
+            if (!contactEmail) setContactEmail(generatedInfo.email);
+            if (!contactCompany) setContactCompany(generatedInfo.company);
+            if (!contactTitle) setContactTitle(generatedInfo.title);
             if (!contactPhone && generatedInfo.phone) setContactPhone(generatedInfo.phone);
             
             setChatLog(prev => prev + `\nGenerated contact information:
@@ -1916,37 +2426,55 @@ Phone: ${generatedInfo.phone || "Not provided"}
               "Hot Lead"
             );
             
-            setChatLog(prev => prev + "\n\n" + contactResult);
-            
-            // Now create the deal
-            console.log("[CHECK CONTACT] Contact created with generated info, now creating deal");
-            const contactIdMatch = contactResult.match(/Contact ID: ([a-f0-9-]+)/i);
-            const contactId = contactIdMatch ? contactIdMatch[1] : null;
-            
-            if (contactId) {
-              // We have the contact ID, create the deal
-              const dealResult = await create_deal(contactName, dealTitle, dealValue, dealStage);
-              setChatLog(prev => prev + "\n\n" + dealResult);
+            if (contactResult.includes("already exists")) {
+              // Handle the case where the contact couldn't be created due to duplicate
+              console.log("[CHECK CONTACT] Contact creation failed due to duplicate");
+              
+              // Try to extract the existing contact name
+              const existingContactMatch = contactResult.match(/A contact with email "[^"]+" already exists \(([^)]+)\)/);
+              const existingContactName = existingContactMatch ? existingContactMatch[1] : null;
+              
+              if (existingContactName) {
+                // Create the deal with the existing contact
+                setChatLog(prev => prev + `\n\nUsing existing contact ${existingContactName} for the deal.`);
+                const dealResult = await create_deal(existingContactName, dealTitle, dealValue, dealStage);
+                setChatLog(prev => prev + "\n\n" + dealResult);
+              } else {
+                setChatLog(prev => prev + "\n\n" + contactResult);
+              }
             } else {
-              // Fallback to searching for the contact again
-              setTimeout(async () => {
-                console.log("[CHECK CONTACT] Searching for newly created contact");
-                const { data: newContacts } = await supabase
-                  .from("contacts")
-                  .select("*")
-                  .eq("name", contactName)
-                  .eq("user_id", userId)
-                  .order("created_at", { ascending: false })
-                  .limit(1);
-                  
-                if (newContacts && newContacts.length > 0) {
-                  console.log("[CHECK CONTACT] Found newly created contact, creating deal");
-                  const dealResult = await create_deal(contactName, dealTitle, dealValue, dealStage);
-                  setChatLog(prev => prev + "\n\n" + dealResult);
-                } else {
-                  setChatLog(prev => prev + "\n\nContact created but could not automatically create deal. Please try creating the deal again.");
-                }
-              }, 1000); // Wait 1 second for database to update
+              setChatLog(prev => prev + "\n\n" + contactResult);
+              
+              // Now create the deal
+              console.log("[CHECK CONTACT] Contact created with generated info, now creating deal");
+              const contactIdMatch = contactResult.match(/Contact ID: ([a-f0-9-]+)/i);
+              const contactId = contactIdMatch ? contactIdMatch[1] : null;
+              
+              if (contactId) {
+                // We have the contact ID, create the deal
+                const dealResult = await create_deal(contactName, dealTitle, dealValue, dealStage);
+                setChatLog(prev => prev + "\n\n" + dealResult);
+              } else {
+                // Fallback to searching for the contact again
+                setTimeout(async () => {
+                  console.log("[CHECK CONTACT] Searching for newly created contact");
+                  const { data: newContacts } = await supabase
+                    .from("contacts")
+                    .select("*")
+                    .eq("name", contactName)
+                    .eq("user_id", userId)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                    
+                  if (newContacts && newContacts.length > 0) {
+                    console.log("[CHECK CONTACT] Found newly created contact, creating deal");
+                    const dealResult = await create_deal(newContacts[0].name, dealTitle, dealValue, dealStage);
+                    setChatLog(prev => prev + "\n\n" + dealResult);
+                  } else {
+                    setChatLog(prev => prev + "\n\nContact created but could not automatically create deal. Please try creating the deal again.");
+                  }
+                }, 1000); // Wait 1 second for database to update
+              }
             }
           } else {
             // Could not generate contact info, show contact form
@@ -1979,7 +2507,7 @@ Phone: ${generatedInfo.phone || "Not provided"}
       
       // Contact exists, proceed with deal creation
       console.log("[CHECK CONTACT] Proceeding to create deal for contact:", contacts[0].name);
-      const dealResult = await create_deal(contactName, dealTitle, dealValue, dealStage);
+      const dealResult = await create_deal(contacts[0].name, dealTitle, dealValue, dealStage);
       setChatLog(dealResult);
       
     } catch (error) {
@@ -1994,200 +2522,285 @@ Phone: ${generatedInfo.phone || "Not provided"}
     <div style={{ maxWidth: 600, margin: "auto" }}>
       <h2 style={{ marginBottom: 16 }}>Email & Deal Assistant</h2>
       
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button 
-          onClick={() => {
-            setLoading(true);
-            setChatLog("Analyzing unread emails and generating replies to critical ones...");
-            summarize_unread_message()
-              .then(result => setChatLog(result))
-              .finally(() => setLoading(false));
-          }} 
-          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
-          disabled={loading}
-        >
-          Analyze & Reply to Emails
-        </button>
-        
-        <button 
-          onClick={() => {
-            setLoading(true);
-            setChatLog("Analyzing stale deals and generating follow-up emails...");
-            get_critical_deals()
-              .then(result => setChatLog(result))
-              .finally(() => setLoading(false));
-          }} 
-          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
-          disabled={loading}
-        >
-          Find & Follow-up Critical Deals
-        </button>
-        
-        <input
-          type="text"
-          placeholder="Enter LinkedIn search query..."
-          value={userPrompt}
-          onChange={(e) => setUserPrompt(e.target.value)}
-          style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1, marginTop: 8 }}
-          disabled={loading}
-        />
-        <button 
-          onClick={() => {
-            if (!userPrompt.trim()) {
-              setChatLog("Please enter a search query.");
-              return;
-            }
-            setLoading(true);
-            setChatLog(`Searching for LinkedIn contacts matching: ${userPrompt}`);
-            find_linkedin_contact(userPrompt)
-              .then(result => setChatLog(result))
-              .finally(() => setLoading(false));
-          }} 
-          style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4, marginTop: 8 }}
-          disabled={loading}
-        >
-          Find LinkedIn Contact
-        </button>
-      </div>
-      
-      {showContactForm ? (
-        <div style={{ marginBottom: 16, padding: 16, border: "1px solid #ddd", borderRadius: 4, backgroundColor: "#f9f9f9" }}>
-          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Create New Contact</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <input
-              type="text"
-              placeholder="Contact Name *"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <input
-              type="email"
-              placeholder="Email Address *"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <input
-              type="text"
-              placeholder="Company *"
-              value={contactCompany}
-              onChange={(e) => setContactCompany(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <input
-              type="text"
-              placeholder="Job Title"
-              value={contactTitle}
-              onChange={(e) => setContactTitle(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <input
-              type="tel"
-              placeholder="Phone Number"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button 
-                onClick={createContact} 
-                style={{ padding: "8px 16px", backgroundColor: "#4CAF50", color: "white", border: "none", borderRadius: 4, flexGrow: 1 }}
-                disabled={loading || !contactName.trim() || !contactEmail.trim() || !contactCompany.trim()}
-              >
-                Create Contact
-              </button>
-              <button 
-                onClick={() => {
-                  setShowContactForm(false);
-                  setPendingDealInfo(null);
-                }} 
-                style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
-                disabled={loading}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      {/* Hidden UI elements - only showing input and submit */}
+      <div style={{ display: "none" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <button 
+            onClick={() => {
+              setLoading(true);
+              setChatLog("Analyzing unread emails and generating replies to critical ones...");
+              summarize_unread_message()
+                .then(result => setChatLog(result))
+                .finally(() => setLoading(false));
+            }} 
+            style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+            disabled={loading}
+          >
+            Analyze & Reply to Emails
+          </button>
+          
+          <button 
+            onClick={() => {
+              setLoading(true);
+              setChatLog("Analyzing stale deals and generating follow-up emails...");
+              get_critical_deals()
+                .then(result => setChatLog(result))
+                .finally(() => setLoading(false));
+            }} 
+            style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+            disabled={loading}
+          >
+            Find & Follow-up Critical Deals
+          </button>
+          
+          <input
+            type="text"
+            placeholder="Enter LinkedIn search query..."
+            value={userPrompt}
+            onChange={(e) => setUserPrompt(e.target.value)}
+            style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1, marginTop: 8 }}
+            disabled={loading}
+          />
+          <button 
+            onClick={() => {
+              if (!userPrompt.trim()) {
+                setChatLog("Please enter a search query.");
+                return;
+              }
+              setLoading(true);
+              setChatLog(`Searching for LinkedIn contacts matching: ${userPrompt}`);
+              find_linkedin_contact(userPrompt)
+                .then(result => setChatLog(result))
+                .finally(() => setLoading(false));
+            }} 
+            style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4, marginTop: 8 }}
+            disabled={loading}
+          >
+            Find LinkedIn Contact
+          </button>
         </div>
-      ) : (
-        <div style={{ marginBottom: 16, padding: 16, border: "1px solid #ddd", borderRadius: 4 }}>
-          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Create New Deal</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <input
-              type="text"
-              placeholder="Contact Name"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <input
-              type="text"
-              placeholder="Deal Title"
-              value={dealTitle}
-              onChange={(e) => setDealTitle(e.target.value)}
-              style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              disabled={loading}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
+        
+        {showContactForm ? (
+          <div style={{ marginBottom: 16, padding: 16, border: "1px solid #ddd", borderRadius: 4, backgroundColor: "#f9f9f9" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 8 }}>Create New Contact</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <input
-                type="number"
-                placeholder="Deal Value ($)"
-                value={dealValue}
-                onChange={(e) => setDealValue(e.target.value)}
-                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1 }}
+                type="text"
+                placeholder="Contact Name *"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
                 disabled={loading}
               />
-              <select
-                value={dealStage}
-                onChange={(e) => setDealStage(e.target.value)}
-                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1 }}
+              <input
+                type="email"
+                placeholder="Email Address *"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
                 disabled={loading}
-              >
-                <option value="Prospecting">Prospecting</option>
-                <option value="Proposal">Proposal</option>
-                <option value="Negotiation">Negotiation</option>
-                <option value="Closing">Closing</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button 
-                onClick={() => {
-                  if (!contactName.trim() || !dealTitle.trim()) {
-                    setChatLog("Please enter both Contact Name and Deal Title.");
-                    return;
-                  }
-                  checkContactAndCreateDeal(
-                    contactName, 
-                    dealTitle, 
-                    dealValue ? parseFloat(dealValue) : undefined,
-                    dealStage
-                  );
-                }} 
-                style={{ padding: "8px 16px", backgroundColor: "#4CAF50", color: "white", border: "none", borderRadius: 4, flexGrow: 1 }}
-                disabled={loading || !contactName.trim() || !dealTitle.trim()}
-              >
-                Create Deal
-              </button>
-              <button 
-                onClick={() => {
-                  setShowContactForm(true);
-                }} 
-                style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+              />
+              <input
+                type="text"
+                placeholder="Company *"
+                value={contactCompany}
+                onChange={(e) => setContactCompany(e.target.value)}
+                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
                 disabled={loading}
-              >
-                New Contact
-              </button>
+              />
+              <input
+                type="text"
+                placeholder="Job Title"
+                value={contactTitle}
+                onChange={(e) => setContactTitle(e.target.value)}
+                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                disabled={loading}
+              />
+              <input
+                type="tel"
+                placeholder="Phone Number"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                disabled={loading}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button 
+                  onClick={createContact} 
+                  style={{ padding: "8px 16px", backgroundColor: "#4CAF50", color: "white", border: "none", borderRadius: 4, flexGrow: 1 }}
+                  disabled={loading || !contactName.trim() || !contactEmail.trim() || !contactCompany.trim()}
+                >
+                  Create Contact
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowContactForm(false);
+                    setPendingDealInfo(null);
+                  }} 
+                  style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div style={{ marginBottom: 16, padding: 16, border: "1px solid #ddd", borderRadius: 4 }}>
+              <h3 style={{ marginTop: 0, marginBottom: 8 }}>Create New Deal</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Contact Name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                />
+                <input
+                  type="text"
+                  placeholder="Deal Title"
+                  value={dealTitle}
+                  onChange={(e) => setDealTitle(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="number"
+                    placeholder="Deal Value ($)"
+                    value={dealValue}
+                    onChange={(e) => setDealValue(e.target.value)}
+                    style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1 }}
+                    disabled={loading}
+                  />
+                  <select
+                    value={dealStage}
+                    onChange={(e) => setDealStage(e.target.value)}
+                    style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", flexGrow: 1 }}
+                    disabled={loading}
+                  >
+                    <option value="Prospecting">Prospecting</option>
+                    <option value="Proposal">Proposal</option>
+                    <option value="Negotiation">Negotiation</option>
+                    <option value="Closing">Closing</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button 
+                    onClick={() => {
+                      if (!contactName.trim() || !dealTitle.trim()) {
+                        setChatLog("Please enter both Contact Name and Deal Title.");
+                        return;
+                      }
+                      checkContactAndCreateDeal(
+                        contactName, 
+                        dealTitle, 
+                        dealValue ? parseFloat(dealValue) : undefined,
+                        dealStage
+                      );
+                    }} 
+                    style={{ padding: "8px 16px", backgroundColor: "#4CAF50", color: "white", border: "none", borderRadius: 4, flexGrow: 1 }}
+                    disabled={loading || !contactName.trim() || !dealTitle.trim()}
+                  >
+                    Create Deal
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowContactForm(true);
+                    }} 
+                    style={{ padding: "8px 16px", backgroundColor: "#f0f0f0", border: "1px solid #ccc", borderRadius: 4 }}
+                    disabled={loading}
+                  >
+                    New Contact
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: 16, padding: 16, border: "1px solid #ddd", borderRadius: 4 }}>
+              <h3 style={{ marginTop: 0, marginBottom: 8 }}>Create Email</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Recipient Name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                />
+                <input
+                  type="email"
+                  placeholder="Email Address (optional - will look up if not provided)"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                />
+                <input
+                  type="text"
+                  placeholder="Subject (optional)"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                />
+                <select
+                  value={emailType}
+                  onChange={(e) => setEmailType(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
+                  disabled={loading}
+                >
+                  <option value="">-- Select Email Type --</option>
+                  <option value="introduction">Introduction</option>
+                  <option value="follow-up">Follow-up</option>
+                  <option value="proposal">Proposal</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="closing">Closing</option>
+                  <option value="general">General</option>
+                </select>
+                <textarea
+                  placeholder="Additional Context (optional)"
+                  value={emailContext}
+                  onChange={(e) => setEmailContext(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, border: "1px solid #ccc", minHeight: 80 }}
+                  disabled={loading}
+                />
+                <button 
+                  onClick={() => {
+                    if (!contactName.trim()) {
+                      setChatLog("Please enter a recipient name.");
+                      return;
+                    }
+                    setLoading(true);
+                    setChatLog(`Creating ${emailType || "a"} email for ${contactName}...`);
+                    create_email(
+                      contactName,
+                      contactEmail,
+                      emailSubject,
+                      emailType,
+                      undefined, // No deal ID
+                      emailContext
+                    )
+                      .then(result => setChatLog(result))
+                      .finally(() => {
+                        setLoading(false);
+                        // Clear the email form after sending
+                        setEmailSubject("");
+                        setEmailContext("");
+                      });
+                  }} 
+                  style={{ padding: "8px 16px", backgroundColor: "#4CAF50", color: "white", border: "none", borderRadius: 4 }}
+                  disabled={loading || !contactName.trim()}
+                >
+                  Create Email
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit}>
         <input
@@ -2195,14 +2808,24 @@ Phone: ${generatedInfo.phone || "Not provided"}
           onChange={(e) => setUserPrompt(e.target.value)}
           placeholder="Ask the AI..."
           disabled={loading}
-          style={{ width: "100%", padding: 8 }}
+          style={{ width: "100%", padding: 12, fontSize: 16, borderRadius: 8, border: "1px solid #ccc", marginBottom: 12 }}
         />
-        <button type="submit" disabled={loading} style={{ marginTop: 8 }}>
+        <button type="submit" disabled={loading} style={{ 
+          marginTop: 8, 
+          padding: "12px 24px", 
+          backgroundColor: "#4CAF50", 
+          color: "white", 
+          border: "none", 
+          borderRadius: 8,
+          fontSize: 16,
+          cursor: loading ? "not-allowed" : "pointer",
+          width: "100%"
+        }}>
           {loading ? "Processing..." : "Submit"}
         </button>
       </form>
 
-      <pre style={{ whiteSpace: "pre-wrap", marginTop: 20, background: "#eee", padding: 10 }}>
+      <pre style={{ whiteSpace: "pre-wrap", marginTop: 20, background: "#f7f7f7", padding: 16, borderRadius: 8, fontSize: 14, border: "1px solid #eee" }}>
         {chatLog}
       </pre>
     </div>
